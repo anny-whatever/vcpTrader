@@ -153,8 +153,6 @@ export default function NavbarComponent() {
             >
               Zerodha Login
             </Button>
-
-            <Button onClick={getIndicesData}>Fetch Indices Data</Button>
           </NavbarItem>
         </NavbarContent>
         <NavbarMenu className="text-white bg-black">
@@ -163,9 +161,6 @@ export default function NavbarComponent() {
           </NavbarMenuItem>
           <NavbarMenuItem>
             <Link to="/allpositions">All positions</Link>
-          </NavbarMenuItem>
-          <NavbarMenuItem onClick={getIndicesData}>
-            <Button>Fetch Indices Data</Button>
           </NavbarMenuItem>
         </NavbarMenu>
       </Navbar>

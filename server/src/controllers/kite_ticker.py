@@ -6,7 +6,6 @@ from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 from db import get_db_connection, close_db_connection
-from models import  IndicesInstruments
 from .schedulers import scheduler, setup_scheduler   
 
 load_dotenv()
@@ -43,9 +42,13 @@ def get_instrument_token():
     conn, cur = get_db_connection()
     try:
         tokens = [256265]
-        # tokens.extend(item['instrument_token'] for item in NiftyOptionChain.select_all(cur))
-        # tokens.extend(item['instrument_token'] for item in BankNiftyOptionChain.select_all(cur))
-        # tokens.extend(item['instrument_token'] for item in IndicesInstruments.select_all(cur))
+        select_query = """SELECT instrument_token FROM equity_tokens;"""
+        cur.execute(select_query)
+        equity_tokens = cur.fetchall()
+        
+        tokens.extend(item['instrument_token'] for item in equity_tokens)
+        print(tokens)
+
         return tokens
     except Exception as err:
         return {"error": str(err)}
@@ -86,8 +89,8 @@ def start_kite_ticker():
                     loop.close()  # Close the loop to deallocate resources
 
             # Example usage of submitting to ThreadPoolExecutor
-            if is_within_time_range():
-                print(f"Ticks received: {len(ticks)}") 
+            # if is_within_time_range():
+            #     print(f"Ticks received: {len(ticks)}") 
                 # executor.submit(save_options_ticks, ticks)
                 # executor.submit(save_indices_ticks, ticks)
 

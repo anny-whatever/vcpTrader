@@ -24,15 +24,15 @@ def get_historical_data(instrument_token, interval, symbol):
     if not kite.access_token:
         return {"error": "Access token not found"}
     
-    loop_count = 100 # Number of 100-day windows
+    loop_count = 1 # Number of 100-day windows
     hist = []
     to_date = datetime.datetime.now()  # Current date for the initial time window
     
     for _ in range(loop_count):
         # Define the time window for each request
         time_window_to = to_date.isoformat()[:10]
-        time_window_from = (to_date - datetime.timedelta(days=100)).isoformat()[:10]
-        
+        time_window_from = (to_date - datetime.timedelta(days=0)).isoformat()[:10]
+        print(time_window_from, time_window_to)
         try:
             # Request historical data from the Kite Connect API
             data = kite.historical_data(instrument_token, time_window_from, time_window_to, interval)
@@ -40,13 +40,13 @@ def get_historical_data(instrument_token, interval, symbol):
             if data:
                 hist.extend(data)  # Accumulate the data across all requests
             
-            print(f"Data from {time_window_from} to {time_window_to}: {data}")
+            # print(f"Data from {time_window_from} to {time_window_to}: {data}")
         
         except Exception as err: 
             return {"error": str(err)}
         
         # Update `to_date` for the next iteration (move back by 101 days)
-        to_date = to_date - datetime.timedelta(days=101)
+        to_date = to_date - datetime.timedelta(days=1)
         
         # Delay to avoid overwhelming the API
         delay(200)

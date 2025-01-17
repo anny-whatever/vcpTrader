@@ -15,7 +15,7 @@ def get_instrument_equity():
             response = kite.instruments(exchange="NSE")
             
             filtered_response = []
-            print(response)
+            # print(response)
             for instrument in response:
                 if instrument['instrument_type'] == "EQ" and instrument['segment'] == "NSE":
                     filtered_response.append(instrument)

@@ -1,0 +1,61 @@
+from db import get_trade_db_connection, release_trade_db_connection
+from .manage_risk_pool import update_risk_pool_on_parameter_change
+
+def adjust_trade_parameters(symbol, new_stop_loss=None, new_target=None):
+    """
+    Adjust the stop loss and/or target for a trade and update the risk pool.
+
+    Args:
+        symbol (str): The stock symbol for the trade.
+        new_stop_loss (float, optional): The new stop loss value. Defaults to None.
+        new_target (float, optional): The new target value. Defaults to None.
+    """
+    conn, cur = get_trade_db_connection()
+    try:
+        # Fetch current trade details
+        cur.execute("""
+            SELECT trade_id, stop_loss, target, entry_price, current_qty 
+            FROM trades 
+            WHERE stock_name = %s;
+        """, (symbol,))
+        trade = cur.fetchone()
+
+        if not trade:
+            raise ValueError(f"No active trade found for symbol: {symbol}")
+
+        # Extract current trade details
+        trade_id = trade['trade_id']
+        current_stop_loss = float(trade['stop_loss'])
+        current_target = float(trade['target'])
+        entry_price = float(trade['entry_price'])
+        qty = float(trade['current_qty'])
+
+        # Update stop loss and risk pool if new_stop_loss is provided
+        if new_stop_loss is not None and new_stop_loss != current_stop_loss:
+            print(f"Updating stop loss for {symbol}: {current_stop_loss} -> {new_stop_loss}")
+            update_risk_pool_on_parameter_change(cur, current_stop_loss, new_stop_loss, entry_price, qty)
+            cur.execute("""
+                UPDATE trades
+                SET stop_loss = %s
+                WHERE trade_id = %s;
+            """, (new_stop_loss, trade_id))
+            print(f"Stop loss updated for trade {trade_id}: New stop loss {new_stop_loss}")
+
+        # Update target if new_target is provided
+        if new_target is not None and new_target != current_target:
+            print(f"Updating target for {symbol}: {current_target} -> {new_target}")
+            cur.execute("""
+                UPDATE trades
+                SET target = %s
+                WHERE trade_id = %s;
+            """, (new_target, trade_id))
+            print(f"Target updated for trade {trade_id}: New target {new_target}")
+
+        # Commit all changes
+        conn.commit()
+
+    except Exception as e:
+        conn.rollback()
+        print(f"Error adjusting trade parameters: {e}")
+    finally:
+        release_trade_db_connection(conn, cur)

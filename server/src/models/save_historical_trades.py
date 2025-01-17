@@ -1,33 +1,29 @@
-class HistoricalTrades:
-    def __init__(self, strategy_type, entry_time, entry_price, exit_time, exit_price, qty, pnl):
-        self.strategy_type = strategy_type
+class SaveHistoricalTradeDetails:
+    def __init__(self, stock_name, entry_time, entry_price, exit_time, exit_price, final_pnl, highest_qty):
+        self.stock_name = stock_name
         self.entry_time = entry_time
         self.entry_price = entry_price
         self.exit_time = exit_time
         self.exit_price = exit_price
-        self.qty = qty
-        self.pnl = pnl
+        self.final_pnl = final_pnl
+        self.highest_qty = highest_qty
 
-
-    @classmethod
-    def create_table(cls, cur):
-        create_table_query = """
-        CREATE TABLE IF NOT EXISTS historical_trades (
-            id SERIAL PRIMARY KEY,
-            strategy_type VARCHAR(255),
-            entry_time TIMESTAMPTZ,
-            entry_price DECIMAL,
-            exit_time TIMESTAMPTZ,
-            exit_price DECIMAL,
-            qty DECIMAL,
-            pnl DECIMAL
-            );
-        """
-        cur.execute(create_table_query)
-    
-    def insert_historical_trade(self, cur):
-        query = """
-        INSERT INTO historical_trades (strategy_type, entry_time, entry_price, exit_time, exit_price, qty, pnl)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """
-        cur.execute(query, (self.strategy_type, self.entry_time, self.entry_price, self.exit_time, self.exit_price, self.qty, self.pnl))
+    def save(self, cur):
+        try:
+            query = """
+                INSERT INTO historical_trades 
+                (stock_name, entry_time, entry_price, exit_time, exit_price, final_pnl, highest_qty) 
+                VALUES (%s, %s, %s, %s, %s, %s, %s);
+            """
+            cur.execute(query, (
+                self.stock_name,
+                self.entry_time,
+                self.entry_price,
+                self.exit_time,
+                self.exit_price,
+                self.final_pnl,
+                self.highest_qty
+            ))
+            print("Trade saved to historical_trades successfully.")
+        except Exception as e:
+            print(f"Error saving to historical_trades: {str(e)}")

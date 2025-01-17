@@ -6,7 +6,6 @@ from kiteconnect import KiteConnect
 from dotenv import load_dotenv
 from requests import get
 
-
 from .kite_ticker import initialize_kite_ticker
 
 load_dotenv()
@@ -28,10 +27,7 @@ async def auth():
 
 @router.get("/callback")
 async def callback(request_token: str):
-    
-    from services import get_instrument_indices,  get_instrument_equity
-
-
+    from services import get_instrument_indices,  get_instrument_equity, load_ohlc_data
     try:
         # Generate session and get access token
         session = kite.generate_session(request_token, os.getenv("API_SECRET"))
@@ -39,27 +35,10 @@ async def callback(request_token: str):
         kite.set_access_token(access_token)
 
         # Initialize KiteTicker
-    
-
         get_instrument_indices()
         get_instrument_equity()
         initialize_kite_ticker(access_token)
-        
-        sleep(1)
-        # print(get_strikes_from_nifty_by_delta_put(0, 0.5))
-        # print(get_strikes_from_nifty_by_delta_call(0, 0.5))
-        # sma_bounce_fifteen_minute_buy_entry()
-        
-        
-        # get_strikes_from_nifty_by_steps_pair(0, 0)
-        # print(get_strikes_from_nifty_by_steps_call(0, -1))
-        # print(get_strikes_from_nifty_by_steps_put(0, -1))
-        
-        
-        
-        
-        # get_historical_data_with_atr()
-        
+        # load_ohlc_data ()
         
         return RedirectResponse(url="http://localhost:5173?login=true")
 
