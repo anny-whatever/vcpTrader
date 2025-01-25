@@ -2,8 +2,8 @@ from db import get_trade_db_connection, release_trade_db_connection
 from .manage_risk_pool import update_risk_pool_on_increase, update_risk_pool_on_decrease
 import datetime
 import threading
-import time
 import queue
+import time
 from controllers import kite
 
 adjustment_lock = threading.Lock()
@@ -39,6 +39,7 @@ def adjust_order_execute(symbol, qty, adjustment_type):
         entry_price = float(trade['entry_price'])
         stop_loss = float(trade['stop_loss'])
         current_qty = float(trade['current_qty'])
+        qty = float(qty)
 
         if adjustment_type == 'decrease' and qty > current_qty:
             raise ValueError(f"Cannot decrease by {qty}, only {current_qty} available.")
@@ -53,7 +54,7 @@ def adjust_order_execute(symbol, qty, adjustment_type):
             product='CNC',
             order_type='MARKET'
         )
-        print(response_adjust)
+        print(f"Order placed: {response_adjust}")
 
         # Start status monitoring
         threading.Thread(
@@ -61,7 +62,9 @@ def adjust_order_execute(symbol, qty, adjustment_type):
             args=(response_adjust, trade_id, qty, adjustment_type, entry_price, stop_loss, 300)
         ).start()
 
-        return {"status": "PENDING", "message": "Adjustment order placed"}
+        status = adjustment_status_queue.get(timeout=305)
+        print(f"Final Adjustment Status: {status}")
+        return status
 
     except Exception as e:
         print(f"Adjustment Error ({adjustment_type.capitalize()}): {e}")
@@ -76,7 +79,11 @@ def monitor_adjustment_status(order_id, trade_id, qty, adjustment_type, entry_pr
     """
     conn, cur = get_trade_db_connection()
     try:
+        qty = float(qty)
+        entry_price = float(entry_price)
+        stop_loss = float(stop_loss)
         start_time = time.time()
+
         while time.time() - start_time < timeout:
             adjust_order = kite.order_history(order_id)
             adjust_status = adjust_order[-1]['status']
@@ -93,8 +100,9 @@ def monitor_adjustment_status(order_id, trade_id, qty, adjustment_type, entry_pr
                 if adjustment_type == 'increase':
                     update_risk_pool_on_increase(cur, stop_loss, actual_price, qty)
                 elif adjustment_type == 'decrease':
-                    is_profit = actual_price > entry_price
-                    update_risk_pool_on_decrease(cur, stop_loss, actual_price, qty, is_profit)
+                    # Determine if the adjustment results in profit
+                    update_risk_pool_on_decrease(cur, stop_loss, entry_price, actual_price, qty)
+
 
                 update_trade_record(cur, conn, trade_id, qty, actual_price, adjustment_type)
                 return
@@ -104,7 +112,7 @@ def monitor_adjustment_status(order_id, trade_id, qty, adjustment_type, entry_pr
                 print(f"Adjustment Order Rejected: {adjust_status_message}")
                 return
 
-            time.sleep(0.2)  # Faster polling frequency
+            time.sleep(0.2)
 
         adjustment_status_queue.put({"status": "TIMEOUT", "message": "Order status monitoring timed out."})
         print("Adjustment order monitoring timed out.")
@@ -114,6 +122,7 @@ def monitor_adjustment_status(order_id, trade_id, qty, adjustment_type, entry_pr
         print(f"Error during adjustment status monitoring: {e}")
     finally:
         release_trade_db_connection(conn, cur)
+
 
 def update_trade_record(cur, conn, trade_id, qty, actual_price, adjustment_type):
     """
@@ -130,15 +139,15 @@ def update_trade_record(cur, conn, trade_id, qty, actual_price, adjustment_type)
         current_entry_price = float(result['entry_price'])
         booked_pnl = float(result['booked_pnl'])
         qty = float(qty)
+        actual_price = float(actual_price)
 
         if adjustment_type == 'increase':
             new_entry_price = (
                 (current_qty * current_entry_price) + (qty * actual_price)
-            ) / (current_qty + qty) if (current_qty + qty) > 0 else current_entry_price
+            ) / (current_qty + qty)
         else:
             new_entry_price = current_entry_price
-            exit_price = actual_price
-            booked_pnl += (exit_price - current_entry_price) * qty
+            booked_pnl += (actual_price - current_entry_price) * qty
 
         query = """
             UPDATE trades
@@ -165,14 +174,11 @@ def update_trade_record(cur, conn, trade_id, qty, actual_price, adjustment_type)
             adjustment_type, abs(qty), actual_price, trade_id
         ))
         conn.commit()
-        print(f"Updated current_qty and entry_price for trade ID {trade_id}")
+        print(f"Updated trade record for trade ID {trade_id}")
 
-    except ValueError as ve:
-        print(f"Error: {ve}")
     except Exception as e:
         conn.rollback()
         print(f"Error updating trade ID {trade_id}: {e}")
-
 
 def get_trade_id_by_symbol(cur, symbol):
     """

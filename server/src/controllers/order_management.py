@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
-from services import buy_order_execute, sell_order_execute, adjust_order_execute
+from services import buy_order_execute, sell_order_execute, adjust_order_execute, adjust_trade_parameters
 
 router = APIRouter()
 
@@ -33,6 +33,22 @@ async def reduce_stock(symbol, qty):
 async def increase_stock(symbol, qty):
     try:
         response = adjust_order_execute(symbol, qty, 'increase')
+        return JSONResponse(response)
+    except (Exception, HTTPException) as e:
+        return {"error from controller": str(e)}
+
+@router.get("/change_sl")
+async def change_sl(symbol, sl):
+    try:
+        response = adjust_trade_parameters(symbol, new_stop_loss=sl)
+        return JSONResponse(response)
+    except (Exception, HTTPException) as e:
+        return {"error from controller": str(e)}
+
+@router.get("/change_tgt")
+async def change_tgt(symbol, tgt):
+    try:
+        response = adjust_trade_parameters(symbol, new_target=tgt)
         return JSONResponse(response)
     except (Exception, HTTPException) as e:
         return {"error from controller": str(e)}

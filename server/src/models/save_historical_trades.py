@@ -27,3 +27,14 @@ class SaveHistoricalTradeDetails:
             print("Trade saved to historical_trades successfully.")
         except Exception as e:
             print(f"Error saving to historical_trades: {str(e)}")
+
+    @classmethod
+    def fetch_all_historical_trades(cls, cur):
+        try:
+            query = "SELECT * FROM historical_trades;"
+            cur.execute(query)
+            result = cur.fetchall()
+            return result
+        except Exception as err:
+            print(f"Error fetching all historical trades: {str(err)}")
+            return None

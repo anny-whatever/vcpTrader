@@ -1,4 +1,3 @@
-
 import psycopg2
 import psycopg2.extras
 import time
@@ -12,8 +11,7 @@ from controllers import historical_data_router
 from controllers import ws_endpoint
 from controllers import order_router
 from controllers import screener_router
-
-
+from controllers import data_router
 
 app = FastAPI()
 
@@ -27,10 +25,10 @@ app.add_middleware(
 
 app.include_router(auth_router, prefix="/api")
 app.include_router(ws_endpoint, prefix="/ws")
-
 app.include_router(historical_data_router, prefix="/api/historicaldata")
 app.include_router(order_router, prefix="/api/order")
 app.include_router(screener_router, prefix="/api/screener")
+app.include_router(data_router, prefix="/api/data")
 
 if __name__ == "__main__":
     

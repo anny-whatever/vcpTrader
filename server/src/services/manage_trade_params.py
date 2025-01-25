@@ -1,5 +1,9 @@
 from db import get_trade_db_connection, release_trade_db_connection
 from .manage_risk_pool import update_risk_pool_on_parameter_change
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
 def adjust_trade_parameters(symbol, new_stop_loss=None, new_target=None):
     """
@@ -30,32 +34,50 @@ def adjust_trade_parameters(symbol, new_stop_loss=None, new_target=None):
         entry_price = float(trade['entry_price'])
         qty = float(trade['current_qty'])
 
-        # Update stop loss and risk pool if new_stop_loss is provided
-        if new_stop_loss is not None and new_stop_loss != current_stop_loss:
-            print(f"Updating stop loss for {symbol}: {current_stop_loss} -> {new_stop_loss}")
-            update_risk_pool_on_parameter_change(cur, current_stop_loss, new_stop_loss, entry_price, qty)
-            cur.execute("""
-                UPDATE trades
-                SET stop_loss = %s
-                WHERE trade_id = %s;
-            """, (new_stop_loss, trade_id))
-            print(f"Stop loss updated for trade {trade_id}: New stop loss {new_stop_loss}")
+        # Validate and update stop loss if provided
+        if new_stop_loss is not None:
+            try:
+                new_stop_loss = float(new_stop_loss)
+                if new_stop_loss <= 0:
+                    raise ValueError("Stop loss must be a positive value.")
+                if new_stop_loss != current_stop_loss:
+                    logging.info(f"Updating stop loss for {symbol}: {current_stop_loss} -> {new_stop_loss}")
+                    update_risk_pool_on_parameter_change(cur, current_stop_loss, new_stop_loss, entry_price, qty)
+                    cur.execute("""
+                        UPDATE trades
+                        SET stop_loss = %s
+                        WHERE trade_id = %s;
+                    """, (new_stop_loss, trade_id))
+                    logging.info(f"Stop loss updated for trade {trade_id}: New stop loss {new_stop_loss}")
+            except ValueError as e:
+                logging.error(f"Invalid stop loss value for {symbol}: {e}")
+                raise
 
-        # Update target if new_target is provided
-        if new_target is not None and new_target != current_target:
-            print(f"Updating target for {symbol}: {current_target} -> {new_target}")
-            cur.execute("""
-                UPDATE trades
-                SET target = %s
-                WHERE trade_id = %s;
-            """, (new_target, trade_id))
-            print(f"Target updated for trade {trade_id}: New target {new_target}")
+        # Validate and update target if provided
+        if new_target is not None:
+            try:
+                new_target = float(new_target)
+                if new_target <= 0:
+                    raise ValueError("Target must be a positive value.")
+                if new_target != current_target:
+                    logging.info(f"Updating target for {symbol}: {current_target} -> {new_target}")
+                    cur.execute("""
+                        UPDATE trades
+                        SET target = %s
+                        WHERE trade_id = %s;
+                    """, (new_target, trade_id))
+                    logging.info(f"Target updated for trade {trade_id}: New target {new_target}")
+            except ValueError as e:
+                logging.error(f"Invalid target value for {symbol}: {e}")
+                raise
 
         # Commit all changes
         conn.commit()
+        logging.info(f"Trade parameters updated successfully for {symbol}")
 
     except Exception as e:
         conn.rollback()
-        print(f"Error adjusting trade parameters: {e}")
+        logging.error(f"Error adjusting trade parameters for {symbol}: {e}")
+        raise
     finally:
         release_trade_db_connection(conn, cur)

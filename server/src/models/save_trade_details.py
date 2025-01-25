@@ -18,3 +18,14 @@ class SaveTradeDetails:
         except Exception as err:
             print(f"Error saving trade details: {str(err)}")
             return {"error": str(err)}
+
+    @classmethod
+    def fetch_all_trades(cls, cur):
+        try:
+            query = "SELECT * FROM trades;"
+            cur.execute(query)
+            result = cur.fetchall()
+            return result
+        except Exception as err:
+            print(f"Error fetching all trades: {str(err)}")
+            return None

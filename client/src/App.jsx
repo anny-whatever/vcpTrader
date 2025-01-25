@@ -5,12 +5,14 @@ import Navbar from "./components/NavbarComponent.jsx";
 
 import Dashboard from "./pages/Dashboard.jsx";
 import AllPositions from "./pages/AllPositions.jsx";
+import Screener from "./pages/Screener.jsx";
 import axios from "axios";
 
 function App() {
   const [liveData, setLiveData] = useState(null);
   const [positions, setPositions] = useState(null);
-  const [flags, setFlags] = useState(null);
+  const [riskpool, setRiskpool] = useState(null);
+  const [historicalTrades, setHistoricalTrades] = useState(null);
 
   useEffect(() => {
     const socket = new WebSocket("ws://localhost:8000/ws/ws"); // Ensure the URL is correct
@@ -34,32 +36,43 @@ function App() {
 
   useEffect(() => {
     const fetchPositions = async () => {
-      const response = await axios.get("http://localhost:8000/api/positions");
-      console.log(response);
+      const response = await axios.get(
+        "http://localhost:8000/api/data/positions"
+      );
+      console.log("Position", response);
       setPositions(response);
     };
-
-    fetchPositions();
-  }, []);
-
-  useEffect(() => {
-    const fetchFlags = async () => {
-      const response = await axios.get("http://localhost:8000/api/flags");
+    const fetchRiskpool = async () => {
+      const response = await axios.get(
+        "http://localhost:8000/api/data/riskpool"
+      );
       console.log(response);
-      setFlags(response);
+      setRiskpool(response);
     };
 
-    fetchFlags();
+    const fetchHistoricalTrades = async () => {
+      const response = await axios.get(
+        "http://localhost:8000/api/data/historicaltrades"
+      );
+      console.log(response);
+      setHistoricalTrades(response);
+    };
+    fetchRiskpool();
+    fetchHistoricalTrades();
+    fetchPositions();
   }, []);
 
   return (
     <main className="min-h-[100vh] bg-zinc-900">
-      <DataContext.Provider value={{ liveData, positions, flags }}>
+      <DataContext.Provider
+        value={{ liveData, positions, riskpool, historicalTrades }}
+      >
         <BrowserRouter>
           <Navbar />
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/allpositions" element={<AllPositions />} />
+            <Route path="/screener" element={<Screener />} />
           </Routes>
         </BrowserRouter>
       </DataContext.Provider>

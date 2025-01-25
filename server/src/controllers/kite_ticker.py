@@ -22,21 +22,6 @@ RESAMPLE_END_TIME = time(15, 30, 5)
 MONITOR_LIVE_TRADE_START = time(9, 15, 15)
 MONITOR_LIVE_TRADE_END = time(15, 29, 30)
 
-
-# Utility Functions
-def is_within_time_range():
-    now = datetime.now().time()
-    return START_TIME <= now <= END_TIME
-
-def is_within_resample_time_range():
-    now = datetime.now().time()
-    return RESAMPLE_START_TIME <= now <= RESAMPLE_END_TIME
-
-def is_within_monitor_live_trade_time_range():
-    now = datetime.now().time()
-    return MONITOR_LIVE_TRADE_START <= now <= MONITOR_LIVE_TRADE_END
-
-
 # Database Utility Functions
 def get_instrument_token():
     conn, cur = get_db_connection()
@@ -87,26 +72,9 @@ def start_kite_ticker():
                 finally:
                     loop.run_until_complete(loop.shutdown_asyncgens())  # Clean up async generators
                     loop.close()  # Close the loop to deallocate resources
-
-            # Example usage of submitting to ThreadPoolExecutor
-            # if is_within_time_range():
-            #     print(f"Ticks received: {len(ticks)}") 
-                # executor.submit(save_options_ticks, ticks)
-                # executor.submit(save_indices_ticks, ticks)
-
-            # if is_within_monitor_live_trade_time_range():
-                # executor.submit(monitor_live_position_sabbo_five_minute_short, ticks)
-                # executor.submit(monitor_live_position_sabbo_five_minute_long, ticks)
-                # executor.submit(monitor_live_position_danbo_five_minute_short, ticks)
-                # executor.submit(monitor_live_position_danbo_five_minute_long, ticks)
-                # executor.submit(monitor_live_position_sutbo_five_minute_short, ticks)
-                # executor.submit(monitor_live_position_sutbo_five_minute_long, ticks)
                 
             executor.submit(run_async_in_thread, process_and_send_live_ticks, ticks)
-                
-            if not is_within_resample_time_range() and scheduler.running:
-                scheduler.shutdown()
-            elif is_within_resample_time_range() and not scheduler.running:
+            if not scheduler.running:
                 setup_scheduler()
 
         except Exception as e:
@@ -116,12 +84,13 @@ def start_kite_ticker():
         print("Connected to WebSocket.")
         ws.subscribe(tokens)
         ws.set_mode(ws.MODE_FULL, tokens)
-        if is_within_resample_time_range() and not scheduler.running:
+        if not scheduler.running:
             setup_scheduler()  # Start the scheduler when connected
 
     def on_close(ws, code, reason):
         print(f"Connection closed: {code}, {reason}")
-        # scheduler.shutdown()
+        if scheduler.running:
+            scheduler.shutdown()
 
     def on_error(ws, code, reason):
         print(f"Error: {code}, {reason}")

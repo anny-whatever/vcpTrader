@@ -15,7 +15,6 @@ sell_exit_lock = threading.Lock()
 sell_exit_event = threading.Event()
 sell_status_queue = queue.Queue()
 
-
 def sell_order_execute(symbol):
     """
     Execute the sell order to exit the trade.
@@ -32,7 +31,7 @@ def sell_order_execute(symbol):
 
         # Fetch the current trade details
         cur.execute("""
-            SELECT trade_id, stock_name, entry_time, entry_price, current_qty, booked_pnl, stop_loss, adjustments 
+            SELECT trade_id, stock_name, entry_time, entry_price, current_qty, booked_pnl, stop_loss 
             FROM trades 
             WHERE stock_name = %s;
         """, (symbol,))
@@ -87,7 +86,6 @@ def sell_order_execute(symbol):
         release_trade_db_connection(conn, cur)
         logging.info(f"Execution time: {datetime.datetime.now() - start_time}")
 
-
 def monitor_sell_order_status(order_id, trade_id, symbol, entry_time, entry_price, current_qty, booked_pnl, stop_loss, timeout=300):
     """
     Monitor the sell order status and update the database and risk pool accordingly.
@@ -113,8 +111,8 @@ def monitor_sell_order_status(order_id, trade_id, symbol, entry_time, entry_pric
                 final_pnl = booked_pnl + unrealized_pnl
 
                 # Update risk pool
-                is_profit = final_pnl > 0
-                update_risk_pool_on_exit(cur, stop_loss, exit_price, current_qty, is_profit)
+                is_profit = final_pnl > booked_pnl
+                update_risk_pool_on_exit(cur, stop_loss, entry_price, exit_price, current_qty)
 
                 # Save trade details to the historical_trades table
                 SaveHistoricalTradeDetails(

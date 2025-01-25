@@ -95,8 +95,14 @@ def calculate_smas(ohlc_data, live_data = {}):
 
         # Calculate SMAs
         group["sma_50"] = ta.sma(group["close"], length=50)
-        group["sma_100"] = ta.sma(group["close"], length=100)
+        group["sma_150"] = ta.sma(group["close"], length=150)
         group["sma_200"] = ta.sma(group["close"], length=200)
+        group['atr'] = ta.atr(group['high'], group['low'], group['close'], length=100)
+        group["52_week_high"] = group['high'].rolling(window=252, min_periods=1).max()
+        group["52_week_low"] = group['low'].rolling(window=252, min_periods=1).min()
+        group['away_from_high'] = ((group['close'] - group['52_week_high']) / group['52_week_high']) * 100
+        group['away_from_low'] = ((group['close'] - group['52_week_low']) / group['52_week_low']) * 100
+
 
         updated_data.append(group)
 
@@ -137,18 +143,19 @@ def screen_eligible_stocks():
         # Check conditions for eligibility
         if (
             group.iloc[last_index]["close"] > group.iloc[last_index]["sma_50"] and
-            group.iloc[last_index]["sma_50"] > group.iloc[last_index]["sma_100"] > group.iloc[last_index]["sma_200"] and
-            group.iloc[max(0, last_index - 100)]["sma_50"] < group.iloc[last_index]["sma_50"] and
-            group.iloc[max(0, last_index - 100)]["sma_100"] < group.iloc[last_index]["sma_100"] and
-            group.iloc[max(0, last_index - 200)]["sma_200"] < group.iloc[last_index]["sma_200"]
+            group.iloc[last_index]["sma_50"] > group.iloc[last_index]["sma_150"] > group.iloc[last_index]["sma_200"] and
+            group.iloc[max(0, last_index - 110)]["sma_200"] < group.iloc[last_index]["sma_200"] and 
+            group.iloc[last_index]["away_from_high"] < 25 and
+            group.iloc[last_index]["away_from_low"] > 50
         ):
             eligible_stocks.append({
                 "instrument_token": int(group.iloc[last_index]["instrument_token"]),
                 "symbol": symbol,
-                "last price": float(group.iloc[last_index]["close"]),
+                "last_price": float(group.iloc[last_index]["close"]),
                 "sma_50": float(group.iloc[last_index]["sma_50"]),
-                "sma_100": float(group.iloc[last_index]["sma_100"]),
-                "sma_200": float(group.iloc[last_index]["sma_200"])
+                "sma_150": float(group.iloc[last_index]["sma_150"]),
+                "sma_200": float(group.iloc[last_index]["sma_200"]),
+                "atr": float(group.iloc[last_index]["atr"]),
             })
 
     return eligible_stocks
