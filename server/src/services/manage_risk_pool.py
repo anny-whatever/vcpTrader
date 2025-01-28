@@ -195,8 +195,15 @@ def update_risk_pool_on_parameter_change(cur, current_stop_loss, new_stop_loss, 
         raise ValueError("New stop loss and quantity must be positive values.")
 
     # Calculate current and new risks
-    current_risk = qty * abs(entry_price - current_stop_loss)
-    new_risk = qty * abs(entry_price - new_stop_loss)
+    if current_stop_loss >= entry_price:
+        current_risk = 0
+    else:
+        current_risk = qty * abs(entry_price - current_stop_loss)
+        
+    if new_stop_loss >= entry_price:
+        new_risk = 0
+    else:
+        new_risk = qty * abs(entry_price - new_stop_loss)
 
     # Fetch the current risk pool
     risk_pool = RiskPool.fetch_risk_pool(cur)

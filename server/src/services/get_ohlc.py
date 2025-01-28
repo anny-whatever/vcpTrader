@@ -10,7 +10,7 @@ def delay(ms):
     """Delay function to simulate async pauses."""
     time.sleep(ms / 1000)
 
-def get_ohlc(instrument_token, interval, symbol):
+def get_ohlc(instrument_token, interval, symbol, segment):
     conn, cur = get_db_connection()  # Get connection and cursor
 
     try:
@@ -74,14 +74,15 @@ def get_ohlc(instrument_token, interval, symbol):
                     row['low'],
                     row['close'],
                     row['volume'],
+                    segment
                 )
             )
 
         # Perform batch insert
         try:
             insert_query = """
-                INSERT INTO ohlc (instrument_token, symbol, interval, date, open, high, low, close, volume)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO ohlc (instrument_token, symbol, interval, date, open, high, low, close, volume, segment)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             cur.executemany(insert_query, batch_data)
             conn.commit()  # Commit changes after batch insertion
@@ -103,7 +104,7 @@ def get_equity_ohlc_data_loop(interval):
 
         # print(tokens)
         for token in tokens:
-            get_ohlc(token[0], interval, token[1])
+            get_ohlc(token[0], interval, token[1], token[4])
 
         return {"data": "Done"}
 

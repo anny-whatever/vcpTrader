@@ -223,7 +223,7 @@ function AllPositions() {
                           />
                         </svg>
                       </Button>
-                      <Dropdown backdrop="blur" className=" dark">
+                      <Dropdown className=" dark">
                         <DropdownTrigger>
                           <Button
                             isIconOnly

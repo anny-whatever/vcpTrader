@@ -27,7 +27,7 @@ async def auth():
 
 @router.get("/callback")
 async def callback(request_token: str):
-    from services import get_instrument_indices,  get_instrument_equity, load_ohlc_data
+    from services import get_instrument_indices,  get_instrument_equity, load_ohlc_data, download_nse_csv
     try:
         # Generate session and get access token
         session = kite.generate_session(request_token, os.getenv("API_SECRET"))
@@ -40,9 +40,12 @@ async def callback(request_token: str):
         initialize_kite_ticker(access_token)
         # load_ohlc_data ()
         
+        download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv",  "500")
+        download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_niftymicrocap250_list.csv",  "250")
+        download_nse_csv("https://www.niftyindices.com/IndexConstituent/ind_niftyIPO_list.csv",  "IPO")
+
+        
         return RedirectResponse(url="http://localhost:5173?login=true")
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-

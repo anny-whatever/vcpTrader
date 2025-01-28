@@ -57,6 +57,7 @@ function App() {
       console.log(response);
       setHistoricalTrades(response);
     };
+
     fetchRiskpool();
     fetchHistoricalTrades();
     fetchPositions();

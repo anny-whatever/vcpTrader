@@ -11,6 +11,9 @@ import {
   Button,
   ButtonGroup,
   Spinner,
+  Select,
+  SelectSection,
+  SelectItem,
 } from "@heroui/react";
 import BuyModal from "../components/BuyModal";
 import SellModal from "../components/SellModal";
@@ -18,7 +21,9 @@ import SellModal from "../components/SellModal";
 function Screener() {
   const { liveData, positions, riskpool, historicalTrades } =
     useContext(DataContext);
+  const screenOptions = ["VCP", "IPO"];
   const [screenerData, setScreenerData] = useState(null);
+  const [screen, setScreen] = useState("VCP");
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
   const [buyData, setBuyData] = useState(null);
@@ -32,17 +37,27 @@ function Screener() {
 
   const fetchScreenerData = async () => {
     setScreenerData(null);
-    const response = await fetch(
-      "http://localhost:8000/api/screener/vcpscreen"
-    );
-    const data = await response.json();
-    setScreenerData(data);
-    console.log("Screener Data", data);
+
+    if (screen === "VCP") {
+      const response = await fetch(
+        "http://localhost:8000/api/screener/vcpscreen"
+      );
+      const data = await response.json();
+      setScreenerData(data);
+      console.log("Screener Data", data);
+    } else if (screen === "IPO") {
+      const response = await fetch(
+        "http://localhost:8000/api/screener/iposcreen"
+      );
+      const data = await response.json();
+      setScreenerData(data);
+      console.log("Screener Data", data);
+    }
   };
 
   useEffect(() => {
     fetchScreenerData();
-  }, []);
+  }, [screen]);
 
   useEffect(() => {
     if (screenerData && liveData) {
@@ -107,7 +122,20 @@ function Screener() {
         ltp={sellData?.last_price}
       />
       <div className="flex items-center justify-between my-3">
-        <Button onPress={fetchScreenerData}>Refresh Screener</Button>
+        <div className="flex items-center w-1/3 jus">
+          <Button onPress={fetchScreenerData}>Refresh Screener</Button>
+
+          <select
+            className="w-32 p-2.5 mx-4 text-sm rounded-xl bg-zinc-700"
+            label="Screen"
+            onChange={(e) => setScreen(e.target.value)}
+            disabled={screenerData == null}
+          >
+            {screenOptions.map((option) => (
+              <option key={option}>{option}</option>
+            ))}
+          </select>
+        </div>
 
         {screenerData != null ? (
           <span> Screen Count: {screenerData.length}</span>
@@ -150,6 +178,7 @@ function Screener() {
                 >
                   {row?.change?.toFixed(2)} %
                 </TableCell>
+
                 <TableCell>{row?.sma_50?.toFixed(2)}</TableCell>
                 <TableCell>{row?.sma_150?.toFixed(2)}</TableCell>
                 <TableCell>{row?.sma_200?.toFixed(2)}</TableCell>
