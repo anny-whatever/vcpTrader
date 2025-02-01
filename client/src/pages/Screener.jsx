@@ -17,6 +17,7 @@ import {
 } from "@heroui/react";
 import BuyModal from "../components/BuyModal";
 import SellModal from "../components/SellModal";
+import ChartModal from "../components/ChartModal";
 
 function Screener() {
   const { liveData, positions, riskpool, historicalTrades } =
@@ -26,14 +27,19 @@ function Screener() {
   const [screen, setScreen] = useState("VCP");
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
+  const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   const [buyData, setBuyData] = useState(null);
   const [sellData, setSellData] = useState(null);
+  const [chartData, setChartData] = useState(null);
 
   const handleOpenBuyModal = () => setIsBuyModalOpen(true);
   const handleCloseBuyModal = () => setIsBuyModalOpen(false);
 
   const handleOpenSellModal = () => setIsSellModalOpen(true);
   const handleCloseSellModal = () => setIsSellModalOpen(false);
+
+  const handleOpenChartModal = () => setIsChartModalOpen(true);
+  const handleCloseChartModal = () => setIsChartModalOpen(false);
 
   const fetchScreenerData = async () => {
     setScreenerData(null);
@@ -72,15 +78,15 @@ function Screener() {
           data.last_price = liveDataItem.last_price;
         }
       }
-      screenerData.sort((a, b) => b.change - a.change);
+      screenerData.sort((a, b) => b.change + 1 - a.change);
     }
   }, [liveData, screenerData]);
 
-  const openChart = (symbol, instrument_token) => {
-    window.open(
-      `https://kite.zerodha.com/chart/ext/tvc/NSE/${symbol}/${instrument_token}?theme=dark`,
-      "_blank"
-    );
+  const populateChartData = (row) => {
+    setChartData({
+      symbol: row.symbol,
+      token: row.instrument_token,
+    });
   };
 
   const populateBuyData = (row) => {
@@ -120,6 +126,12 @@ function Screener() {
         UsedRisk={sellData?.used_risk}
         symbol={sellData?.symbol}
         ltp={sellData?.last_price}
+      />
+      <ChartModal
+        isOpen={isChartModalOpen}
+        onClose={handleCloseChartModal}
+        symbol={chartData?.symbol}
+        token={chartData?.token}
       />
       <div className="flex items-center justify-between my-3">
         <div className="flex items-center w-1/3 jus">
@@ -214,10 +226,10 @@ function Screener() {
                       isIconOnly
                       color="warning"
                       variant="flat"
-                      target="_blank"
-                      onPress={() =>
-                        openChart(row.symbol, row.instrument_token)
-                      }
+                      onPress={() => {
+                        populateChartData(row);
+                        handleOpenChartModal();
+                      }}
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"

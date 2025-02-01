@@ -89,7 +89,7 @@ def calculate_smas(ohlc_data, live_data={}):
         group['atr'] = ta.atr(group['high'], group['low'], group['close'], length=min(50, len(group)))
         group["52_week_high"] = group['high'].rolling(window=min(252, len(group)), min_periods=1).max()
         group["52_week_low"] = group['low'].rolling(window=min(252, len(group)), min_periods=1).min()
-        group['away_from_high'] = ((group['close'] - group['52_week_high']) / group['52_week_high']) * 100
+        group['away_from_high'] = ((group['52_week_high'] - group['close']) / group['52_week_high']) * 100
         group['away_from_low'] = ((group['close'] - group['52_week_low']) / group['52_week_low']) * 100
 
         # Fill NaN values with defaults
@@ -184,8 +184,6 @@ def screen_eligible_stocks_ipo():
     updated_data = ohlc_data[ohlc_data['segment'] == 'IPO']
     updated_data = calculate_smas(updated_data, live_data)
     
-    print(live_data)
-    
     # Screen stocks based on conditions
     eligible_stocks = []
 
@@ -197,7 +195,7 @@ def screen_eligible_stocks_ipo():
         if (
             
             group.iloc[last_index]["away_from_high"] < 25 and
-            group.iloc[last_index]["away_from_low"] > 15
+            group.iloc[last_index]["away_from_low"] > 25
         ):
             eligible_stocks.append({
                 "instrument_token": int(group.iloc[last_index]["instrument_token"]),

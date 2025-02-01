@@ -5,8 +5,8 @@ from fastapi.responses import RedirectResponse
 from kiteconnect import KiteConnect
 from dotenv import load_dotenv
 from requests import get
-
 from .kite_ticker import initialize_kite_ticker
+from .schedulers import scheduler, setup_scheduler   
 
 load_dotenv()
 
@@ -22,12 +22,16 @@ kite_ticker = None
 @router.get("/auth")
 async def auth():
     login_url = kite.login_url()
+    if scheduler.running:
+        scheduler.shutdown()
     return RedirectResponse(url=login_url)
     
 
 @router.get("/callback")
 async def callback(request_token: str):
     from services import get_instrument_indices,  get_instrument_equity, load_ohlc_data, download_nse_csv
+    if not scheduler.running:
+        setup_scheduler()
     try:
         # Generate session and get access token
         session = kite.generate_session(request_token, os.getenv("API_SECRET"))

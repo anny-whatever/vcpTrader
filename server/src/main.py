@@ -13,6 +13,7 @@ from controllers import order_router
 from controllers import screener_router
 from controllers import data_router
 
+
 app = FastAPI()
 
 app.add_middleware(

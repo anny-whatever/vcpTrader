@@ -6,7 +6,7 @@ from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 from db import get_db_connection, close_db_connection
-from .schedulers import scheduler, setup_scheduler   
+
 
 load_dotenv()
 
@@ -74,8 +74,6 @@ def start_kite_ticker():
                     loop.close()  # Close the loop to deallocate resources
                 
             executor.submit(run_async_in_thread, process_and_send_live_ticks, ticks)
-            if not scheduler.running:
-                setup_scheduler()
 
         except Exception as e:
             print(f"Error processing ticks: {e}")
@@ -84,13 +82,10 @@ def start_kite_ticker():
         print("Connected to WebSocket.")
         ws.subscribe(tokens)
         ws.set_mode(ws.MODE_FULL, tokens)
-        if not scheduler.running:
-            setup_scheduler()  # Start the scheduler when connected
 
     def on_close(ws, code, reason):
         print(f"Connection closed: {code}, {reason}")
-        if scheduler.running:
-            scheduler.shutdown()
+        
 
     def on_error(ws, code, reason):
         print(f"Error: {code}, {reason}")
