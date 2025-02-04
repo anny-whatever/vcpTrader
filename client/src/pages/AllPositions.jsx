@@ -137,7 +137,7 @@ function AllPositions() {
               {positions?.data?.map((row) => (
                 <TableRow key={row?.stock_name} className="hover:bg-zinc-800">
                   <TableCell>{row?.stock_name}</TableCell>
-                  <TableCell>{row?.current_qty}</TableCell>
+                  <TableCell>{row?.current_qty * 1}</TableCell>
                   <TableCell>{row?.entry_price?.toFixed(2)}</TableCell>
                   <TableCell>{row?.last_price?.toFixed(2)}</TableCell>
                   <TableCell
@@ -151,9 +151,10 @@ function AllPositions() {
                   >
                     {row.last_price
                       ? (
-                          (row?.last_price - row?.entry_price) *
+                          ((row?.last_price - row?.entry_price) *
                             row?.current_qty +
-                          row?.booked_pnl
+                            row?.booked_pnl) *
+                          1
                         ).toFixed(2)
                       : 0}{" "}
                     (
@@ -296,24 +297,28 @@ function AllPositions() {
                               </div>
                               <div className="py-1 text-white text-md">
                                 Capital Used:{" "}
-                                {(row?.entry_price * row?.current_qty).toFixed(
-                                  2
-                                )}
+                                {(
+                                  row?.entry_price *
+                                  row?.current_qty *
+                                  1
+                                ).toFixed(2)}
                               </div>
                               <div className="py-1 text-md">
                                 Risk:{" "}
                                 {(
                                   (row?.stop_loss - row?.entry_price) *
-                                    row?.current_qty +
-                                  row?.booked_pnl
+                                    row?.current_qty *
+                                    1 +
+                                  row?.booked_pnl * 1
                                 ).toFixed(2)}
                               </div>
                               <div className="py-1 text-md">
                                 Reward:{" "}
                                 {(
                                   (row?.target - row?.entry_price) *
-                                    row?.current_qty +
-                                  row?.booked_pnl
+                                    row?.current_qty *
+                                    1 +
+                                  row?.booked_pnl * 1
                                 ).toFixed(2)}
                               </div>
                               <div
@@ -323,7 +328,7 @@ function AllPositions() {
                                     : "text-red-500 text-md py-1"
                                 }
                               >
-                                Booked: {row?.booked_pnl?.toFixed(2)}
+                                Booked: {(row?.booked_pnl * 1)?.toFixed(2)}
                               </div>
                             </div>
                           </DropdownItem>
@@ -345,7 +350,7 @@ function AllPositions() {
                     : "text-red-500 text-2xl mt-3 flex items-end gap-1"
                 }
               >
-                {totalPnl?.toFixed(2)}{" "}
+                {(totalPnl * 1)?.toFixed(2)}{" "}
                 <span className="text-medium">
                   ({((totalPnl / capitalUsed) * 100).toFixed(2)}%)
                 </span>
@@ -353,25 +358,28 @@ function AllPositions() {
             </div>
             <div className="flex flex-col justify-between gap-1 p-5 text-left rounded-lg shadow-lg min-w-64 max-w-72 bg-zinc-800">
               <span>Capital Used</span>
-              <span className="mt-3 text-2xl">{capitalUsed?.toFixed(2)}</span>
+              <span className="mt-3 text-2xl">
+                {(capitalUsed * 1)?.toFixed(2)}
+              </span>
             </div>
             <div className="flex flex-col justify-between gap-1 p-5 text-left rounded-lg shadow-lg min-w-64 max-w-72 bg-zinc-800">
               <span>Used Risk</span>
               <span className="mt-3 text-2xl">
-                {riskpool?.data?.used_risk?.toFixed(2)}
+                {(riskpool?.data?.used_risk * 1)?.toFixed(2)}
               </span>
             </div>
             <div className="flex flex-col justify-between gap-1 p-5 text-left rounded-lg shadow-lg min-w-64 max-w-72 bg-zinc-800">
               <span>Available Risk</span>
               <span className="mt-3 text-2xl">
-                {riskpool?.data?.available_risk?.toFixed(2)}
+                {(riskpool?.data?.available_risk * 1)?.toFixed(2)}
               </span>
             </div>
             <div className="flex flex-col justify-between gap-1 p-5 text-left rounded-lg shadow-lg min-w-64 max-w-72 bg-zinc-800">
               <span>Total Risk</span>
               <span className="mt-3 text-2xl">
                 {(
-                  riskpool?.data?.available_risk + riskpool?.data?.used_risk
+                  (riskpool?.data?.available_risk + riskpool?.data?.used_risk) *
+                  1
                 ).toFixed(2)}
               </span>
             </div>

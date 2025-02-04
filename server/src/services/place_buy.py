@@ -22,13 +22,13 @@ def buy_order_execute(symbol, qty):
     if get_trade_id_by_symbol(cur, symbol):
         print(f"Trade already exists for {symbol}")
         release_trade_db_connection(conn, cur)
-        return {"status": "TRADE_EXISTS", "message": f"Trade already exists for {symbol}"}
+        return {"status": "error", "message": f"Trade for '{symbol}' already exists."}
 
     with buy_entry_lock:
         if buy_entry_running:
             print("Buy entry already running")
             release_trade_db_connection(conn, cur)
-            return {"status": "RUNNING", "message": "Buy entry already in progress"}
+            return {"status": "error", "message": "A buy order is already in progress. Please wait."}
         buy_entry_running = True
 
     try:
@@ -41,7 +41,7 @@ def buy_order_execute(symbol, qty):
             check_risk_pool_availability_for_buy(cur, entry_price, stop_loss, qty)
         except ValueError as e:
             print(f"Risk pool availability check failed: {e}")
-            return {"status": "INSUFFICIENT_RISK", "message": str(e)}
+            return {"status": "error", "message": "Insufficient risk pool for this order."}
 
         # Place the buy order
         response_buy = kite.place_order(
@@ -66,8 +66,7 @@ def buy_order_execute(symbol, qty):
         return status
     except Exception as e:
         print(f"Error executing buy order: {e}")
-        return {"status": "ERROR", "message": str(e)}
-
+        return {"status": "error", "message": "An error occurred while executing the buy order."}
     finally:
         with buy_entry_lock:
             buy_entry_running = False
@@ -87,7 +86,7 @@ def monitor_order_status(order_id, qty, entry_price, stop_loss, timeout=300):
             print(f"Order Status: {buy_status}")
 
             if buy_status == 'COMPLETE':
-                order_status_queue.put({"status": buy_status, "message": buy_status_message})
+                order_status_queue.put({"status": "success", "message": "Buy order executed successfully."})
                 avg_price = buy_order[-1].get('average_price', entry_price)  # Use actual avg price or fallback to entry price
 
                 # Apply risk pool update with actual order price
@@ -110,18 +109,17 @@ def monitor_order_status(order_id, qty, entry_price, stop_loss, timeout=300):
                 break
 
             elif buy_status == 'REJECTED':
-                order_status_queue.put({"status": buy_status, "message": buy_status_message})
+                order_status_queue.put({"status": "error", "message": "Buy order was rejected."})
                 print(f"Order rejected: {buy_order}")
-                order_status_queue.put({"status": "TIMEOUT", "message": "Order monitoring timed out"})
+                # Optionally, you may choose to send only one error message instead of two.
+                order_status_queue.put({"status": "error", "message": "Order monitoring timed out."})
                 print("Order monitoring timed out")
                 break
 
             time.sleep(1)  # Adjust polling frequency as needed
 
-        # Timeout handling
-
     except Exception as e:
-        order_status_queue.put(f"ERROR: {str(e)}")
+        order_status_queue.put({"status": "error", "message": f"Order monitoring error: {str(e)}"})
         print(f"Error monitoring order status: {e}")
     finally:
         release_trade_db_connection(conn, cur)

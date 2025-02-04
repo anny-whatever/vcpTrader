@@ -21,17 +21,20 @@ def sell_order_execute(symbol):
     """
     if sell_exit_event.is_set():
         logging.info("Exit already running")
-        return
+        return {"status": "error", "message": "Sell exit already in progress."}
 
     sell_exit_event.set()
     conn, cur = None, None
+    start_time = datetime.datetime.now()  # Record start time for execution time logging
+
+
 
     try:
         conn, cur = get_trade_db_connection()
 
         # Fetch the current trade details
         cur.execute("""
-            SELECT trade_id, stock_name, entry_time, entry_price, current_qty, booked_pnl, stop_loss 
+            SELECT trade_id, stock_name, entry_time, entry_price, current_qty, booked_pnl, stop_loss, adjustments
             FROM trades 
             WHERE stock_name = %s;
         """, (symbol,))
@@ -39,7 +42,7 @@ def sell_order_execute(symbol):
 
         if not trade:
             logging.info(f"No active trade found for symbol: {symbol}")
-            return
+            return {"status": "error", "message": f"No active trade found for {symbol}."}
 
         # Extract trade details
         trade_id = trade['trade_id']
@@ -51,9 +54,7 @@ def sell_order_execute(symbol):
 
         if current_qty <= 0:
             logging.info(f"No quantity left to exit for symbol: {symbol}")
-            return
-
-        start_time = datetime.datetime.now()
+            return {"status": "error", "message": f"No quantity left to exit for {symbol}."}
 
         # Place the sell order to exit the trade
         response_sell = kite.place_order(
@@ -80,6 +81,7 @@ def sell_order_execute(symbol):
 
     except Exception as e:
         logging.exception("Error executing exit strategy")
+        return {"status": "error", "message": "Error executing exit strategy."}
 
     finally:
         sell_exit_event.clear()
@@ -103,7 +105,8 @@ def monitor_sell_order_status(order_id, trade_id, symbol, entry_time, entry_pric
             logging.info(f"Sell Order Status: {sell_status}")
 
             if sell_status == 'COMPLETE':
-                sell_status_queue.put({"status": sell_status, "message": sell_status_message})
+                # Successful sell order
+                sell_status_queue.put({"status": "success", "message": "Sell order executed successfully."})
 
                 # Calculate final PnL
                 exit_price = float(sell_order[-1]['average_price'])
@@ -111,7 +114,6 @@ def monitor_sell_order_status(order_id, trade_id, symbol, entry_time, entry_pric
                 final_pnl = booked_pnl + unrealized_pnl
 
                 # Update risk pool
-                is_profit = final_pnl > booked_pnl
                 update_risk_pool_on_exit(cur, stop_loss, entry_price, exit_price, current_qty)
 
                 # Save trade details to the historical_trades table
@@ -133,18 +135,18 @@ def monitor_sell_order_status(order_id, trade_id, symbol, entry_time, entry_pric
                 return
 
             if sell_status == 'REJECTED':
-                sell_status_queue.put({"status": sell_status, "message": sell_status_message})
+                sell_status_queue.put({"status": "error", "message": "Sell order was rejected."})
                 logging.warning(f"Sell Order Rejected: {sell_status_message}")
                 return
 
             time.sleep(0.5)
 
-        # Timeout
-        sell_status_queue.put('TIMEOUT')
+        # Timeout handling
+        sell_status_queue.put({"status": "error", "message": "Sell order monitoring timed out."})
         logging.warning("Sell order monitoring timed out")
 
     except Exception as e:
-        sell_status_queue.put(f"ERROR: {str(e)}")
+        sell_status_queue.put({"status": "error", "message": f"Sell order monitoring error: {str(e)}"})
         logging.exception("Error during sell order monitoring")
 
     finally:

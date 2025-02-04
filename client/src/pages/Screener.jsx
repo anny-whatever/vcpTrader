@@ -78,7 +78,7 @@ function Screener() {
           data.last_price = liveDataItem.last_price;
         }
       }
-      screenerData.sort((a, b) => b.change + 1 - a.change);
+      setScreenerData(screenerData?.sort((a, b) => b.change - a.change));
     }
   }, [liveData, screenerData]);
 

@@ -28,6 +28,7 @@ def setup_scheduler():
     scheduler.add_job(
         get_ohlc_on_schedule,
         CronTrigger(minute='31', hour='15', day_of_week='mon-fri'),
+
         max_instances=1,
         replace_existing=True,
         id="vcp_trader_get_ohlc"

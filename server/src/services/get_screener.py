@@ -146,7 +146,7 @@ def screen_eligible_stocks_vcp():
         if (
             group.iloc[last_index]["close"] > group.iloc[last_index]["sma_50"] and
             group.iloc[last_index]["sma_50"] > group.iloc[last_index]["sma_150"] > group.iloc[last_index]["sma_200"] and
-            group.iloc[max(0, last_index - 110)]["sma_200"] < group.iloc[last_index]["sma_200"] and 
+            group.iloc[max(0, last_index - 25)]["sma_200"] < group.iloc[last_index]["sma_200"] and 
             group.iloc[last_index]["away_from_high"] < 25 and
             group.iloc[last_index]["away_from_low"] > 50
         ):
@@ -160,7 +160,7 @@ def screen_eligible_stocks_vcp():
                 "sma_200": float(group.iloc[last_index]["sma_200"]),
                 "atr": float(group.iloc[last_index]["atr"]),
             })
-
+    eligible_stocks.sort(key=lambda x: x["change"], reverse=True)
     return eligible_stocks
 
 def screen_eligible_stocks_ipo():
@@ -208,4 +208,5 @@ def screen_eligible_stocks_ipo():
                 "atr": float(group.iloc[last_index]["atr"] or 0),
             })
     
+    eligible_stocks.sort(key=lambda x: x["change"], reverse=True)
     return eligible_stocks

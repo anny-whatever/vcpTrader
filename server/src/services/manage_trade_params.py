@@ -25,7 +25,8 @@ def adjust_trade_parameters(symbol, new_stop_loss=None, new_target=None):
         trade = cur.fetchone()
 
         if not trade:
-            raise ValueError(f"No active trade found for symbol: {symbol}")
+            logging.error(f"No active trade found for symbol: {symbol}")
+            return {"status": "error", "message": f"No active trade found for {symbol}."}
 
         # Extract current trade details
         trade_id = trade['trade_id']
@@ -51,7 +52,7 @@ def adjust_trade_parameters(symbol, new_stop_loss=None, new_target=None):
                     logging.info(f"Stop loss updated for trade {trade_id}: New stop loss {new_stop_loss}")
             except ValueError as e:
                 logging.error(f"Invalid stop loss value for {symbol}: {e}")
-                raise
+                return {"status": "error", "message": f"Invalid stop loss value: {str(e)}"}
 
         # Validate and update target if provided
         if new_target is not None:
@@ -69,15 +70,16 @@ def adjust_trade_parameters(symbol, new_stop_loss=None, new_target=None):
                     logging.info(f"Target updated for trade {trade_id}: New target {new_target}")
             except ValueError as e:
                 logging.error(f"Invalid target value for {symbol}: {e}")
-                raise
+                return {"status": "error", "message": f"Invalid target value: {str(e)}"}
 
         # Commit all changes
         conn.commit()
         logging.info(f"Trade parameters updated successfully for {symbol}")
+        return {"status": "success", "message": f"Trade parameters updated successfully for {symbol}."}
 
     except Exception as e:
         conn.rollback()
         logging.error(f"Error adjusting trade parameters for {symbol}: {e}")
-        raise
+        return {"status": "error", "message": "Error adjusting trade parameters."}
     finally:
         release_trade_db_connection(conn, cur)

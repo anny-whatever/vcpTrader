@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse
 from kiteconnect import KiteConnect
 from dotenv import load_dotenv
 from requests import get
-from .kite_ticker import initialize_kite_ticker
+from .kite_ticker import initialize_kite_ticker, kite_ticker
 from .schedulers import scheduler, setup_scheduler   
 
 load_dotenv()
@@ -21,9 +21,12 @@ kite_ticker = None
 
 @router.get("/auth")
 async def auth():
+    global kite_ticker
     login_url = kite.login_url()
     if scheduler.running:
         scheduler.shutdown()
+    kite_ticker = None
+
     return RedirectResponse(url=login_url)
     
 
@@ -42,7 +45,7 @@ async def callback(request_token: str):
         get_instrument_indices()
         get_instrument_equity()
         initialize_kite_ticker(access_token)
-        # load_ohlc_data ()
+        load_ohlc_data ()
         
         download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv",  "500")
         download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_niftymicrocap250_list.csv",  "250")
