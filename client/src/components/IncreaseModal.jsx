@@ -1,16 +1,18 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Button,
-  useDraggable,
-  Input,
+  TextField,
   Switch,
-} from "@heroui/react";
+  FormControlLabel,
+  Box,
+  Typography,
+} from "@mui/material";
 import axios from "axios";
+import { Toaster, toast } from "sonner";
 
 function IncreaseModal({
   isOpen,
@@ -20,27 +22,11 @@ function IncreaseModal({
   symbol,
   ltp,
 }) {
-  const targetRef = useRef(null);
-  const { moveProps } = useDraggable({ targetRef, isDisabled: !isOpen });
-  const [quantity, setQuantity] = useState();
-  const [intendedRisk, setIntendedRisk] = useState();
+  const [quantity, setQuantity] = useState("");
+  const [intendedRisk, setIntendedRisk] = useState("");
   const [methodRiskPoolMethod, setMethodRiskPoolMethod] = useState(false);
 
-  const sendIncreaseOrder = async (
-    qty = 0,
-    intendedRisk = 0,
-    ltp = 0,
-    methodRiskPoolMethod = false
-  ) => {
-    if (methodRiskPoolMethod) {
-      qty = calculateQtyForRiskPool(intendedRisk, ltp);
-    }
-    const response = await axios.get(
-      `http://localhost:8000/api/order/increase?symbol=${symbol}&qty=${qty}`
-    );
-    console.log(response);
-  };
-
+  // Calculate quantity if using risk pool percentage
   const calculateQtyForRiskPool = (intendedRisk, ltp) => {
     const absoluteRisk =
       (AvailableRisk + UsedRisk) * (parseInt(intendedRisk) / 100);
@@ -51,106 +37,200 @@ function IncreaseModal({
     return qty;
   };
 
+  // Send the increase order
+  const sendIncreaseOrder = async (
+    qty = 0,
+    intendedRisk = 0,
+    ltp = 0,
+    methodRiskPoolMethod = false
+  ) => {
+    if (methodRiskPoolMethod) {
+      qty = calculateQtyForRiskPool(intendedRisk, ltp);
+    }
+    try {
+      const response = await axios.get(
+        `http://localhost:8000/api/order/increase?symbol=${symbol}&qty=${qty}`
+      );
+      console.log(response);
+      toast.success(
+        response?.data?.message || "Increase order executed successfully!",
+        { duration: 5000 }
+      );
+    } catch (error) {
+      console.error(error);
+      toast.error("Error executing increase order.", { duration: 5000 });
+    }
+  };
+
+  // Log changes
   useEffect(() => {
     console.log(methodRiskPoolMethod, quantity, intendedRisk, ltp);
   }, [methodRiskPoolMethod, quantity, intendedRisk, ltp]);
 
+  // Handle modal close
+  const handleClose = () => {
+    onClose();
+    setIntendedRisk("");
+    setQuantity("");
+    setMethodRiskPoolMethod(false);
+  };
+
   return (
-    <Modal
-      ref={targetRef}
-      isOpen={isOpen}
-      onOpenChange={() => {
-        onClose();
-        setIntendedRisk(null);
-        setQuantity(null);
-        setMethodRiskPoolMethod(false);
-      }}
-      className="text-white bg-zinc-900"
-    >
-      <ModalContent>
-        {(onClose) => (
-          <>
-            <ModalHeader {...moveProps} className="flex flex-col gap-1">
-              Increase {symbol}
-            </ModalHeader>
-            <ModalBody>
-              <div className="flex items-center justify-between gap-1">
-                <p>Available Risk: {AvailableRisk?.toFixed(2)}</p>
-                <p>Used Risk: {UsedRisk?.toFixed(2)}</p>
-              </div>
-              <div className="flex items-center gap-1text-white">
-                Quantity
+    <>
+      <Toaster position="bottom-right" />
+      <Dialog
+        open={isOpen}
+        onClose={handleClose}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            bgcolor: "#18181B",
+            color: "white",
+            backdropFilter: "blur(8px)",
+            borderRadius: "8px",
+            p: 1,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontSize: "1rem", pb: 0.5 }}>
+          Increase {symbol}
+        </DialogTitle>
+        <DialogContent sx={{ pb: 0.5 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "0.85rem",
+              mb: 1,
+            }}
+          >
+            <Typography variant="body2">
+              Available Risk: {AvailableRisk?.toFixed(2)}
+            </Typography>
+            <Typography variant="body2">
+              Used Risk: {UsedRisk?.toFixed(2)}
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+            <Typography variant="body2" sx={{ mr: 1 }}>
+              Quantity
+            </Typography>
+            <FormControlLabel
+              control={
                 <Switch
-                  className="mx-3"
-                  aria-label="Automatic updates"
-                  onValueChange={setMethodRiskPoolMethod}
+                  checked={methodRiskPoolMethod}
+                  onChange={(e) => setMethodRiskPoolMethod(e.target.checked)}
+                  color="primary"
+                  size="small"
                 />
-                Risk pool %
-              </div>
-              {methodRiskPoolMethod ? (
-                <div className="flex items-center gap-1">
-                  <p>Risk pool %: </p>
-                  <Input
-                    className="w-24 ml-1"
-                    type="number"
-                    onChange={(e) => setIntendedRisk(e.target.value)}
-                  />
-                </div>
-              ) : (
-                <div className="flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-1">
-                    <p>Quantity: </p>
-                    <Input
-                      className="w-24 ml-1"
-                      type="number"
-                      onChange={(e) => setQuantity(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-center gap-1">
-                    Cost: {quantity ? (quantity * ltp).toFixed(2) : 0}
-                  </div>
-                </div>
-              )}
-            </ModalBody>
-            <ModalFooter>
-              <Button
-                color="danger"
-                variant="light"
-                onPress={() => {
-                  onClose();
-                  setIntendedRisk(null);
-                  setQuantity(null);
-                  setMethodRiskPoolMethod(false);
+              }
+              label="Risk pool %"
+              sx={{
+                m: 0,
+                ".MuiFormControlLabel-label": { fontSize: "0.8rem" },
+              }}
+            />
+          </Box>
+          {methodRiskPoolMethod ? (
+            <TextField
+              label="Risk pool %"
+              type="number"
+              value={intendedRisk}
+              onChange={(e) => setIntendedRisk(e.target.value)}
+              variant="filled"
+              size="small"
+              fullWidth
+              InputProps={{ disableUnderline: true }}
+              sx={{
+                bgcolor: "#27272A",
+                width: "60%",
+                borderRadius: "12px",
+                "& .MuiInputBase-root": { color: "white" },
+                "& .MuiInputLabel-root": { color: "white", fontSize: "0.8rem" },
+              }}
+            />
+          ) : (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                mt: 1,
+                justifyContent: "space-between",
+              }}
+            >
+              <TextField
+                label="Quantity"
+                type="number"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                variant="filled"
+                size="small"
+                InputProps={{
+                  disableUnderline: true,
                 }}
-              >
-                Close
-              </Button>
-              <Button
-                color="success"
-                onPress={() => {
-                  if (methodRiskPoolMethod) {
-                    sendIncreaseOrder(
-                      quantity,
-                      intendedRisk,
-                      ltp,
-                      methodRiskPoolMethod
-                    );
-                  } else {
-                    sendIncreaseOrder(quantity);
-                  }
-                  onClose();
-                  setIntendedRisk(null);
-                  setQuantity(null);
-                  setMethodRiskPoolMethod(false);
+                sx={{
+                  width: "60%",
+                  bgcolor: "#27272A",
+                  borderRadius: "12px",
+                  "& .MuiInputBase-root": { color: "white" },
+                  "& .MuiInputLabel-root": {
+                    color: "white",
+                    fontSize: "0.8rem",
+                  },
                 }}
-              >
-                Buy
-              </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+              />
+              <Typography variant="body2" sx={{ fontSize: "0.85rem" }}>
+                Cost: {quantity ? (quantity * ltp).toFixed(2) : 0}
+              </Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ pt: 0.5 }}>
+          <Button
+            onClick={handleClose}
+            variant="text"
+            sx={{
+              color: "#EB455F",
+              borderRadius: "12px",
+              textTransform: "none",
+              fontWeight: "normal",
+              fontSize: "0.85rem",
+            }}
+          >
+            Close
+          </Button>
+          <Button
+            onClick={() => {
+              if (methodRiskPoolMethod) {
+                sendIncreaseOrder(
+                  quantity,
+                  intendedRisk,
+                  ltp,
+                  methodRiskPoolMethod
+                );
+              } else {
+                sendIncreaseOrder(quantity);
+              }
+              handleClose();
+            }}
+            variant="contained"
+            sx={{
+              bgcolor: "#2DD4BF",
+              "&:hover": { bgcolor: "#26BFAE" },
+              color: "black",
+              borderRadius: "12px",
+              textTransform: "none",
+              fontWeight: "normal",
+              fontSize: "0.85rem",
+            }}
+          >
+            Buy
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
 

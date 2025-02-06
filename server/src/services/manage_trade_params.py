@@ -26,7 +26,10 @@ def adjust_trade_parameters(symbol, new_stop_loss=None, new_target=None):
 
         if not trade:
             logging.error(f"No active trade found for symbol: {symbol}")
-            return {"status": "error", "message": f"No active trade found for {symbol}."}
+            return {
+                "status": "error",
+                "message": f"No active trade found for {symbol}. Please open a position before adjusting parameters."
+            }
 
         # Extract current trade details
         trade_id = trade['trade_id']
@@ -34,6 +37,9 @@ def adjust_trade_parameters(symbol, new_stop_loss=None, new_target=None):
         current_target = float(trade['target'])
         entry_price = float(trade['entry_price'])
         qty = float(trade['current_qty'])
+
+        stop_loss_msg = ""
+        target_msg = ""
 
         # Validate and update stop loss if provided
         if new_stop_loss is not None:
@@ -50,9 +56,13 @@ def adjust_trade_parameters(symbol, new_stop_loss=None, new_target=None):
                         WHERE trade_id = %s;
                     """, (new_stop_loss, trade_id))
                     logging.info(f"Stop loss updated for trade {trade_id}: New stop loss {new_stop_loss}")
+                    stop_loss_msg = f"Stop loss changed from {current_stop_loss:.2f} to {new_stop_loss:.2f}."
             except ValueError as e:
                 logging.error(f"Invalid stop loss value for {symbol}: {e}")
-                return {"status": "error", "message": f"Invalid stop loss value: {str(e)}"}
+                return {
+                    "status": "error",
+                    "message": f"Invalid stop loss value for {symbol}: {str(e)}"
+                }
 
         # Validate and update target if provided
         if new_target is not None:
@@ -68,18 +78,28 @@ def adjust_trade_parameters(symbol, new_stop_loss=None, new_target=None):
                         WHERE trade_id = %s;
                     """, (new_target, trade_id))
                     logging.info(f"Target updated for trade {trade_id}: New target {new_target}")
+                    target_msg = f"Target changed from {current_target:.2f} to {new_target:.2f}."
             except ValueError as e:
                 logging.error(f"Invalid target value for {symbol}: {e}")
-                return {"status": "error", "message": f"Invalid target value: {str(e)}"}
+                return {
+                    "status": "error",
+                    "message": f"Invalid target value for {symbol}: {str(e)}"
+                }
 
         # Commit all changes
         conn.commit()
         logging.info(f"Trade parameters updated successfully for {symbol}")
-        return {"status": "success", "message": f"Trade parameters updated successfully for {symbol}."}
+        return {
+            "status": "success",
+            "message": f"Trade parameters updated successfully for {symbol}. {stop_loss_msg} {target_msg}"
+        }
 
     except Exception as e:
         conn.rollback()
         logging.error(f"Error adjusting trade parameters for {symbol}: {e}")
-        return {"status": "error", "message": "Error adjusting trade parameters."}
+        return {
+            "status": "error",
+            "message": f"Error adjusting trade parameters for {symbol}: {str(e)}"
+        }
     finally:
         release_trade_db_connection(conn, cur)

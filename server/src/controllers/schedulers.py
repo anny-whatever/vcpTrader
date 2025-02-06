@@ -11,8 +11,11 @@ def check_exits_on_schedule():
     print("Checking for exits")
 
 def get_ohlc_on_schedule():
-    from services import get_equity_ohlc_data_loop
+    from services import get_equity_ohlc_data_loop, download_nse_csv
     get_equity_ohlc_data_loop("day")
+    download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv",  "500")
+    download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_niftymicrocap250_list.csv",  "250")
+    download_nse_csv("https://www.niftyindices.com/IndexConstituent/ind_niftyIPO_list.csv",  "IPO")
     print("Getting OHLC data")
 
 # Scheduler Setup

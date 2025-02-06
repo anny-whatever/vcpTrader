@@ -1,49 +1,39 @@
-import React from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { DataContext } from "../utils/DataContext";
-import { useState, useEffect, useContext } from "react";
 import {
   Table,
   TableHeader,
-  TableBody,
   TableColumn,
+  TableBody,
   TableRow,
   TableCell,
   Button,
   ButtonGroup,
   Spinner,
-  Select,
-  SelectSection,
-  SelectItem,
 } from "@heroui/react";
 import BuyModal from "../components/BuyModal";
 import SellModal from "../components/SellModal";
 import ChartModal from "../components/ChartModal";
 
 function Screener() {
-  const { liveData, positions, riskpool, historicalTrades } =
-    useContext(DataContext);
+  const { liveData, riskpool } = useContext(DataContext);
   const screenOptions = ["VCP", "IPO"];
   const [screenerData, setScreenerData] = useState(null);
   const [screen, setScreen] = useState("VCP");
+
+  // Modals
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
+
+  // Data for modals
   const [buyData, setBuyData] = useState(null);
   const [sellData, setSellData] = useState(null);
   const [chartData, setChartData] = useState(null);
 
-  const handleOpenBuyModal = () => setIsBuyModalOpen(true);
-  const handleCloseBuyModal = () => setIsBuyModalOpen(false);
-
-  const handleOpenSellModal = () => setIsSellModalOpen(true);
-  const handleCloseSellModal = () => setIsSellModalOpen(false);
-
-  const handleOpenChartModal = () => setIsChartModalOpen(true);
-  const handleCloseChartModal = () => setIsChartModalOpen(false);
-
+  // Fetch screener data
   const fetchScreenerData = async () => {
     setScreenerData(null);
-
     if (screen === "VCP") {
       const response = await fetch(
         "http://localhost:8000/api/screener/vcpscreen"
@@ -65,30 +55,49 @@ function Screener() {
     fetchScreenerData();
   }, [screen]);
 
+  // Merge liveData into screenerData
   useEffect(() => {
-    if (screenerData && liveData) {
-      for (const data of screenerData) {
-        const liveDataItem = liveData.find(
-          (item) => item.instrument_token === data.instrument_token
-        );
+    if (!screenerData || !liveData) return;
 
-        // Update 'change' only if 'liveDataItem' exists, otherwise keep the previous value
-        if (liveDataItem) {
-          data.change = liveDataItem.change;
-          data.last_price = liveDataItem.last_price;
+    let changed = false;
+    // Copy screenerData so we don't mutate state directly
+    const newData = screenerData.map((item) => {
+      const liveDataItem = liveData.find(
+        (liveItem) => liveItem.instrument_token === item.instrument_token
+      );
+
+      // If found, update item in a new object
+      if (liveDataItem) {
+        const updatedItem = { ...item };
+
+        if (updatedItem.change !== liveDataItem.change) {
+          updatedItem.change = liveDataItem.change;
+          changed = true;
         }
+        if (updatedItem.last_price !== liveDataItem.last_price) {
+          updatedItem.last_price = liveDataItem.last_price;
+          changed = true;
+        }
+        return updatedItem;
       }
-      setScreenerData(screenerData?.sort((a, b) => b.change - a.change));
+      return item;
+    });
+
+    // Sort newData by descending change
+    newData.sort((a, b) => (b.change || 0) - (a.change || 0));
+
+    // Check if newData is different from screenerData
+    // We'll do a simple string compare. For large arrays, consider a more robust approach.
+    const oldString = JSON.stringify(screenerData);
+    const newString = JSON.stringify(newData);
+
+    if (oldString !== newString) {
+      // Only set state if there's an actual difference
+      setScreenerData(newData);
     }
   }, [liveData, screenerData]);
 
-  const populateChartData = (row) => {
-    setChartData({
-      symbol: row.symbol,
-      token: row.instrument_token,
-    });
-  };
-
+  // Populate data for modals
   const populateBuyData = (row) => {
     setBuyData({
       symbol: row.symbol,
@@ -109,8 +118,26 @@ function Screener() {
     });
   };
 
+  const populateChartData = (row) => {
+    setChartData({
+      symbol: row.symbol,
+      token: row.instrument_token,
+    });
+  };
+
+  // Modal Handlers
+  const handleOpenBuyModal = () => setIsBuyModalOpen(true);
+  const handleCloseBuyModal = () => setIsBuyModalOpen(false);
+
+  const handleOpenSellModal = () => setIsSellModalOpen(true);
+  const handleCloseSellModal = () => setIsSellModalOpen(false);
+
+  const handleOpenChartModal = () => setIsChartModalOpen(true);
+  const handleCloseChartModal = () => setIsChartModalOpen(false);
+
   return (
-    <div className="px-6">
+    <div className="w-full px-6 text-white">
+      {/* Modals */}
       <BuyModal
         isOpen={isBuyModalOpen}
         onClose={handleCloseBuyModal}
@@ -133,130 +160,233 @@ function Screener() {
         symbol={chartData?.symbol}
         token={chartData?.token}
       />
-      <div className="flex items-center justify-between my-3">
-        <div className="flex items-center w-1/3 jus">
-          <Button onPress={fetchScreenerData}>Refresh Screener</Button>
 
+      {/* Top controls */}
+      <div className="flex items-center justify-between my-3">
+        <div className="flex items-center gap-3">
+          <Button
+            className="bg-green-500 bg-opacity-90 hover:bg-green-600
+                       text-white rounded-md px-4 py-2 
+                       min-w-[130px] sm:min-w-[150px]"
+            onPress={fetchScreenerData}
+          >
+            Refresh Screener
+          </Button>
           <select
-            className="w-32 p-2.5 mx-4 text-sm rounded-xl bg-zinc-700"
-            label="Screen"
+            className="h-10 px-3 py-1 text-sm text-white transition-colors rounded bg-zinc-700 focus:outline-none hover:bg-zinc-600"
+            style={{ minWidth: "80px" }}
+            value={screen}
             onChange={(e) => setScreen(e.target.value)}
-            disabled={screenerData == null}
           >
             {screenOptions.map((option) => (
               <option key={option}>{option}</option>
             ))}
           </select>
         </div>
-
-        {screenerData != null ? (
-          <span> Screen Count: {screenerData.length}</span>
-        ) : null}
+        {screenerData && (
+          <span className="text-sm">Screen Count: {screenerData.length}</span>
+        )}
       </div>
-      {screenerData != null ? (
-        <Table
-          aria-label="Example static collection table"
-          className="m-auto  overflow-y-scroll h-[80vh] no-scrollbar"
-          align="center"
-        >
-          <TableHeader>
-            <TableColumn>Symbol</TableColumn>
-            <TableColumn>Last Price</TableColumn>
-            <TableColumn>Change</TableColumn>
-            <TableColumn>SMA 50</TableColumn>
-            <TableColumn>SMA 150</TableColumn>
-            <TableColumn>SMA 200</TableColumn>
-            <TableColumn>ATR %</TableColumn>
-            <TableColumn>Actions</TableColumn>
-          </TableHeader>
-          <TableBody className="no-scrollbar">
-            {screenerData?.map((row) => (
-              <TableRow
-                key={row?.symbol}
-                className="cursor-pointer hover:bg-zinc-800"
-              >
-                <TableCell>{row?.symbol}</TableCell>
-                <TableCell
-                  className={
-                    row?.change > 0 ? "text-green-500" : "text-red-500"
-                  }
-                >
-                  {row?.last_price}
-                </TableCell>
-                <TableCell
-                  className={
-                    row?.change > 0 ? "text-green-500" : "text-red-500"
-                  }
-                >
-                  {row?.change?.toFixed(2)} %
-                </TableCell>
 
-                <TableCell>{row?.sma_50?.toFixed(2)}</TableCell>
-                <TableCell>{row?.sma_150?.toFixed(2)}</TableCell>
-                <TableCell>{row?.sma_200?.toFixed(2)}</TableCell>
-                <TableCell>
-                  {((row?.atr / row?.last_price) * 100).toFixed(2)}%
-                </TableCell>
-                <TableCell>
-                  <ButtonGroup>
-                    <Button
-                      isIconOnly
-                      color="success"
-                      variant="flat"
-                      onPress={() => {
-                        populateBuyData(row);
-                        handleOpenBuyModal();
-                      }}
-                    >
-                      En
-                    </Button>
-                    <Button
-                      isIconOnly
-                      color="danger"
-                      variant="flat"
-                      onPress={() => {
-                        populateSellData(row);
-                        handleOpenSellModal();
-                      }}
-                    >
-                      Ex
-                    </Button>
-
-                    <Button
-                      isIconOnly
-                      color="warning"
-                      variant="flat"
-                      onPress={() => {
-                        populateChartData(row);
-                        handleOpenChartModal();
-                      }}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                        className="size-5"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
-                        />
-                      </svg>
-                    </Button>
-                  </ButtonGroup>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      ) : (
+      {/* Conditionally render table or loader */}
+      {!screenerData ? (
         <div className="flex flex-col justify-center items-center w-full h-[85vh]">
           <Spinner size="lg" />
           <span className="m-5 text-2xl">Loading Screener Data</span>
         </div>
+      ) : (
+        <>
+          {/* Desktop Table */}
+          <div className="hidden w-full md:block">
+            <Table
+              aria-label="Screener table"
+              className="m-auto rounded-lg no-scrollbar bg-zinc-900"
+              align="center"
+            >
+              <TableHeader>
+                <TableColumn>Symbol</TableColumn>
+                <TableColumn>Last Price</TableColumn>
+                <TableColumn>Change</TableColumn>
+                <TableColumn>ATR %</TableColumn>
+                <TableColumn>Actions</TableColumn>
+              </TableHeader>
+              <TableBody>
+                {screenerData.map((row) => {
+                  const colorClass =
+                    row.change > 0 ? "text-green-500" : "text-red-500";
+                  const atrPercent =
+                    ((row?.atr / row?.last_price) * 100).toFixed(2) + "%";
+                  return (
+                    <TableRow
+                      key={row.symbol}
+                      className="cursor-pointer hover:bg-zinc-800"
+                    >
+                      <TableCell>{row.symbol}</TableCell>
+                      <TableCell className={colorClass}>
+                        {row.last_price?.toFixed(2)}
+                      </TableCell>
+                      <TableCell className={colorClass}>
+                        {row.change?.toFixed(2)} %
+                      </TableCell>
+                      <TableCell>{atrPercent}</TableCell>
+                      <TableCell>
+                        <ButtonGroup>
+                          {/* Buy */}
+                          <Button
+                            isIconOnly
+                            color="success"
+                            variant="flat"
+                            onPress={() => {
+                              populateBuyData(row);
+                              handleOpenBuyModal();
+                            }}
+                          >
+                            En
+                          </Button>
+                          {/* Sell */}
+                          <Button
+                            isIconOnly
+                            color="danger"
+                            variant="flat"
+                            onPress={() => {
+                              populateSellData(row);
+                              handleOpenSellModal();
+                            }}
+                          >
+                            Ex
+                          </Button>
+                          {/* Chart */}
+                          <Button
+                            isIconOnly
+                            color="warning"
+                            variant="flat"
+                            onPress={() => {
+                              populateChartData(row);
+                              handleOpenChartModal();
+                            }}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={1.5}
+                              stroke="currentColor"
+                              className="size-5"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
+                              />
+                            </svg>
+                          </Button>
+                        </ButtonGroup>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Card Layout */}
+          <div className="block space-y-4 md:hidden">
+            {screenerData.map((row, idx) => {
+              const colorClass =
+                row.change > 0 ? "text-green-500" : "text-red-500";
+              const atrPercent =
+                ((row?.atr / row?.last_price) * 100).toFixed(2) + "%";
+
+              return (
+                <div
+                  key={row.symbol}
+                  className={`flex flex-col gap-2 p-3 bg-zinc-900 rounded-lg 
+                              ${
+                                idx < screenerData.length - 1
+                                  ? "border-b border-zinc-700 rounded-none"
+                                  : ""
+                              }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-semibold">
+                      {row.symbol}
+                    </span>
+                    <ButtonGroup>
+                      {/* Buy */}
+                      <Button
+                        isIconOnly
+                        color="success"
+                        variant="flat"
+                        onPress={() => {
+                          populateBuyData(row);
+                          handleOpenBuyModal();
+                        }}
+                      >
+                        En
+                      </Button>
+                      {/* Sell */}
+                      <Button
+                        isIconOnly
+                        color="danger"
+                        variant="flat"
+                        onPress={() => {
+                          populateSellData(row);
+                          handleOpenSellModal();
+                        }}
+                      >
+                        Ex
+                      </Button>
+                      {/* Chart */}
+                      <Button
+                        isIconOnly
+                        color="warning"
+                        variant="flat"
+                        onPress={() => {
+                          populateChartData(row);
+                          handleOpenChartModal();
+                        }}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="size-5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
+                          />
+                        </svg>
+                      </Button>
+                    </ButtonGroup>
+                  </div>
+                  {/* Mobile-friendly data blocks */}
+                  <div className="flex flex-col gap-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Last Price:</span>
+                      <span className={colorClass}>
+                        {row.last_price?.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Change:</span>
+                      <span className={colorClass}>
+                        {row.change?.toFixed(2)} %
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>ATR %:</span>
+                      <span>{atrPercent}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

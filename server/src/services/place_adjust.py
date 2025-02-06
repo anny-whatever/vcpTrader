@@ -20,7 +20,10 @@ def adjust_order_execute(symbol, qty, adjustment_type):
         if adjustment_running:
             print(f"Adjustment: {adjustment_type.capitalize()} already running for {symbol}")
             release_trade_db_connection(conn, cur)
-            return {"status": "error", "message": f"An adjustment ({adjustment_type}) is already in progress for {symbol}."}
+            return {
+                "status": "error",
+                "message": f"An adjustment ({adjustment_type}) for {symbol} is already in progress. Please wait until it completes."
+            }
         adjustment_running = True
 
     try:
@@ -34,7 +37,10 @@ def adjust_order_execute(symbol, qty, adjustment_type):
 
         if not trade:
             print(f"No position found for {symbol}")
-            return {"status": "error", "message": f"No existing position found for {symbol}."}
+            return {
+                "status": "error",
+                "message": f"No active position found for {symbol}. Cannot perform a {adjustment_type} adjustment."
+            }
 
         trade_id = trade['trade_id']
         entry_price = float(trade['entry_price'])
@@ -57,10 +63,11 @@ def adjust_order_execute(symbol, qty, adjustment_type):
         )
         print(f"Order placed: {response_adjust}")
 
-        # Start status monitoring
+        # Start status monitoring. Pass symbol via kwargs so messages can include it.
         threading.Thread(
             target=monitor_adjustment_status,
-            args=(response_adjust, trade_id, qty, adjustment_type, entry_price, stop_loss, 300)
+            args=(response_adjust, trade_id, qty, adjustment_type, entry_price, stop_loss, 300),
+            kwargs={'symbol': symbol}
         ).start()
 
         status = adjustment_status_queue.get(timeout=305)
@@ -69,13 +76,16 @@ def adjust_order_execute(symbol, qty, adjustment_type):
 
     except Exception as e:
         print(f"Adjustment Error ({adjustment_type.capitalize()}): {e}")
-        return {"status": "error", "message": f"Adjustment error: {str(e)}"}
+        return {
+            "status": "error",
+            "message": f"Adjustment error for {symbol} ({adjustment_type}): {str(e)}"
+        }
     finally:
         with adjustment_lock:
             adjustment_running = False
         release_trade_db_connection(conn, cur)
 
-def monitor_adjustment_status(order_id, trade_id, qty, adjustment_type, entry_price, stop_loss, timeout=300):
+def monitor_adjustment_status(order_id, trade_id, qty, adjustment_type, entry_price, stop_loss, timeout=300, symbol=None):
     """
     Monitor the status of an adjustment order and update the database and risk pool.
     """
@@ -93,32 +103,41 @@ def monitor_adjustment_status(order_id, trade_id, qty, adjustment_type, entry_pr
             print(f"Adjustment Order Status: {adjust_status}")
 
             if adjust_status == 'COMPLETE':
-                adjustment_status_queue.put({"status": "success", "message": "Adjustment executed successfully."})
                 actual_price = float(adjust_order[-1].get('average_price', 0))
-
                 if actual_price == 0:
                     raise ValueError("Adjustment order completed, but no valid average price available.")
-
+                
                 if adjustment_type == 'increase':
                     update_risk_pool_on_increase(cur, stop_loss, actual_price, qty)
                 elif adjustment_type == 'decrease':
                     update_risk_pool_on_decrease(cur, stop_loss, entry_price, actual_price, qty)
 
                 update_trade_record(cur, conn, trade_id, qty, actual_price, adjustment_type)
+
+                message = (
+                    f"Adjustment ({adjustment_type.capitalize()}) for {symbol} executed successfully: "
+                    f"{qty} shares adjusted at an average price of {actual_price:.2f} "
+                    f"(Entry: {entry_price:.2f}, Stop-loss: {stop_loss:.2f})."
+                )
+                adjustment_status_queue.put({"status": "success", "message": message})
+                print(message)
                 return
 
             if adjust_status == 'REJECTED':
-                adjustment_status_queue.put({"status": "error", "message": "Adjustment order was rejected."})
-                print(f"Adjustment Order Rejected: {adjust_status_message}")
+                message = f"Adjustment ({adjustment_type.capitalize()}) for {symbol} was rejected. Reason: {adjust_status_message}."
+                adjustment_status_queue.put({"status": "error", "message": message})
+                print(message)
                 return
 
             time.sleep(0.2)
 
-        adjustment_status_queue.put({"status": "error", "message": "Adjustment order monitoring timed out."})
-        print("Adjustment order monitoring timed out.")
+        timeout_message = f"Adjustment ({adjustment_type.capitalize()}) monitoring for {symbol} timed out after {timeout} seconds."
+        adjustment_status_queue.put({"status": "error", "message": timeout_message})
+        print(timeout_message)
 
     except Exception as e:
-        adjustment_status_queue.put({"status": "error", "message": f"Adjustment monitoring error: {str(e)}"})
+        error_message = f"Adjustment monitoring error for {symbol} ({adjustment_type}): {str(e)}"
+        adjustment_status_queue.put({"status": "error", "message": error_message})
         print(f"Error during adjustment status monitoring: {e}")
     finally:
         release_trade_db_connection(conn, cur)

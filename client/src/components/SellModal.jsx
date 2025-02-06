@@ -1,74 +1,114 @@
-import React, { useEffect, useRef, useState } from "react";
+import React from "react";
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Button,
-  useDraggable,
-  Input,
-  Switch,
-} from "@heroui/react";
+  Box,
+  Typography,
+} from "@mui/material";
 import axios from "axios";
+import { Toaster, toast } from "sonner";
 
 function SellModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol }) {
-  const targetRef = useRef(null);
-  const { moveProps } = useDraggable({ targetRef, isDisabled: !isOpen });
-
   const sendSellOrder = async () => {
-    const response = await axios.get(
-      `http://localhost:8000/api/order/exit?symbol=${symbol}`
-    );
-    console.log(response);
+    try {
+      const response = await axios.get(
+        `http://localhost:8000/api/order/exit?symbol=${symbol}`
+      );
+      console.log(response);
+      toast.success(
+        response?.data?.message || "Sell order executed successfully!",
+        { duration: 5000 }
+      );
+    } catch (error) {
+      console.error(error);
+      toast.error("Error executing sell order.", { duration: 5000 });
+    }
+  };
+
+  const handleClose = () => {
+    onClose();
   };
 
   return (
-    <Modal
-      ref={targetRef}
-      isOpen={isOpen}
-      onOpenChange={() => {
-        onClose();
-      }}
-      className="text-white bg-zinc-900"
-    >
-      <ModalContent>
-        {(onClose) => (
-          <>
-            <ModalHeader {...moveProps} className="flex flex-col gap-1">
-              Exit {symbol}
-            </ModalHeader>
-            <ModalBody>
-              <div className="flex items-center justify-between gap-1">
-                <p>Available Risk: {AvailableRisk?.toFixed(2)}</p>
-                <p>Used Risk: {UsedRisk?.toFixed(2)}</p>
-              </div>
-            </ModalBody>
-            <ModalFooter>
-              <Button
-                color="danger"
-                variant="light"
-                onPress={() => {
-                  onClose();
-                }}
-              >
-                Close
-              </Button>
-              <Button
-                color="danger"
-                onPress={() => {
-                  sendSellOrder();
+    <>
+      <Toaster position="bottom-right" />
+      <Dialog
+        open={isOpen}
+        onClose={handleClose}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            bgcolor: "#18181B",
+            color: "white",
+            backdropFilter: "blur(8px)",
+            borderRadius: "8px",
+            p: 1,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontSize: "1rem", pb: 0.5 }}>
+          Exit {symbol}
+        </DialogTitle>
 
-                  onClose();
-                }}
-              >
-                Sell
-              </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+        <DialogContent sx={{ pb: 0.5 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "0.85rem",
+              mb: 1,
+            }}
+          >
+            <Typography variant="body2">
+              Available Risk: {AvailableRisk?.toFixed(2)}
+            </Typography>
+            <Typography variant="body2">
+              Used Risk: {UsedRisk?.toFixed(2)}
+            </Typography>
+          </Box>
+        </DialogContent>
+
+        <DialogActions sx={{ pt: 0.5 }}>
+          <Button
+            onClick={handleClose}
+            variant="text"
+            sx={{
+              color: "#EB455F",
+              borderRadius: "12px",
+              textTransform: "none",
+              fontWeight: "normal",
+              fontSize: "0.85rem",
+            }}
+          >
+            Close
+          </Button>
+          <Button
+            onClick={() => {
+              sendSellOrder();
+              handleClose();
+            }}
+            variant="contained"
+            sx={{
+              bgcolor: "#EB455F",
+              "&:hover": {
+                bgcolor: "#e03d56",
+              },
+              color: "white",
+              borderRadius: "12px",
+              textTransform: "none",
+              fontWeight: "normal",
+              fontSize: "0.85rem",
+            }}
+          >
+            Sell
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
 

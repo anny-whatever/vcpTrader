@@ -22,7 +22,9 @@ function App() {
     };
 
     socket.onmessage = (event) => {
-      setLiveData(JSON.parse(event.data).data); // Update your state with the incoming data
+      const parsedData = JSON.parse(event?.data);
+      console.log("WebSocket message:", event?.data);
+      setLiveData(parsedData?.data); // Adjust based on your WS message structure
     };
 
     socket.onclose = () => {

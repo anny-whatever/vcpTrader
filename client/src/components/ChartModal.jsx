@@ -14,9 +14,9 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
   const targetRef = useRef(null);
   const { moveProps } = useDraggable({ targetRef, isDisabled: !isOpen });
 
-  const openChart = (symbol, instrument_token) => {
+  const openChart = (symbol) => {
     window.open(
-      `https://kite.zerodha.com/chart/ext/tvc/NSE/${symbol}/${instrument_token}?theme=dark`,
+      `https://www.tradingview.com/chart/?symbol=NSE:${symbol}`,
       "_blank"
     );
   };
@@ -44,7 +44,7 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
                 variant="flat"
                 className="mr-4"
                 onPress={() => {
-                  openChart(symbol, token);
+                  openChart(symbol);
                 }}
               >
                 Open full chart

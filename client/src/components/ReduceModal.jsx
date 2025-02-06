@@ -1,16 +1,18 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Button,
-  useDraggable,
-  Input,
+  TextField,
   Switch,
-} from "@heroui/react";
+  FormControlLabel,
+  Box,
+  Typography,
+} from "@mui/material";
 import axios from "axios";
+import { Toaster, toast } from "sonner";
 
 function ReduceModal({
   isOpen,
@@ -21,123 +23,194 @@ function ReduceModal({
   UsedRisk,
   currentQuantity,
 }) {
-  const targetRef = useRef(null);
-  const { moveProps } = useDraggable({ targetRef, isDisabled: !isOpen });
-  const [quantity, setQuantity] = useState();
-  const [qtyPercentage, setQtyPercentage] = useState();
+  const [quantity, setQuantity] = useState("");
+  const [qtyPercentage, setQtyPercentage] = useState("");
   const [methodPercentage, setMethodPercentageMethod] = useState(false);
 
-  const sendReduceOrder = async (qty = 0, methodPercentage = false) => {
-    if (methodPercentage) {
-      qty = calculateQtyForPercentage(qtyPercentage);
-    }
-    const response = await axios.get(
-      `http://localhost:8000/api/order/reduce?symbol=${symbol}&qty=${qty}`
-    );
-    console.log(response);
-  };
-
+  // Calculate quantity if reducing by percentage
   const calculateQtyForPercentage = (qtyPercentage) => {
     let qty = (parseInt(qtyPercentage) / 100) * currentQuantity;
     qty = Math.round(qty * 1) / 1;
     return qty;
   };
 
+  // API call to reduce quantity
+  const sendReduceOrder = async (qty = 0, methodPercentage = false) => {
+    if (methodPercentage) {
+      qty = calculateQtyForPercentage(qtyPercentage);
+    }
+    try {
+      const response = await axios.get(
+        `http://localhost:8000/api/order/reduce?symbol=${symbol}&qty=${qty}`
+      );
+      console.log(response);
+      toast.success(
+        response?.data?.message || "Reduce order executed successfully!",
+        { duration: 5000 }
+      );
+    } catch (error) {
+      console.error(error);
+      toast.error("Error executing reduce order.", { duration: 5000 });
+    }
+  };
+
   useEffect(() => {
     console.log(methodPercentage, quantity, qtyPercentage, ltp);
   }, [methodPercentage, quantity, qtyPercentage, ltp]);
 
+  // Handle modal close
+  const handleClose = () => {
+    onClose();
+    setQtyPercentage("");
+    setQuantity("");
+    setMethodPercentageMethod(false);
+  };
+
   return (
-    <Modal
-      ref={targetRef}
-      isOpen={isOpen}
-      onOpenChange={() => {
-        onClose();
-        setQtyPercentage(null);
-        setQuantity(null);
-        setMethodPercentageMethod(false);
-      }}
-      className="text-white bg-zinc-900"
-    >
-      <ModalContent>
-        {(onClose) => (
-          <>
-            <ModalHeader {...moveProps} className="flex flex-col gap-1">
-              Reduce {symbol}
-            </ModalHeader>
-            <ModalBody>
-              <div className="flex items-center justify-between gap-1">
-                <p>Available Risk: {AvailableRisk?.toFixed(2)}</p>
-                <p>Used Risk: {UsedRisk?.toFixed(2)}</p>
-              </div>
-              <div className="flex items-center gap-1text-white">
-                Quantity
+    <>
+      <Toaster position="bottom-right" />
+      <Dialog
+        open={isOpen}
+        onClose={handleClose}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            bgcolor: "#18181B",
+            color: "white",
+            backdropFilter: "blur(8px)",
+            borderRadius: "8px",
+            p: 1,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontSize: "1rem", pb: 0.5 }}>
+          Reduce {symbol}
+        </DialogTitle>
+        <DialogContent sx={{ pb: 0.5 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "0.85rem",
+              mb: 1,
+            }}
+          >
+            <Typography variant="body2">
+              Available Risk: {AvailableRisk?.toFixed(2)}
+            </Typography>
+            <Typography variant="body2">
+              Used Risk: {UsedRisk?.toFixed(2)}
+            </Typography>
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+            <Typography variant="body2" sx={{ mr: 1 }}>
+              Quantity
+            </Typography>
+            <FormControlLabel
+              control={
                 <Switch
-                  className="mx-3"
-                  aria-label="Automatic updates"
-                  onValueChange={setMethodPercentageMethod}
+                  checked={methodPercentage}
+                  onChange={(e) => setMethodPercentageMethod(e.target.checked)}
+                  color="primary"
+                  size="small"
                 />
-                Quantity %
-              </div>
-              {methodPercentage ? (
-                <div className="flex items-center gap-1">
-                  <p>Qty percentage %: </p>
-                  <Input
-                    className="w-24 ml-1"
-                    type="number"
-                    onChange={(e) => setQtyPercentage(e.target.value)}
-                  />
-                </div>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <p>Quantity: </p>
-                  <Input
-                    className="w-24 ml-1"
-                    type="number"
-                    onChange={(e) => setQuantity(e.target.value)}
-                  />
-                </div>
-              )}
-            </ModalBody>
-            <ModalFooter>
-              <Button
-                color="danger"
-                variant="light"
-                onPress={() => {
-                  onClose();
-                  setQtyPercentage(null);
-                  setQuantity(null);
-                  setMethodPercentageMethod(false);
+              }
+              label="Quantity %"
+              sx={{
+                m: 0,
+                ".MuiFormControlLabel-label": { fontSize: "0.8rem" },
+              }}
+            />
+          </Box>
+          {methodPercentage ? (
+            <TextField
+              label="Qty percentage %"
+              type="number"
+              variant="filled"
+              size="small"
+              value={qtyPercentage}
+              onChange={(e) => setQtyPercentage(e.target.value)}
+              fullWidth
+              InputProps={{ disableUnderline: true }}
+              sx={{
+                bgcolor: "#27272A",
+                width: "60%",
+                borderRadius: "12px",
+                "& .MuiInputBase-root": { color: "white" },
+                "& .MuiInputLabel-root": { color: "white", fontSize: "0.8rem" },
+              }}
+            />
+          ) : (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                mt: 1,
+              }}
+            >
+              <TextField
+                label="Quantity"
+                type="number"
+                variant="filled"
+                size="small"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                InputProps={{ disableUnderline: true }}
+                sx={{
+                  width: "60%",
+                  bgcolor: "#27272A",
+                  borderRadius: "12px",
+                  "& .MuiInputBase-root": { color: "white" },
+                  "& .MuiInputLabel-root": {
+                    color: "white",
+                    fontSize: "0.8rem",
+                  },
                 }}
-              >
-                Close
-              </Button>
-              <Button
-                color="success"
-                onPress={() => {
-                  if (methodPercentage) {
-                    sendReduceOrder(
-                      quantity,
-                      qtyPercentage,
-                      ltp,
-                      methodPercentage
-                    );
-                  } else {
-                    sendReduceOrder(quantity);
-                  }
-                  onClose();
-                  setQtyPercentage(null);
-                  setQuantity(null);
-                  setMethodPercentageMethod(false);
-                }}
-              >
-                Reduce
-              </Button>
-            </ModalFooter>
-          </>
-        )}
-      </ModalContent>
-    </Modal>
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ pt: 0.5 }}>
+          <Button
+            onClick={handleClose}
+            variant="text"
+            sx={{
+              color: "#EB455F",
+              borderRadius: "12px",
+              textTransform: "none",
+              fontWeight: "normal",
+              fontSize: "0.85rem",
+            }}
+          >
+            Close
+          </Button>
+          <Button
+            onClick={() => {
+              if (methodPercentage) {
+                sendReduceOrder(quantity, methodPercentage);
+              } else {
+                sendReduceOrder(quantity);
+              }
+              handleClose();
+            }}
+            variant="contained"
+            sx={{
+              bgcolor: "#2DD4BF",
+              "&:hover": { bgcolor: "#26BFAE" },
+              color: "black",
+              borderRadius: "12px",
+              textTransform: "none",
+              fontWeight: "normal",
+              fontSize: "0.85rem",
+            }}
+          >
+            Reduce
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
 
