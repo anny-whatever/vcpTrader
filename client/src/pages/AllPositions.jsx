@@ -21,12 +21,17 @@ import IncreaseModal from "../components/IncreaseModal";
 import ReduceModal from "../components/ReduceModal";
 import ModifySlModal from "../components/ModifySlModal";
 import ModifyTgtModal from "../components/ModifyTgtModal";
+import ChartModal from "../components/ChartModal";
+import { AuthContext } from "../utils/AuthContext";
+import { jwtDecode } from "jwt-decode"; // ✅ Correct import
 
 function AllPositions() {
   const { liveData, positions, riskpool } = useContext(DataContext);
+  const { token, logout } = useContext(AuthContext);
 
   // For storing row data when opening modals
   const [positionData, setPositionData] = useState(null);
+  const [chartData, setChartData] = useState(null);
 
   // Modal states
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
@@ -34,10 +39,21 @@ function AllPositions() {
   const [isReduceModalOpen, setIsReduceModalOpen] = useState(false);
   const [isModifySlModalOpen, setIsModifySlModalOpen] = useState(false);
   const [isModifyTgtModalOpen, setIsModifyTgtModalOpen] = useState(false);
-
+  const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   // Stats
   const [totalPnl, setTotalPnl] = useState(0);
   const [capitalUsed, setCapitalUsed] = useState(0);
+
+  // Determine the user's role from the token
+  let userRole = "";
+  if (token) {
+    try {
+      const decoded = jwtDecode(token); // ✅ Use named import
+      userRole = decoded.role || "";
+    } catch (error) {
+      console.error("Failed to decode token:", error);
+    }
+  }
 
   // Merge live data into positions for last_price
   useEffect(() => {
@@ -72,12 +88,11 @@ function AllPositions() {
   // For row-based modals
   const populatePositionData = (row) => setPositionData({ ...row });
 
-  // Open chart in a new tab
-  const openChart = (symbol) => {
-    window.open(
-      `https://www.tradingview.com/chart/?symbol=NSE:${symbol}`,
-      "_blank"
-    );
+  const populateChartData = (row) => {
+    setChartData({
+      symbol: row.stock_name,
+      token: row.token,
+    });
   };
 
   // Modal Handlers
@@ -95,6 +110,9 @@ function AllPositions() {
 
   const handleOpenModifyTgtModal = () => setIsModifyTgtModalOpen(true);
   const handleCloseModifyTgtModal = () => setIsModifyTgtModalOpen(false);
+
+  const handleOpenChartModal = () => setIsChartModalOpen(true);
+  const handleCloseChartModal = () => setIsChartModalOpen(false);
 
   if (!positions?.data) {
     return (
@@ -206,6 +224,7 @@ function AllPositions() {
                             populatePositionData(row);
                             handleOpenIncreaseModal();
                           }}
+                          isDisabled={userRole !== "admin"}
                         >
                           In
                         </Button>
@@ -217,6 +236,7 @@ function AllPositions() {
                             populatePositionData(row);
                             handleOpenReduceModal();
                           }}
+                          isDisabled={userRole !== "admin"}
                         >
                           Re
                         </Button>
@@ -228,6 +248,7 @@ function AllPositions() {
                             populatePositionData(row);
                             handleOpenSellModal();
                           }}
+                          isDisabled={userRole !== "admin"}
                         >
                           Ex
                         </Button>
@@ -235,7 +256,11 @@ function AllPositions() {
                           isIconOnly
                           color="warning"
                           variant="flat"
-                          onPress={() => openChart(row.stock_name)}
+                          onPress={() => {
+                            populateChartData(row);
+                            handleOpenChartModal();
+                          }}
+                          isDisabled={userRole !== "admin"}
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -280,7 +305,10 @@ function AllPositions() {
                             aria-label="Stats Menu"
                             className="dark"
                           >
-                            <DropdownItem className="p-0 hover:bg-zinc-900">
+                            <DropdownItem
+                              className="p-0 hover:bg-zinc-900"
+                              textValue="Stats"
+                            >
                               <div className="flex flex-col justify-between gap-1 p-3 text-left text-white rounded-lg w-72 bg-zinc-900">
                                 <div className="text-xl">Stats</div>
                                 <div className="py-1 text-md">
@@ -292,10 +320,12 @@ function AllPositions() {
                                   ).toFixed(2)}
                                   %)
                                   <button
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       populatePositionData(row);
                                       handleOpenModifySlModal();
                                     }}
+                                    disabled={userRole !== "admin"}
                                     className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
                                   >
                                     C
@@ -310,10 +340,12 @@ function AllPositions() {
                                   ).toFixed(2)}
                                   %)
                                   <button
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       populatePositionData(row);
                                       handleOpenModifyTgtModal();
                                     }}
+                                    disabled={userRole !== "admin"}
                                     className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
                                   >
                                     C
@@ -363,7 +395,7 @@ function AllPositions() {
           </Table>
         </div>
 
-        {/* MOBILE CARD LAYOUT (same style as Dashboard) */}
+        {/* MOBILE CARD LAYOUT */}
         <div className="block mt-3 space-y-3 md:hidden">
           {positions.data.map((row, idx) => {
             const curVal = row.last_price * row.current_qty + row.booked_pnl;
@@ -433,7 +465,10 @@ function AllPositions() {
                       isIconOnly
                       color="warning"
                       variant="flat"
-                      onPress={() => openChart(row.stock_name)}
+                      onPress={() => {
+                        populateChartData(row);
+                        handleOpenChartModal();
+                      }}
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -475,7 +510,10 @@ function AllPositions() {
                         </Button>
                       </DropdownTrigger>
                       <DropdownMenu aria-label="Stats Menu" className="dark">
-                        <DropdownItem className="p-0 hover:bg-zinc-900">
+                        <DropdownItem
+                          className="p-0 hover:bg-zinc-900"
+                          textValue="Stats"
+                        >
                           <div className="flex flex-col justify-between gap-1 p-3 text-left text-white rounded-lg w-72 bg-zinc-900">
                             <div className="text-xl">Stats</div>
                             <div className="py-1 text-md">
@@ -487,7 +525,8 @@ function AllPositions() {
                               ).toFixed(2)}
                               %)
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   populatePositionData(row);
                                   handleOpenModifySlModal();
                                 }}
@@ -505,7 +544,8 @@ function AllPositions() {
                               ).toFixed(2)}
                               %)
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   populatePositionData(row);
                                   handleOpenModifyTgtModal();
                                 }}
@@ -620,6 +660,12 @@ function AllPositions() {
           currentEntryPrice={positionData?.entry_price}
           AvailableRisk={riskpool?.data?.available_risk}
           UsedRisk={riskpool?.data?.used_risk}
+        />
+        <ChartModal
+          isOpen={isChartModalOpen}
+          onClose={handleCloseChartModal}
+          symbol={chartData?.symbol}
+          token={chartData?.token}
         />
       </div>
     </>

@@ -14,9 +14,13 @@ import {
 import BuyModal from "../components/BuyModal";
 import SellModal from "../components/SellModal";
 import ChartModal from "../components/ChartModal";
+import api from "../utils/api";
+import { AuthContext } from "../utils/AuthContext";
+import { jwtDecode } from "jwt-decode"; // ✅ Correct import
 
 function Screener() {
   const { liveData, riskpool } = useContext(DataContext);
+  const { token, logout } = useContext(AuthContext);
   const screenOptions = ["VCP", "IPO"];
   const [screenerData, setScreenerData] = useState(null);
   const [screen, setScreen] = useState("VCP");
@@ -31,23 +35,24 @@ function Screener() {
   const [sellData, setSellData] = useState(null);
   const [chartData, setChartData] = useState(null);
 
+  let userRole = "";
+  if (token) {
+    try {
+      const decoded = jwtDecode(token); // ✅ Use named import
+      userRole = decoded.role || "";
+    } catch (error) {
+      console.error("Failed to decode token:", error);
+    }
+  }
   // Fetch screener data
   const fetchScreenerData = async () => {
     setScreenerData(null);
     if (screen === "VCP") {
-      const response = await fetch(
-        "http://localhost:8000/api/screener/vcpscreen"
-      );
-      const data = await response.json();
-      setScreenerData(data);
-      console.log("Screener Data", data);
+      const response = await api.get("/api/screener/vcpscreen");
+      setScreenerData(response?.data);
     } else if (screen === "IPO") {
-      const response = await fetch(
-        "http://localhost:8000/api/screener/iposcreen"
-      );
-      const data = await response.json();
-      setScreenerData(data);
-      console.log("Screener Data", data);
+      const response = await api.get("/api/screener/iposcreen");
+      setScreenerData(response?.data);
     }
   };
 
@@ -58,18 +63,14 @@ function Screener() {
   // Merge liveData into screenerData
   useEffect(() => {
     if (!screenerData || !liveData) return;
-
     let changed = false;
     // Copy screenerData so we don't mutate state directly
     const newData = screenerData.map((item) => {
       const liveDataItem = liveData.find(
         (liveItem) => liveItem.instrument_token === item.instrument_token
       );
-
-      // If found, update item in a new object
       if (liveDataItem) {
         const updatedItem = { ...item };
-
         if (updatedItem.change !== liveDataItem.change) {
           updatedItem.change = liveDataItem.change;
           changed = true;
@@ -82,17 +83,10 @@ function Screener() {
       }
       return item;
     });
-
-    // Sort newData by descending change
     newData.sort((a, b) => (b.change || 0) - (a.change || 0));
-
-    // Check if newData is different from screenerData
-    // We'll do a simple string compare. For large arrays, consider a more robust approach.
     const oldString = JSON.stringify(screenerData);
     const newString = JSON.stringify(newData);
-
     if (oldString !== newString) {
-      // Only set state if there's an actual difference
       setScreenerData(newData);
     }
   }, [liveData, screenerData]);
@@ -102,8 +96,8 @@ function Screener() {
     setBuyData({
       symbol: row.symbol,
       instrument_token: row.instrument_token,
-      available_risk: riskpool?.data?.available_risk,
-      used_risk: riskpool?.data?.used_risk,
+      available_risk: riskpool?.available_risk,
+      used_risk: riskpool?.used_risk,
       last_price: row.last_price,
     });
   };
@@ -112,8 +106,8 @@ function Screener() {
     setSellData({
       symbol: row.symbol,
       instrument_token: row.instrument_token,
-      available_risk: riskpool?.data?.available_risk,
-      used_risk: riskpool?.data?.used_risk,
+      available_risk: riskpool?.available_risk,
+      used_risk: riskpool?.used_risk,
       last_price: row.last_price,
     });
   };
@@ -165,9 +159,7 @@ function Screener() {
       <div className="flex items-center justify-between my-3">
         <div className="flex items-center gap-3">
           <Button
-            className="bg-green-500 bg-opacity-90 hover:bg-green-600
-                       text-white rounded-md px-4 py-2 
-                       min-w-[130px] sm:min-w-[150px]"
+            className="bg-green-500 bg-opacity-90 hover:bg-green-600 text-white rounded-md px-4 py-2 min-w-[130px] sm:min-w-[150px]"
             onPress={fetchScreenerData}
           >
             Refresh Screener
@@ -240,6 +232,7 @@ function Screener() {
                               populateBuyData(row);
                               handleOpenBuyModal();
                             }}
+                            isDisabled={userRole !== "admin"}
                           >
                             En
                           </Button>
@@ -252,6 +245,7 @@ function Screener() {
                               populateSellData(row);
                               handleOpenSellModal();
                             }}
+                            isDisabled={userRole !== "admin"}
                           >
                             Ex
                           </Button>
@@ -296,7 +290,6 @@ function Screener() {
                 row.change > 0 ? "text-green-500" : "text-red-500";
               const atrPercent =
                 ((row?.atr / row?.last_price) * 100).toFixed(2) + "%";
-
               return (
                 <div
                   key={row.symbol}
@@ -363,7 +356,6 @@ function Screener() {
                       </Button>
                     </ButtonGroup>
                   </div>
-                  {/* Mobile-friendly data blocks */}
                   <div className="flex flex-col gap-1 text-sm">
                     <div className="flex justify-between">
                       <span>Last Price:</span>

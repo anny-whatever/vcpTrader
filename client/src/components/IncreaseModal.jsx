@@ -11,7 +11,7 @@ import {
   Box,
   Typography,
 } from "@mui/material";
-import axios from "axios";
+import api from "../utils/api";
 import { Toaster, toast } from "sonner";
 
 function IncreaseModal({
@@ -48,10 +48,10 @@ function IncreaseModal({
       qty = calculateQtyForRiskPool(intendedRisk, ltp);
     }
     try {
-      const response = await axios.get(
-        `http://localhost:8000/api/order/increase?symbol=${symbol}&qty=${qty}`
+      const response = await api.get(
+        `/api/order/increase?symbol=${symbol}&qty=${qty}`
       );
-      console.log(response);
+
       toast.success(
         response?.data?.message || "Increase order executed successfully!",
         { duration: 5000 }
@@ -63,9 +63,6 @@ function IncreaseModal({
   };
 
   // Log changes
-  useEffect(() => {
-    console.log(methodRiskPoolMethod, quantity, intendedRisk, ltp);
-  }, [methodRiskPoolMethod, quantity, intendedRisk, ltp]);
 
   // Handle modal close
   const handleClose = () => {

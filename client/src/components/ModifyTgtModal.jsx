@@ -1,17 +1,18 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Button,
-  useDraggable,
-  Input,
+  TextField,
   Switch,
-} from "@heroui/react";
-import axios from "axios";
-import { Toaster, toast } from "sonner"; // Import Toaster and toast from Sonner
+  FormControlLabel,
+  Box,
+  Typography,
+} from "@mui/material";
+import api from "../utils/api";
+import { Toaster, toast } from "sonner";
 
 function ModifyTgtModal({
   isOpen,
@@ -21,30 +22,34 @@ function ModifyTgtModal({
   symbol,
   currentEntryPrice,
 }) {
-  const targetRef = useRef(null);
-  const { moveProps } = useDraggable({ targetRef, isDisabled: !isOpen });
   const [modifyMethodPercentage, setModifyMethodPercentage] = useState(false);
-  const [tgtPercentage, setTgtPercentage] = useState();
-  const [tgt, setTgt] = useState();
+  const [tgtPercentage, setTgtPercentage] = useState("");
+  const [tgt, setTgt] = useState("");
 
-  const sendModigyTgt = async () => {
+  const calculateTgtForPercentage = () => {
+    return (
+      currentEntryPrice + currentEntryPrice * (parseFloat(tgtPercentage) / 100)
+    );
+  };
+
+  const sendModifyTgt = async () => {
     try {
       if (modifyMethodPercentage) {
-        let tgtByPercentage = calculateTgtForPercentage();
-        const response = await axios.get(
-          `http://localhost:8000/api/order/change_tgt?symbol=${symbol}&tgt=${tgtByPercentage}`
+        const tgtByPercentage = calculateTgtForPercentage();
+        const response = await api.get(
+          `/api/order/change_tgt?symbol=${symbol}&tgt=${tgtByPercentage}`
         );
-        console.log(response);
+
         toast.success(
           response?.data?.message ||
             "Target modified successfully (percentage)!",
           { duration: 5000 }
         );
       } else {
-        const response = await axios.get(
-          `http://localhost:8000/api/order/change_tgt?symbol=${symbol}&tgt=${tgt}`
+        const response = await api.get(
+          `/api/order/change_tgt?symbol=${symbol}&tgt=${tgt}`
         );
-        console.log(response);
+
         toast.success(
           response?.data?.message || "Target modified successfully!",
           { duration: 5000 }
@@ -56,90 +61,151 @@ function ModifyTgtModal({
     }
   };
 
-  const calculateTgtForPercentage = () => {
-    let tgtPoints =
-      currentEntryPrice + currentEntryPrice * (parseFloat(tgtPercentage) / 100);
-    return tgtPoints;
+  // Reset the state when closing the modal
+  const handleClose = () => {
+    onClose();
+    setTgt("");
+    setTgtPercentage("");
+    setModifyMethodPercentage(false);
   };
 
   return (
     <>
-      {/* Toaster renders the notifications */}
       <Toaster position="bottom-right" />
-      <Modal
-        ref={targetRef}
-        isOpen={isOpen}
-        onOpenChange={() => {
-          onClose();
+      <Dialog
+        open={isOpen}
+        onClose={handleClose}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            bgcolor: "#18181B",
+            color: "white",
+            backdropFilter: "blur(8px)",
+            borderRadius: "8px",
+            p: 1,
+          },
         }}
-        className="text-white bg-zinc-900"
       >
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader {...moveProps} className="flex flex-col gap-1">
-                Modify Target for {symbol}
-              </ModalHeader>
-              <ModalBody>
-                <div className="flex items-center justify-between gap-1">
-                  <p>Available Risk: {AvailableRisk?.toFixed(2)}</p>
-                  <p>Used Risk: {UsedRisk?.toFixed(2)}</p>
-                </div>
+        <DialogTitle sx={{ fontSize: "1rem", pb: 0.5 }}>
+          Modify Target for {symbol}
+        </DialogTitle>
+        <DialogContent sx={{ pb: 0.5 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "0.85rem",
+              mb: 1,
+            }}
+          >
+            <Typography variant="body2">
+              Available Risk: {AvailableRisk?.toFixed(2)}
+            </Typography>
+            <Typography variant="body2">
+              Used Risk: {UsedRisk?.toFixed(2)}
+            </Typography>
+          </Box>
 
-                <div className="flex items-center gap-1text-white">
-                  Absolute{" "}
-                  <Switch
-                    onChange={() =>
-                      setModifyMethodPercentage(!modifyMethodPercentage)
-                    }
-                    className="mx-2"
-                  />{" "}
-                  Percentage
-                </div>
-                {modifyMethodPercentage === false ? (
-                  <div className="flex items-center gap-1">
-                    <p>Target:</p>
-                    <Input
-                      className="w-24 ml-2"
-                      type="number"
-                      onChange={(e) => setTgt(e.target.value)}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <p>Target %:</p>
-                    <Input
-                      className="w-24 ml-2"
-                      type="number"
-                      onChange={(e) => setTgtPercentage(e.target.value)}
-                    />
-                  </div>
-                )}
-              </ModalBody>
-              <ModalFooter>
-                <Button
-                  color="danger"
-                  variant="light"
-                  onPress={() => {
-                    onClose();
-                  }}
-                >
-                  Close
-                </Button>
-                <Button
-                  color="secondary"
-                  onPress={() => {
-                    sendModigyTgt();
-                    onClose();
-                  }}
-                >
-                  Modify
-                </Button>
-              </ModalFooter>
-            </>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              mb: 1,
+            }}
+          >
+            <Typography variant="body2" sx={{ mr: 1 }}>
+              Absolute
+            </Typography>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={modifyMethodPercentage}
+                  onChange={(e) => setModifyMethodPercentage(e.target.checked)}
+                  color="primary"
+                  size="small"
+                />
+              }
+              label="Percentage"
+              sx={{
+                m: 0,
+                ".MuiFormControlLabel-label": { fontSize: "0.8rem" },
+              }}
+            />
+          </Box>
+
+          {modifyMethodPercentage ? (
+            <TextField
+              label="Target %"
+              type="number"
+              value={tgtPercentage}
+              onChange={(e) => setTgtPercentage(e.target.value)}
+              variant="filled"
+              size="small"
+              fullWidth
+              InputProps={{ disableUnderline: true }}
+              sx={{
+                bgcolor: "#27272A",
+                borderRadius: "12px",
+                width: "60%",
+                "& .MuiInputBase-root": { color: "white" },
+                "& .MuiInputLabel-root": { color: "white", fontSize: "0.8rem" },
+              }}
+            />
+          ) : (
+            <TextField
+              label="Target"
+              type="number"
+              value={tgt}
+              onChange={(e) => setTgt(e.target.value)}
+              variant="filled"
+              size="small"
+              fullWidth
+              InputProps={{ disableUnderline: true }}
+              sx={{
+                bgcolor: "#27272A",
+                borderRadius: "12px",
+                width: "60%",
+                "& .MuiInputBase-root": { color: "white" },
+                "& .MuiInputLabel-root": { color: "white", fontSize: "0.8rem" },
+              }}
+            />
           )}
-        </ModalContent>
-      </Modal>
+        </DialogContent>
+        <DialogActions sx={{ pt: 0.5 }}>
+          <Button
+            onClick={handleClose}
+            variant="text"
+            sx={{
+              color: "#EB455F",
+              borderRadius: "12px",
+              textTransform: "none",
+              fontWeight: "normal",
+              fontSize: "0.85rem",
+            }}
+          >
+            Close
+          </Button>
+          <Button
+            onClick={() => {
+              sendModifyTgt();
+              handleClose();
+            }}
+            variant="contained"
+            sx={{
+              bgcolor: "#2DD4BF",
+              "&:hover": { bgcolor: "#26BFAE" },
+              color: "black",
+              borderRadius: "12px",
+              textTransform: "none",
+              fontWeight: "normal",
+              fontSize: "0.85rem",
+            }}
+          >
+            Modify
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

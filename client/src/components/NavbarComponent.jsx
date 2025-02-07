@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { Link, useLocation } from "react-router-dom";
 import TickerComponent from "./TickerComponent";
 import {
@@ -15,11 +15,30 @@ import {
   ListItemText,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
+import { AuthContext } from "../utils/AuthContext";
+import { jwtDecode } from "jwt-decode"; // ✅ Correct import
 
 export default function NavbarComponent() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const currentPath = location.pathname;
+  const { token, logout } = useContext(AuthContext);
+
+  // Determine the user's role from the token
+  let userRole = "";
+  if (token) {
+    try {
+      const decoded = jwtDecode(token); // ✅ Use named import
+      userRole = decoded.role || "";
+    } catch (error) {
+      console.error("Failed to decode token:", error);
+    }
+  }
+
+  // Don't render navbar on login page
+  if (currentPath === "/login") {
+    return null;
+  }
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -29,6 +48,7 @@ export default function NavbarComponent() {
     window.location.href = "http://localhost:8000/api/auth";
   };
 
+  // Drawer for mobile view
   const drawer = (
     <Box
       onClick={handleDrawerToggle}
@@ -66,14 +86,23 @@ export default function NavbarComponent() {
             <ListItemText primary="Screener" sx={{ color: "white" }} />
           </ListItemButton>
         </ListItem>
-        <ListItem disablePadding>
-          <ListItemButton
-            onClick={redirectToZerodhaLogin}
-            sx={{ textAlign: "center" }}
-          >
-            <ListItemText primary="Zerodha Login" sx={{ color: "white" }} />
-          </ListItemButton>
-        </ListItem>
+        {userRole === "admin" && (
+          <ListItem disablePadding>
+            <ListItemButton
+              onClick={redirectToZerodhaLogin}
+              sx={{ textAlign: "center" }}
+            >
+              <ListItemText primary="Zerodha Login" sx={{ color: "white" }} />
+            </ListItemButton>
+          </ListItem>
+        )}
+        {token && (
+          <ListItem disablePadding>
+            <ListItemButton onClick={logout} sx={{ textAlign: "center" }}>
+              <ListItemText primary="Logout" sx={{ color: "white" }} />
+            </ListItemButton>
+          </ListItem>
+        )}
       </List>
     </Box>
   );
@@ -160,21 +189,43 @@ export default function NavbarComponent() {
             >
               Screener
             </Button>
-            <Button
-              onClick={redirectToZerodhaLogin}
-              sx={{
-                color: "white",
-                mx: 1,
-                borderRadius: "8px",
-                textTransform: "none",
-                fontWeight: "normal",
-                px: 3,
-                bgcolor: "rgba(6,95,70,0.85)",
-                "&:hover": { bgcolor: "rgba(6,95,70,1)" },
-              }}
-            >
-              Zerodha Login
-            </Button>
+            {/* Render Zerodha Login button only for admin */}
+            {userRole === "admin" && (
+              <Button
+                onClick={redirectToZerodhaLogin}
+                sx={{
+                  color: "white",
+                  mx: 1,
+                  borderRadius: "8px",
+                  textTransform: "none",
+                  fontWeight: "normal",
+                  px: 3,
+                  bgcolor: "rgba(6,95,70,0.85)",
+                  "&:hover": { bgcolor: "rgba(6,95,70,1)" },
+                }}
+              >
+                Zerodha Login
+              </Button>
+            )}
+            {/* Logout button */}
+            {token && (
+              <Button
+                onClick={logout}
+                sx={{
+                  color: "white",
+                  mx: 1,
+                  borderRadius: "8px",
+                  textTransform: "none",
+                  fontWeight: "normal",
+                  px: 3,
+                  bgcolor: "rgba(255,0,0,0.85)",
+                  "&:hover": { bgcolor: "rgba(255,0,0,1)" },
+                }}
+              >
+                Logout
+              </Button>
+            )}
+            {/* Role tag */}
           </Box>
         </Toolbar>
       </AppBar>

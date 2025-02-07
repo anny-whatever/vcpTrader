@@ -51,3 +51,13 @@ class SaveOHLC:
     def delete_all(cls, cur, instrument_token, interval):
         delete_query = """DELETE FROM ohlc WHERE instrument_token = %s AND interval = %s;"""
         cur.execute(delete_query, (instrument_token, interval))
+    
+    @classmethod
+    def fetch_by_instrument(cls, cursor, instrument_token):
+        cursor.execute("""
+            SELECT * FROM ohlc 
+            WHERE instrument_token = %s 
+            AND interval = 'day'
+            ORDER BY date ASC
+        """, (instrument_token,))
+        return cursor.fetchall()

@@ -8,16 +8,14 @@ import {
   Box,
   Typography,
 } from "@mui/material";
-import axios from "axios";
+import api from "../utils/api";
 import { Toaster, toast } from "sonner";
 
 function SellModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol }) {
   const sendSellOrder = async () => {
     try {
-      const response = await axios.get(
-        `http://localhost:8000/api/order/exit?symbol=${symbol}`
-      );
-      console.log(response);
+      const response = await api.get(`/api/order/exit?symbol=${symbol}`);
+
       toast.success(
         response?.data?.message || "Sell order executed successfully!",
         { duration: 5000 }

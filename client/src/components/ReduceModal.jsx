@@ -11,7 +11,7 @@ import {
   Box,
   Typography,
 } from "@mui/material";
-import axios from "axios";
+import api from "../utils/api";
 import { Toaster, toast } from "sonner";
 
 function ReduceModal({
@@ -40,10 +40,10 @@ function ReduceModal({
       qty = calculateQtyForPercentage(qtyPercentage);
     }
     try {
-      const response = await axios.get(
-        `http://localhost:8000/api/order/reduce?symbol=${symbol}&qty=${qty}`
+      const response = await api.get(
+        `/api/order/reduce?symbol=${symbol}&qty=${qty}`
       );
-      console.log(response);
+
       toast.success(
         response?.data?.message || "Reduce order executed successfully!",
         { duration: 5000 }
@@ -53,10 +53,6 @@ function ReduceModal({
       toast.error("Error executing reduce order.", { duration: 5000 });
     }
   };
-
-  useEffect(() => {
-    console.log(methodPercentage, quantity, qtyPercentage, ltp);
-  }, [methodPercentage, quantity, qtyPercentage, ltp]);
 
   // Handle modal close
   const handleClose = () => {

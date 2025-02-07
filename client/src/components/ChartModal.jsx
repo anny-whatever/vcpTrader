@@ -1,18 +1,116 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   Button,
-  useDraggable,
-} from "@heroui/react";
-import axios from "axios";
+  Box,
+  Typography,
+} from "@mui/material";
+import api from "../utils/api";
+import { createChart, BarSeries, ColorType } from "lightweight-charts";
+import { Spinner } from "@heroui/react";
+
+// ChartComponent renders the chart using the passed data array.
+export const ChartComponent = ({ data }) => {
+  const chartContainerRef = useRef();
+
+  useEffect(() => {
+    // Helper function to get the container dimensions.
+    const getDimensions = () => {
+      const container = chartContainerRef.current;
+      return {
+        width: container.clientWidth,
+        height: container.clientHeight - 10,
+      };
+    };
+
+    // Get initial dimensions.
+    const { width, height } = getDimensions();
+
+    // Create the chart using the container's dimensions.
+    // Set crosshair mode to 0 for free-moving behavior.
+    const chart = createChart(chartContainerRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: "#181818" },
+        textColor: "#d1d4dc",
+      },
+      width,
+      height,
+      grid: {
+        vertLines: { color: "#363c4e" },
+        horzLines: { color: "#363c4e" },
+      },
+      crosshair: {
+        mode: 0, // Free moving crosshair (does not snap to data points)
+      },
+    });
+
+    const seriesData = data || [];
+
+    const newSeries = chart.addSeries(BarSeries, {
+      upColor: "#26a69a",
+      downColor: "#ef5350",
+      borderVisible: false,
+      thinBars: false,
+    });
+    newSeries.setData(seriesData);
+
+    // Zoom in if there are more than 50 candles.
+    if (seriesData.length > 50) {
+      const visibleFrom = seriesData[seriesData.length - 75].time;
+      const visibleTo = seriesData[seriesData.length - 1].time;
+      chart.timeScale().setVisibleRange({ from: visibleFrom, to: visibleTo });
+    } else {
+      chart.timeScale().fitContent();
+    }
+
+    // Resize handler updates both width and height.
+    const handleResize = () => {
+      const { width, height } = getDimensions();
+      chart.applyOptions({ width, height });
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      chart.remove();
+    };
+  }, [data]);
+
+  // Ensure the container fills its parent.
+  return (
+    <div ref={chartContainerRef} style={{ width: "100%", height: "100%" }} />
+  );
+};
 
 function ChartModal({ isOpen, onClose, symbol, token }) {
-  const targetRef = useRef(null);
-  const { moveProps } = useDraggable({ targetRef, isDisabled: !isOpen });
+  const [chartData, setChartData] = useState(null);
+
+  // Fetch and transform chart data from the API.
+  const getChartData = async () => {
+    if (symbol && token) {
+      try {
+        const response = await api.get(
+          `/api/data/chartdata?token=${token}&symbol=${symbol}`
+        );
+
+        // Fix the date issue by extracting only the date portion.
+        const transformedData = response.data.map((item) => ({
+          time: item.date.split("T")[0],
+          open: item.open,
+          high: item.high,
+          low: item.low,
+          close: item.close,
+        }));
+        setChartData(transformedData);
+      } catch (error) {
+        console.error("Error fetching chart data:", error);
+      }
+    }
+  };
 
   const openChart = (symbol) => {
     window.open(
@@ -21,72 +119,75 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
     );
   };
 
+  useEffect(() => {
+    getChartData();
+  }, [symbol, token]);
+
   return (
-    <Modal
-      ref={targetRef}
-      isOpen={isOpen}
-      onOpenChange={() => {
-        onClose();
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      fullWidth
+      maxWidth="xl"
+      PaperProps={{
+        sx: {
+          bgcolor: "#18181B",
+          color: "white",
+          borderRadius: "8px",
+          p: 1,
+          height: "70vh", // Modal overall height set relative to viewport height.
+        },
       }}
-      size="5xl"
-      className="text-white bg-[#1b1b1b]"
     >
-      <ModalContent>
-        {(onClose) => (
-          <>
-            <ModalHeader
-              {...moveProps}
-              className="flex flex-wrap items-center justify-between"
-            >
-              Chart for {symbol}
-              <Button
-                color="warning"
-                variant="flat"
-                className="mr-4"
-                onPress={() => {
-                  openChart(symbol);
-                }}
-              >
-                Open full chart
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="size-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
-                  />
-                </svg>
-              </Button>
-            </ModalHeader>
-            <ModalBody>
-              <iframe
-                src={`https://technicalwidget.streak.tech/?utm_source=context-menu&utm_medium=kite&stock=NSE:${symbol}&theme=dark`}
-                width="100%"
-                height="550"
-                className="rounded-lg"
-              ></iframe>
-            </ModalBody>
-            <ModalFooter>
-              <Button
-                color="danger"
-                variant="light"
-                onPress={() => {
-                  onClose();
-                }}
-              >
-                Close
-              </Button>
-            </ModalFooter>
-          </>
+      <DialogTitle sx={{ fontSize: "1rem", pb: 0.5 }}>
+        Chart for {symbol}
+      </DialogTitle>
+      <DialogContent
+        dividers
+        sx={{ p: 0, height: "calc(70vh - 80px)", overflow: "hidden" }} // Adjust content height based on header/actions.
+      >
+        {chartData ? (
+          <ChartComponent data={chartData} />
+        ) : (
+          <Box sx={{ p: 2 }}>
+            <div className="flex flex-col items-center justify-center w-full h-[55vh]">
+              <Spinner size="lg" />
+              <span className="m-5 text-2xl">Loading Chart Data</span>
+            </div>
+          </Box>
         )}
-      </ModalContent>
-    </Modal>
+      </DialogContent>
+      <DialogActions sx={{ pt: 0.5 }}>
+        <Button
+          onClick={() => {
+            openChart(symbol);
+          }}
+          variant="text"
+          sx={{
+            color: "#EB455F",
+            borderRadius: "12px",
+            textTransform: "none",
+            fontWeight: "normal",
+            fontSize: "0.85rem",
+          }}
+        >
+          Open full chart
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={onClose}
+          sx={{
+            color: "#EB455F",
+            borderRadius: "12px",
+            textTransform: "none",
+            fontWeight: "normal",
+            fontSize: "0.85rem",
+          }}
+        >
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
