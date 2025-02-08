@@ -17,6 +17,7 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import { AuthContext } from "../utils/AuthContext";
 import { jwtDecode } from "jwt-decode";
+import axios from "axios";
 
 export default function NavbarComponent() {
   const [mobileOpen, setMobileOpen] = useState(false);

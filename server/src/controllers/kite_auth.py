@@ -20,7 +20,7 @@ kite = KiteConnect(api_key=os.getenv("API_KEY"))
 kite_ticker = None
 
 @router.get("/auth")
-async def auth(user: dict = Depends(require_admin)):
+async def auth():
     try:
         login_url = kite.login_url()
         if scheduler.running:
