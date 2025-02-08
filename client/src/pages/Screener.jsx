@@ -224,31 +224,35 @@ function Screener() {
                       <TableCell>
                         <ButtonGroup>
                           {/* Buy */}
-                          <Button
-                            isIconOnly
-                            color="success"
-                            variant="flat"
-                            onPress={() => {
-                              populateBuyData(row);
-                              handleOpenBuyModal();
-                            }}
-                            isDisabled={userRole !== "admin"}
-                          >
-                            En
-                          </Button>
-                          {/* Sell */}
-                          <Button
-                            isIconOnly
-                            color="danger"
-                            variant="flat"
-                            onPress={() => {
-                              populateSellData(row);
-                              handleOpenSellModal();
-                            }}
-                            isDisabled={userRole !== "admin"}
-                          >
-                            Ex
-                          </Button>
+                          {userRole === "admin" && (
+                            <>
+                              <Button
+                                isIconOnly
+                                color="success"
+                                variant="flat"
+                                onPress={() => {
+                                  populateBuyData(row);
+                                  handleOpenBuyModal();
+                                }}
+                                isDisabled={userRole !== "admin"}
+                              >
+                                En
+                              </Button>
+                              {/* Sell */}
+                              <Button
+                                isIconOnly
+                                color="danger"
+                                variant="flat"
+                                onPress={() => {
+                                  populateSellData(row);
+                                  handleOpenSellModal();
+                                }}
+                                isDisabled={userRole !== "admin"}
+                              >
+                                Ex
+                              </Button>
+                            </>
+                          )}
                           {/* Chart */}
                           <Button
                             isIconOnly

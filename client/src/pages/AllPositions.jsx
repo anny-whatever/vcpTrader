@@ -216,42 +216,43 @@ function AllPositions() {
                     </TableCell>
                     <TableCell>
                       <ButtonGroup>
-                        <Button
-                          isIconOnly
-                          color="success"
-                          variant="flat"
-                          onPress={() => {
-                            populatePositionData(row);
-                            handleOpenIncreaseModal();
-                          }}
-                          isDisabled={userRole !== "admin"}
-                        >
-                          In
-                        </Button>
-                        <Button
-                          isIconOnly
-                          color="secondary"
-                          variant="flat"
-                          onPress={() => {
-                            populatePositionData(row);
-                            handleOpenReduceModal();
-                          }}
-                          isDisabled={userRole !== "admin"}
-                        >
-                          Re
-                        </Button>
-                        <Button
-                          isIconOnly
-                          color="danger"
-                          variant="flat"
-                          onPress={() => {
-                            populatePositionData(row);
-                            handleOpenSellModal();
-                          }}
-                          isDisabled={userRole !== "admin"}
-                        >
-                          Ex
-                        </Button>
+                        {userRole === "admin" && (
+                          <>
+                            <Button
+                              isIconOnly
+                              color="success"
+                              variant="flat"
+                              onPress={() => {
+                                populatePositionData(row);
+                                handleOpenIncreaseModal();
+                              }}
+                            >
+                              In
+                            </Button>
+                            <Button
+                              isIconOnly
+                              color="secondary"
+                              variant="flat"
+                              onPress={() => {
+                                populatePositionData(row);
+                                handleOpenReduceModal();
+                              }}
+                            >
+                              Re
+                            </Button>
+                            <Button
+                              isIconOnly
+                              color="danger"
+                              variant="flat"
+                              onPress={() => {
+                                populatePositionData(row);
+                                handleOpenSellModal();
+                              }}
+                            >
+                              Ex
+                            </Button>
+                          </>
+                        )}
                         <Button
                           isIconOnly
                           color="warning"
@@ -260,7 +261,6 @@ function AllPositions() {
                             populateChartData(row);
                             handleOpenChartModal();
                           }}
-                          isDisabled={userRole !== "admin"}
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
