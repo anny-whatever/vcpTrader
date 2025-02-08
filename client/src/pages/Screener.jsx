@@ -203,7 +203,7 @@ function Screener() {
                 <TableColumn>Actions</TableColumn>
               </TableHeader>
               <TableBody>
-                {screenerData.map((row) => {
+                {screenerData?.map((row) => {
                   const colorClass =
                     row.change > 0 ? "text-green-500" : "text-red-500";
                   const atrPercent =

@@ -28,7 +28,7 @@ function App() {
 
   // Establish WebSocket connection using the URL ws://localhost:8000/socket/ws
   useEffect(() => {
-    const socket = new WebSocket("ws://localhost:8000/socket/ws");
+    const socket = new WebSocket("http://147.93.106.51:8000/socket/ws");
 
     socket.onopen = () => {
       console.log("Connected to WebSocket");
