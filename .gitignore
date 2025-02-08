@@ -12,7 +12,7 @@ js/
 
 *.png
 
-
+*.log
 # Distribution / packaging
 .Python
 env/
