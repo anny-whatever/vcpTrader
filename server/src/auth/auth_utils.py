@@ -54,3 +54,9 @@ def require_admin(user: dict = Depends(get_current_user)):
         logger.warning(f"Access denied for non-admin user: {user}")
         raise HTTPException(status_code=403, detail="Admin privileges required")
     return user
+
+def require_user(user: dict = Depends(get_current_user)):
+    if user.get("role") != "observer":
+        logger.warning(f"Access denied for non-user: {user}")
+        raise HTTPException(status_code=403, detail="Admin or Observer privileges required")
+    return user

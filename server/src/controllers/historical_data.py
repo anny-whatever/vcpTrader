@@ -1,14 +1,15 @@
 # historical_data.py
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from services import get_historical_data, get_equity_ohlc_data_loop
+from auth import require_admin
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/")
-async def historical_data(instrument_token: str, interval: str, symbol: str):
+async def historical_data(instrument_token: str, interval: str, symbol: str, user: dict = Depends(require_admin)):
     try:
         data = get_historical_data(instrument_token, interval, symbol)
         return JSONResponse(content=data)
@@ -17,7 +18,7 @@ async def historical_data(instrument_token: str, interval: str, symbol: str):
         raise HTTPException(status_code=500, detail="Failed to fetch historical data")
 
 @router.get("/equity")
-async def historical_data_equity(interval: str):
+async def historical_data_equity(interval: str, user: dict = Depends(require_admin)):
     try:
         data = get_equity_ohlc_data_loop(interval)
         return JSONResponse(content=data)
