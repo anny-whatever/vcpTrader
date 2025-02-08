@@ -74,8 +74,8 @@ function Dashboard() {
 
   // ---------- Compute Stats ----------
   useEffect(() => {
-    if (!historicalTrades?.data || historicalTrades.data.length === 0) return;
-    const trades = historicalTrades.data;
+    if (!historicalTrades || historicalTrades.length === 0) return;
+    const trades = historicalTrades;
 
     // totalPnL
     const totalPnLAll = trades.reduce(
@@ -149,13 +149,13 @@ function Dashboard() {
 
   // ---------- Prepare Chart Data ----------
   useEffect(() => {
-    if (!historicalTrades?.data || historicalTrades.data.length === 0) {
+    if (!historicalTrades || historicalTrades.length === 0) {
       setLineChartData([]);
       setBarChartData([]);
       return;
     }
     // Sort ascending by exit_time => earliest exit first
-    const ascendingTrades = [...historicalTrades.data].sort(
+    const ascendingTrades = [...historicalTrades].sort(
       (a, b) => getTimestamp(a.exit_time) - getTimestamp(b.exit_time)
     );
 
@@ -186,7 +186,7 @@ function Dashboard() {
   }, [historicalTrades]);
 
   // ---------- Sort & Paginate Trades for Table ----------
-  const allTrades = (historicalTrades?.data || []).slice();
+  const allTrades = (historicalTrades || []).slice();
   // Descending by exit_time for table
   allTrades.sort(
     (a, b) => getTimestamp(b.exit_time) - getTimestamp(a.exit_time)
@@ -453,7 +453,7 @@ function Dashboard() {
       <Typography variant="body1" sx={{ mb: 1 }}>
         Latest Trades
       </Typography>
-      {!historicalTrades?.data ? (
+      {!historicalTrades ? (
         <Box
           sx={{
             display: "flex",

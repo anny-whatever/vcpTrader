@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+// src/components/BuyModal.jsx
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -21,12 +22,11 @@ function BuyModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol, ltp }) {
 
   const calculateQtyForRiskPool = (intendedRisk, ltp) => {
     const absoluteRisk =
-      (AvailableRisk + UsedRisk) * (parseInt(intendedRisk) / 100);
+      (AvailableRisk + UsedRisk) * (parseInt(intendedRisk, 10) / 100);
     const sl = ltp - ltp * 0.1;
     const slPoints = ltp - sl;
     let qty = absoluteRisk / slPoints;
-    qty = Math.round(qty * 1) / 1;
-    return qty;
+    return Math.round(qty);
   };
 
   const sendBuyOrder = async (
@@ -42,10 +42,9 @@ function BuyModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol, ltp }) {
       const response = await api.get(
         `/api/order/buy?symbol=${symbol}&qty=${qty}`
       );
-
       toast.success(response?.data?.message, { duration: 5000 });
     } catch (error) {
-      console.error(error);
+      console.error("Error executing buy order:", error);
       toast.error(
         (error?.response && error?.response?.data?.message) ||
           "Buy order failed",
@@ -98,7 +97,6 @@ function BuyModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol, ltp }) {
               Used Risk: {UsedRisk?.toFixed(2)}
             </Typography>
           </Box>
-
           <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
             <Typography variant="body2" sx={{ mr: 1 }}>
               Quantity
@@ -119,7 +117,6 @@ function BuyModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol, ltp }) {
               }}
             />
           </Box>
-
           {methodRiskPoolMethod ? (
             <TextField
               label="Risk pool %"
@@ -155,11 +152,7 @@ function BuyModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol, ltp }) {
                 onChange={(e) => setQuantity(e.target.value)}
                 variant="filled"
                 size="small"
-                min="1"
-                InputProps={{
-                  inputProps: { min: 0 },
-                  disableUnderline: true,
-                }}
+                InputProps={{ disableUnderline: true, inputProps: { min: 0 } }}
                 sx={{
                   width: "60%",
                   bgcolor: "#27272A",
@@ -177,7 +170,6 @@ function BuyModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol, ltp }) {
             </Box>
           )}
         </DialogContent>
-
         <DialogActions sx={{ pt: 0.5 }}>
           <Button
             onClick={handleClose}
@@ -204,9 +196,7 @@ function BuyModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol, ltp }) {
             variant="contained"
             sx={{
               bgcolor: "#2DD4BF",
-              "&:hover": {
-                bgcolor: "#26BFAE",
-              },
+              "&:hover": { bgcolor: "#26BFAE" },
               color: "black",
               borderRadius: "12px",
               textTransform: "none",

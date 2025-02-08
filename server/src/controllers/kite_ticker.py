@@ -1,28 +1,30 @@
+# kite_ticker.py
 import os
-from datetime import datetime, time
+import time
+import asyncio
+import logging
+from datetime import datetime, time as dtime
 from kiteconnect import KiteTicker
 from dotenv import load_dotenv
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
-import asyncio
 from db import get_db_connection, close_db_connection
 
-
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 # Global instances
 kite_ticker = None
 executor = ThreadPoolExecutor(max_workers=20)
 
-# Define constants for time ranges
-START_TIME = time(9, 15)
-END_TIME = time(15, 30)
-RESAMPLE_START_TIME = time(9, 15)
-RESAMPLE_END_TIME = time(15, 30, 5)
-MONITOR_LIVE_TRADE_START = time(9, 15, 15)
-MONITOR_LIVE_TRADE_END = time(15, 29, 30)
+# Constants for time ranges
+START_TIME = dtime(9, 15)
+END_TIME = dtime(15, 30)
+RESAMPLE_START_TIME = dtime(9, 15)
+RESAMPLE_END_TIME = dtime(15, 30, 5)
+MONITOR_LIVE_TRADE_START = dtime(9, 15, 15)
+MONITOR_LIVE_TRADE_END = dtime(15, 29, 30)
 
-# Database Utility Functions
 def get_instrument_token():
     conn, cur = get_db_connection()
     try:
@@ -30,86 +32,96 @@ def get_instrument_token():
         select_query = """SELECT instrument_token FROM equity_tokens;"""
         cur.execute(select_query)
         equity_tokens = cur.fetchall()
-        
         tokens.extend(item['instrument_token'] for item in equity_tokens)
-        print(tokens)
-
+        logger.info(f"Instrument tokens retrieved: {tokens}")
         return tokens
     except Exception as err:
+        logger.error(f"Error fetching instrument tokens: {err}")
         return {"error": str(err)}
     finally:
-        close_db_connection()
+        try:
+            close_db_connection()
+        except Exception as close_err:
+            logger.error(f"Error closing DB connection in get_instrument_token: {close_err}")
 
-
-# KiteTicker Setup
 def initialize_kite_ticker(access_token):
     global kite_ticker
-    if kite_ticker is None:
-        kite_ticker = KiteTicker(
-            os.getenv("API_KEY"), access_token, debug=True, reconnect=True,
-            reconnect_max_delay=5, reconnect_max_tries=300, connect_timeout=600
-        )
-        # Start the ticker in a separate thread
-        Thread(target=start_kite_ticker).start()
-    return kite_ticker
-
+    try:
+        if kite_ticker is None:
+            kite_ticker = KiteTicker(
+                os.getenv("API_KEY"),
+                access_token,
+                debug=True,
+                reconnect=True,
+                reconnect_max_delay=5,
+                reconnect_max_tries=300,
+                connect_timeout=600
+            )
+            # Start the ticker in a separate thread
+            Thread(target=start_kite_ticker).start()
+        return kite_ticker
+    except Exception as e:
+        logger.error(f"Error initializing KiteTicker: {e}")
+        raise e
 
 def start_kite_ticker():
     global kite_ticker
-    # from services.store_tick_data import save_options_ticks, save_indices_ticks
-    
     from .ws_clients import process_and_send_live_ticks
 
     tokens = get_instrument_token()
+    if isinstance(tokens, dict):  # Means error occurred
+        logger.error("Failed to retrieve tokens, aborting KiteTicker start.")
+        return
 
     def on_ticks(ws, ticks):
         try:
             def run_async_in_thread(coroutine, *args):
-                loop = asyncio.new_event_loop()  # Create a new event loop
-                asyncio.set_event_loop(loop)     # Set it for this thread
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
                 try:
-                    loop.run_until_complete(coroutine(*args))  # Run the coroutine
+                    loop.run_until_complete(coroutine(*args))
                 finally:
-                    loop.run_until_complete(loop.shutdown_asyncgens())  # Clean up async generators
-                    loop.close()  # Close the loop to deallocate resources
-                
+                    loop.run_until_complete(loop.shutdown_asyncgens())
+                    loop.close()
             executor.submit(run_async_in_thread, process_and_send_live_ticks, ticks)
-
         except Exception as e:
-            print(f"Error processing ticks: {e}")
+            logger.error(f"Error processing ticks: {e}")
 
     def on_connect(ws, response):
-        print("Connected to WebSocket.")
-        ws.subscribe(tokens)
-        ws.set_mode(ws.MODE_FULL, tokens)
+        logger.info("Connected to KiteTicker WebSocket.")
+        try:
+            ws.subscribe(tokens)
+            ws.set_mode(ws.MODE_FULL, tokens)
+        except Exception as e:
+            logger.error(f"Error in on_connect: {e}")
 
     def on_close(ws, code, reason):
-        print(f"Connection closed: {code}, {reason}")
-        
+        logger.info(f"Connection closed: {code}, {reason}")
 
     def on_error(ws, code, reason):
-        print(f"Error: {code}, {reason}")
+        logger.error(f"Error: {code}, {reason}")
 
     def on_disconnect(ws, code, reason):
-        print(f"Disconnected: {code}, {reason}")
-        retry_connection(ws)  # Attempt reconnection or some recovery mechanism
-    
+        logger.info(f"Disconnected: {code}, {reason}")
+        retry_connection(ws)
+
     def retry_connection(ws):
-        print("Attempting to reconnect...")
+        logger.info("Attempting to reconnect...")
         try:
             ws.connect(threaded=True)
         except Exception as e:
-            print(f"Reconnection failed: {e}")
-            # Optionally add a retry delay
+            logger.error(f"Reconnection failed: {e}")
             time.sleep(5)
             retry_connection(ws)
 
-    # Assigning event handlers
+    # Assign event handlers
     kite_ticker.on_ticks = on_ticks
     kite_ticker.on_connect = on_connect
     kite_ticker.on_close = on_close
     kite_ticker.on_error = on_error
     kite_ticker.on_disconnect = on_disconnect
 
-    # Start the connection
-    kite_ticker.connect(threaded=True)
+    try:
+        kite_ticker.connect(threaded=True)
+    except Exception as e:
+        logger.error(f"Error starting KiteTicker connection: {e}")

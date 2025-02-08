@@ -1,38 +1,38 @@
 # kite_auth.py
 import os
+import datetime
+import logging
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import RedirectResponse
 from kiteconnect import KiteConnect
 from dotenv import load_dotenv
-from .kite_ticker import initialize_kite_ticker, kite_ticker
+from .kite_ticker import initialize_kite_ticker
 from .schedulers import scheduler, setup_scheduler
 from auth import create_access_token, require_admin
-import datetime
 
 load_dotenv()
-
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
-kite = KiteConnect(
-    api_key=os.getenv("API_KEY")
-)
+kite = KiteConnect(api_key=os.getenv("API_KEY"))
 
 # Global KiteTicker instance to be set after authentication
 kite_ticker = None
 
 @router.get("/auth")
 async def auth():
-    global kite_ticker
-    login_url = kite.login_url()
-    if scheduler.running:
-        scheduler.shutdown()
-    kite_ticker = None
-
-    return RedirectResponse(url=login_url)
+    try:
+        login_url = kite.login_url()
+        if scheduler.running:
+            scheduler.shutdown()
+        return RedirectResponse(url=login_url)
+    except Exception as e:
+        logger.error(f"Error in /auth endpoint: {e}")
+        raise HTTPException(status_code=500, detail="Kite authentication initiation failed")
     
 @router.get("/callback")
 async def callback(request_token: str):
-    from services import get_instrument_indices, get_instrument_equity, load_ohlc_data, get_combined_ohlc
+    from services import get_instrument_indices, get_instrument_equity, load_ohlc_data
     if not scheduler.running:
         setup_scheduler()
     try:
@@ -47,8 +47,8 @@ async def callback(request_token: str):
         initialize_kite_ticker(access_token)
         load_ohlc_data()
 
-        # The logged-in admin already has a valid JWT; simply redirect with a success flag
+        # Redirect to frontend with a success flag
         return RedirectResponse(url="http://localhost:5173?login=true&kiteAuth=success")
-
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Error in /callback endpoint: {e}")
+        raise HTTPException(status_code=400, detail="Kite callback failed")

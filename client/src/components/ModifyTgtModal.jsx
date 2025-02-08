@@ -39,7 +39,6 @@ function ModifyTgtModal({
         const response = await api.get(
           `/api/order/change_tgt?symbol=${symbol}&tgt=${tgtByPercentage}`
         );
-
         toast.success(
           response?.data?.message ||
             "Target modified successfully (percentage)!",
@@ -49,19 +48,17 @@ function ModifyTgtModal({
         const response = await api.get(
           `/api/order/change_tgt?symbol=${symbol}&tgt=${tgt}`
         );
-
         toast.success(
           response?.data?.message || "Target modified successfully!",
           { duration: 5000 }
         );
       }
     } catch (error) {
-      console.error(error);
+      console.error("Error modifying target:", error);
       toast.error("Error modifying target.", { duration: 5000 });
     }
   };
 
-  // Reset the state when closing the modal
   const handleClose = () => {
     onClose();
     setTgt("");
@@ -106,14 +103,7 @@ function ModifyTgtModal({
               Used Risk: {UsedRisk?.toFixed(2)}
             </Typography>
           </Box>
-
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              mb: 1,
-            }}
-          >
+          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
             <Typography variant="body2" sx={{ mr: 1 }}>
               Absolute
             </Typography>
@@ -133,7 +123,6 @@ function ModifyTgtModal({
               }}
             />
           </Box>
-
           {modifyMethodPercentage ? (
             <TextField
               label="Target %"

@@ -1,3 +1,4 @@
+// src/components/ChartModal.jsx
 import React, { useEffect, useRef, useState } from "react";
 import {
   Dialog,
@@ -12,12 +13,10 @@ import api from "../utils/api";
 import { createChart, BarSeries, ColorType } from "lightweight-charts";
 import { Spinner } from "@heroui/react";
 
-// ChartComponent renders the chart using the passed data array.
 export const ChartComponent = ({ data }) => {
   const chartContainerRef = useRef();
 
   useEffect(() => {
-    // Helper function to get the container dimensions.
     const getDimensions = () => {
       const container = chartContainerRef.current;
       return {
@@ -26,11 +25,8 @@ export const ChartComponent = ({ data }) => {
       };
     };
 
-    // Get initial dimensions.
     const { width, height } = getDimensions();
 
-    // Create the chart using the container's dimensions.
-    // Set crosshair mode to 0 for free-moving behavior.
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: "#181818" },
@@ -42,13 +38,10 @@ export const ChartComponent = ({ data }) => {
         vertLines: { color: "#363c4e" },
         horzLines: { color: "#363c4e" },
       },
-      crosshair: {
-        mode: 0, // Free moving crosshair (does not snap to data points)
-      },
+      crosshair: { mode: 0 },
     });
 
     const seriesData = data || [];
-
     const newSeries = chart.addSeries(BarSeries, {
       upColor: "#26a69a",
       downColor: "#ef5350",
@@ -57,7 +50,6 @@ export const ChartComponent = ({ data }) => {
     });
     newSeries.setData(seriesData);
 
-    // Zoom in if there are more than 50 candles.
     if (seriesData.length > 50) {
       const visibleFrom = seriesData[seriesData.length - 75].time;
       const visibleTo = seriesData[seriesData.length - 1].time;
@@ -66,21 +58,18 @@ export const ChartComponent = ({ data }) => {
       chart.timeScale().fitContent();
     }
 
-    // Resize handler updates both width and height.
     const handleResize = () => {
       const { width, height } = getDimensions();
       chart.applyOptions({ width, height });
     };
 
     window.addEventListener("resize", handleResize);
-
     return () => {
       window.removeEventListener("resize", handleResize);
       chart.remove();
     };
   }, [data]);
 
-  // Ensure the container fills its parent.
   return (
     <div ref={chartContainerRef} style={{ width: "100%", height: "100%" }} />
   );
@@ -89,15 +78,12 @@ export const ChartComponent = ({ data }) => {
 function ChartModal({ isOpen, onClose, symbol, token }) {
   const [chartData, setChartData] = useState(null);
 
-  // Fetch and transform chart data from the API.
   const getChartData = async () => {
     if (symbol && token) {
       try {
         const response = await api.get(
           `/api/data/chartdata?token=${token}&symbol=${symbol}`
         );
-
-        // Fix the date issue by extracting only the date portion.
         const transformedData = response.data.map((item) => ({
           time: item.date.split("T")[0],
           open: item.open,
@@ -135,7 +121,7 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
           color: "white",
           borderRadius: "8px",
           p: 1,
-          height: "70vh", // Modal overall height set relative to viewport height.
+          height: "70vh",
         },
       }}
     >
@@ -144,7 +130,7 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
       </DialogTitle>
       <DialogContent
         dividers
-        sx={{ p: 0, height: "calc(70vh - 80px)", overflow: "hidden" }} // Adjust content height based on header/actions.
+        sx={{ p: 0, height: "calc(70vh - 80px)", overflow: "hidden" }}
       >
         {chartData ? (
           <ChartComponent data={chartData} />
@@ -159,9 +145,7 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
       </DialogContent>
       <DialogActions sx={{ pt: 0.5 }}>
         <Button
-          onClick={() => {
-            openChart(symbol);
-          }}
+          onClick={() => openChart(symbol)}
           variant="text"
           sx={{
             color: "#EB455F",
@@ -174,8 +158,8 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
           Open full chart
         </Button>
         <Button
-          variant="outlined"
           onClick={onClose}
+          variant="outlined"
           sx={{
             color: "#EB455F",
             borderRadius: "12px",

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -27,14 +27,11 @@ function ReduceModal({
   const [qtyPercentage, setQtyPercentage] = useState("");
   const [methodPercentage, setMethodPercentageMethod] = useState(false);
 
-  // Calculate quantity if reducing by percentage
   const calculateQtyForPercentage = (qtyPercentage) => {
-    let qty = (parseInt(qtyPercentage) / 100) * currentQuantity;
-    qty = Math.round(qty * 1) / 1;
-    return qty;
+    let qty = (parseInt(qtyPercentage, 10) / 100) * currentQuantity;
+    return Math.round(qty);
   };
 
-  // API call to reduce quantity
   const sendReduceOrder = async (qty = 0, methodPercentage = false) => {
     if (methodPercentage) {
       qty = calculateQtyForPercentage(qtyPercentage);
@@ -43,18 +40,16 @@ function ReduceModal({
       const response = await api.get(
         `/api/order/reduce?symbol=${symbol}&qty=${qty}`
       );
-
       toast.success(
         response?.data?.message || "Reduce order executed successfully!",
         { duration: 5000 }
       );
     } catch (error) {
-      console.error(error);
+      console.error("Error executing reduce order:", error);
       toast.error("Error executing reduce order.", { duration: 5000 });
     }
   };
 
-  // Handle modal close
   const handleClose = () => {
     onClose();
     setQtyPercentage("");
@@ -138,14 +133,7 @@ function ReduceModal({
               }}
             />
           ) : (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1,
-                mt: 1,
-              }}
-            >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
               <TextField
                 label="Quantity"
                 type="number"

@@ -15,13 +15,12 @@ function SellModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol }) {
   const sendSellOrder = async () => {
     try {
       const response = await api.get(`/api/order/exit?symbol=${symbol}`);
-
       toast.success(
         response?.data?.message || "Sell order executed successfully!",
         { duration: 5000 }
       );
     } catch (error) {
-      console.error(error);
+      console.error("Error executing sell order:", error);
       toast.error("Error executing sell order.", { duration: 5000 });
     }
   };
@@ -51,7 +50,6 @@ function SellModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol }) {
         <DialogTitle sx={{ fontSize: "1rem", pb: 0.5 }}>
           Exit {symbol}
         </DialogTitle>
-
         <DialogContent sx={{ pb: 0.5 }}>
           <Box
             sx={{
@@ -69,7 +67,6 @@ function SellModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol }) {
             </Typography>
           </Box>
         </DialogContent>
-
         <DialogActions sx={{ pt: 0.5 }}>
           <Button
             onClick={handleClose}
@@ -92,9 +89,7 @@ function SellModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol }) {
             variant="contained"
             sx={{
               bgcolor: "#EB455F",
-              "&:hover": {
-                bgcolor: "#e03d56",
-              },
+              "&:hover": { bgcolor: "#e03d56" },
               color: "white",
               borderRadius: "12px",
               textTransform: "none",

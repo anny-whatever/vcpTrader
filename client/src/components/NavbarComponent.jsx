@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import { AuthContext } from "../utils/AuthContext";
-import { jwtDecode } from "jwt-decode"; // ✅ Correct import
+import { jwtDecode } from "jwt-decode";
 
 export default function NavbarComponent() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -24,18 +24,16 @@ export default function NavbarComponent() {
   const currentPath = location.pathname;
   const { token, logout } = useContext(AuthContext);
 
-  // Determine the user's role from the token
   let userRole = "";
   if (token) {
     try {
-      const decoded = jwtDecode(token); // ✅ Use named import
+      const decoded = jwtDecode(token);
       userRole = decoded.role || "";
     } catch (error) {
       console.error("Failed to decode token:", error);
     }
   }
 
-  // Don't render navbar on login page
   if (currentPath === "/login") {
     return null;
   }
@@ -48,7 +46,6 @@ export default function NavbarComponent() {
     window.location.href = "http://localhost:8000/api/auth";
   };
 
-  // Drawer for mobile view
   const drawer = (
     <Box
       onClick={handleDrawerToggle}
@@ -118,7 +115,6 @@ export default function NavbarComponent() {
         }}
       >
         <Toolbar>
-          {/* Mobile menu toggle */}
           <IconButton
             color="inherit"
             edge="start"
@@ -128,11 +124,9 @@ export default function NavbarComponent() {
           >
             <MenuIcon />
           </IconButton>
-          {/* Brand */}
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             theTerminal
           </Typography>
-          {/* Navigation (Desktop) */}
           <Box sx={{ display: { xs: "none", md: "block" } }}>
             <Button
               component={Link}
@@ -189,7 +183,6 @@ export default function NavbarComponent() {
             >
               Screener
             </Button>
-            {/* Render Zerodha Login button only for admin */}
             {userRole === "admin" && (
               <Button
                 onClick={redirectToZerodhaLogin}
@@ -207,7 +200,6 @@ export default function NavbarComponent() {
                 Zerodha Login
               </Button>
             )}
-            {/* Logout button */}
             {token && (
               <Button
                 onClick={logout}
@@ -225,7 +217,6 @@ export default function NavbarComponent() {
                 Logout
               </Button>
             )}
-            {/* Role tag */}
           </Box>
         </Toolbar>
       </AppBar>

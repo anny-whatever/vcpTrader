@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -26,18 +26,15 @@ function IncreaseModal({
   const [intendedRisk, setIntendedRisk] = useState("");
   const [methodRiskPoolMethod, setMethodRiskPoolMethod] = useState(false);
 
-  // Calculate quantity if using risk pool percentage
   const calculateQtyForRiskPool = (intendedRisk, ltp) => {
     const absoluteRisk =
-      (AvailableRisk + UsedRisk) * (parseInt(intendedRisk) / 100);
+      (AvailableRisk + UsedRisk) * (parseInt(intendedRisk, 10) / 100);
     const sl = ltp - ltp * 0.1;
     const slPoints = ltp - sl;
     let qty = absoluteRisk / slPoints;
-    qty = Math.round(qty * 1) / 1;
-    return qty;
+    return Math.round(qty);
   };
 
-  // Send the increase order
   const sendIncreaseOrder = async (
     qty = 0,
     intendedRisk = 0,
@@ -51,20 +48,16 @@ function IncreaseModal({
       const response = await api.get(
         `/api/order/increase?symbol=${symbol}&qty=${qty}`
       );
-
       toast.success(
         response?.data?.message || "Increase order executed successfully!",
         { duration: 5000 }
       );
     } catch (error) {
-      console.error(error);
+      console.error("Error executing increase order:", error);
       toast.error("Error executing increase order.", { duration: 5000 });
     }
   };
 
-  // Log changes
-
-  // Handle modal close
   const handleClose = () => {
     onClose();
     setIntendedRisk("");
@@ -164,9 +157,7 @@ function IncreaseModal({
                 onChange={(e) => setQuantity(e.target.value)}
                 variant="filled"
                 size="small"
-                InputProps={{
-                  disableUnderline: true,
-                }}
+                InputProps={{ disableUnderline: true }}
                 sx={{
                   width: "60%",
                   bgcolor: "#27272A",
@@ -223,7 +214,7 @@ function IncreaseModal({
               fontSize: "0.85rem",
             }}
           >
-            Buy
+            Increase
           </Button>
         </DialogActions>
       </Dialog>

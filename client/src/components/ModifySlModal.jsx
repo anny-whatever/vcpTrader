@@ -27,7 +27,6 @@ function ModifySlModal({
   const [slPercentage, setSlPercentage] = useState("");
 
   const calculateSlForPercentage = () => {
-    // Calculate the stop-loss based on a percentage of the current entry price
     return (
       currentEntryPrice - currentEntryPrice * (parseFloat(slPercentage) / 100)
     );
@@ -40,7 +39,6 @@ function ModifySlModal({
         const response = await api.get(
           `/api/order/change_sl?symbol=${symbol}&sl=${slByPercentage}`
         );
-
         toast.success(
           response?.data?.message ||
             "Stop-loss modified successfully (percentage)!",
@@ -50,19 +48,17 @@ function ModifySlModal({
         const response = await api.get(
           `/api/order/change_sl?symbol=${symbol}&sl=${sl}`
         );
-
         toast.success(
           response?.data?.message || "Stop-loss modified successfully!",
           { duration: 5000 }
         );
       }
     } catch (error) {
-      console.error(error);
+      console.error("Error modifying stop-loss:", error);
       toast.error("Error modifying stop-loss.", { duration: 5000 });
     }
   };
 
-  // Reset the state when closing the modal
   const handleClose = () => {
     onClose();
     setSl("");
@@ -107,14 +103,7 @@ function ModifySlModal({
               Used Risk: {UsedRisk?.toFixed(2)}
             </Typography>
           </Box>
-
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              mb: 1,
-            }}
-          >
+          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
             <Typography variant="body2" sx={{ mr: 1 }}>
               Absolute
             </Typography>
@@ -134,7 +123,6 @@ function ModifySlModal({
               }}
             />
           </Box>
-
           {modifyMethodPercentage ? (
             <TextField
               label="Stop-loss %"
@@ -148,9 +136,9 @@ function ModifySlModal({
               sx={{
                 bgcolor: "#27272A",
                 borderRadius: "12px",
+                width: "60%",
                 "& .MuiInputBase-root": { color: "white" },
                 "& .MuiInputLabel-root": { color: "white", fontSize: "0.8rem" },
-                width: "60%",
               }}
             />
           ) : (
@@ -166,9 +154,9 @@ function ModifySlModal({
               sx={{
                 bgcolor: "#27272A",
                 borderRadius: "12px",
+                width: "60%",
                 "& .MuiInputBase-root": { color: "white" },
                 "& .MuiInputLabel-root": { color: "white", fontSize: "0.8rem" },
-                width: "60%",
               }}
             />
           )}

@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 class HistoricalData:
     def __init__(self, instrument_token, symbol, interval, date, open, high, low, close, volume):
         self.instrument_token = instrument_token
@@ -9,7 +13,6 @@ class HistoricalData:
         self.low = low
         self.close = close
         self.volume = volume
-        
 
     @classmethod
     def create_table(cls, cur):
@@ -26,34 +29,74 @@ class HistoricalData:
             volume DECIMAL
         );
         """
-        cur.execute(create_table_query)
-        
+        try:
+            cur.execute(create_table_query)
+            logger.info("Table historical_data created successfully (or already exists).")
+        except Exception as e:
+            logger.error(f"Error creating table historical_data: {e}")
+            raise e
+
     @classmethod
     def select_by_token_and_interval(cls, cur, instrument_token, interval):
         select_query = """SELECT * FROM historical_data WHERE instrument_token = %s AND interval = %s;"""
-        cur.execute(select_query, (instrument_token, interval))
-        return cur.fetchall()
-    
+        try:
+            cur.execute(select_query, (instrument_token, interval))
+            results = cur.fetchall()
+            return results
+        except Exception as e:
+            logger.error(f"Error selecting historical data by token and interval: {e}")
+            raise e
+
     @classmethod
     def select_by_token(cls, cur, instrument_token):
         select_query = """SELECT * FROM historical_data WHERE instrument_token = %s;"""
-        cur.execute(select_query, (instrument_token,))
-        return cur.fetchall()
-    
+        try:
+            cur.execute(select_query, (instrument_token,))
+            results = cur.fetchall()
+            return results
+        except Exception as e:
+            logger.error(f"Error selecting historical data by token: {e}")
+            raise e
+
     @classmethod
     def select_all(cls, cur):
         select_query = """SELECT * FROM historical_data;"""
-        cur.execute(select_query)
-        return cur.fetchall()
-    
+        try:
+            cur.execute(select_query)
+            results = cur.fetchall()
+            return results
+        except Exception as e:
+            logger.error(f"Error selecting all from historical_data: {e}")
+            raise e
+
     @classmethod
     def delete_all(cls, cur, instrument_token, interval):
         delete_query = """DELETE FROM historical_data WHERE instrument_token = %s AND interval = %s;"""
-        cur.execute(delete_query, (instrument_token, interval))
+        try:
+            cur.execute(delete_query, (instrument_token, interval))
+            logger.info(f"Deleted historical_data for token {instrument_token} and interval {interval}.")
+        except Exception as e:
+            logger.error(f"Error deleting historical data: {e}")
+            raise e
 
     def save(self, cur):
         insert_query = """
         INSERT INTO historical_data (instrument_token, symbol, interval, date, open, high, low, close, volume)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-        cur.execute(insert_query, (self.instrument_token, self.symbol, self.interval, self.date, self.open, self.high, self.low, self.close, self.volume))
+        try:
+            cur.execute(insert_query, (
+                self.instrument_token,
+                self.symbol,
+                self.interval,
+                self.date,
+                self.open,
+                self.high,
+                self.low,
+                self.close,
+                self.volume
+            ))
+            logger.info(f"Saved historical data for instrument_token: {self.instrument_token}")
+        except Exception as e:
+            logger.error(f"Error saving historical data: {e}")
+            raise e

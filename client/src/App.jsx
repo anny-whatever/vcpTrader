@@ -1,15 +1,15 @@
 // App.jsx
-import { useState, useEffect, useContext } from "react";
-import { DataContext } from "./utils/DataContext";
-import { Routes, Route, BrowserRouter, Navigate } from "react-router-dom";
+import { useState, useEffect, useContext, lazy } from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/NavbarComponent.jsx";
-
-import Dashboard from "./pages/Dashboard.jsx";
-import AllPositions from "./pages/AllPositions.jsx";
-import Screener from "./pages/Screener.jsx";
-import LoginPage from "./pages/LoginPage.jsx";
 import api from "./utils/api";
 import { AuthProvider, AuthContext } from "./utils/AuthContext.jsx";
+import { DataContext } from "./utils/DataContext.jsx";
+
+const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
+const AllPositions = lazy(() => import("./pages/AllPositions.jsx"));
+const Screener = lazy(() => import("./pages/Screener.jsx"));
+const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
 
 // ProtectedRoute component: uses AuthContext to decide if the user is logged in.
 const ProtectedRoute = ({ children }) => {
@@ -26,7 +26,7 @@ function App() {
   const [riskpool, setRiskpool] = useState(null);
   const [historicalTrades, setHistoricalTrades] = useState(null);
 
-  // Establish WebSocket connection using the URL ws://localhost:8000/ws/ws
+  // Establish WebSocket connection using the URL ws://localhost:8000/socket/ws
   useEffect(() => {
     const socket = new WebSocket("ws://localhost:8000/socket/ws");
 
@@ -35,14 +35,18 @@ function App() {
     };
 
     socket.onmessage = (event) => {
-      const parsedData = JSON.parse(event?.data);
-      if (parsedData?.event === "data_update") {
-        fetchRiskpool();
-        fetchHistoricalTrades();
-        fetchPositions();
-      }
-      if (parsedData?.event === "live_ticks") {
-        setLiveData(parsedData?.data);
+      try {
+        const parsedData = JSON.parse(event.data);
+        if (parsedData?.event === "data_update") {
+          fetchRiskpool();
+          fetchHistoricalTrades();
+          fetchPositions();
+        }
+        if (parsedData?.event === "live_ticks") {
+          setLiveData(parsedData.data);
+        }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
       }
     };
 
@@ -60,12 +64,11 @@ function App() {
     };
   }, []);
 
-  // Data fetching functions (using your axios instance with interceptor)
+  // Data fetching functions (using your axios instance)
   const fetchPositions = async () => {
     try {
       const response = await api.get("/api/data/positions");
-
-      setPositions(response);
+      setPositions(response.data || response);
     } catch (error) {
       console.error("Error fetching positions:", error);
     }
@@ -74,8 +77,7 @@ function App() {
   const fetchRiskpool = async () => {
     try {
       const response = await api.get("/api/data/riskpool");
-
-      setRiskpool(response);
+      setRiskpool(response.data || response);
     } catch (error) {
       console.error("Error fetching riskpool:", error);
     }
@@ -84,8 +86,7 @@ function App() {
   const fetchHistoricalTrades = async () => {
     try {
       const response = await api.get("/api/data/historicaltrades");
-
-      setHistoricalTrades(response);
+      setHistoricalTrades(response.data || response);
     } catch (error) {
       console.error("Error fetching historical trades:", error);
     }
@@ -99,11 +100,11 @@ function App() {
   }, []);
 
   return (
-    <main className="min-h-[100vh] bg-zinc-900">
-      <DataContext.Provider
-        value={{ liveData, positions, riskpool, historicalTrades }}
-      >
-        <AuthProvider>
+    <main className=" min-h-[100vh] bg-zinc-900">
+      <AuthProvider>
+        <DataContext.Provider
+          value={{ liveData, positions, riskpool, historicalTrades }}
+        >
           <BrowserRouter>
             <Navbar />
             <Routes>
@@ -134,8 +135,8 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
             </Routes>
           </BrowserRouter>
-        </AuthProvider>
-      </DataContext.Provider>
+        </DataContext.Provider>
+      </AuthProvider>
     </main>
   );
 }

@@ -16,10 +16,6 @@ function TickerComponent() {
     }
   }, [liveData]);
 
-  // if (!niftyData) {
-  //   return null; // or a loading placeholder
-  // }
-
   const isPriceUp = niftyData?.last_price > niftyData?.ohlc?.close;
   const colorClass = isPriceUp ? "text-green-500" : "text-red-500";
 
@@ -27,7 +23,6 @@ function TickerComponent() {
     <div className="flex flex-col items-center w-full gap-4 p-3 text-white justify-evenly sm:p-1 bg-zinc-800 sm:flex-row">
       {niftyData ? (
         <>
-          {/* Left block: Always visible */}
           <div className="flex items-center gap-4">
             <div className={colorClass}>
               Nifty 50: {niftyData?.last_price?.toFixed(2)}
@@ -37,8 +32,6 @@ function TickerComponent() {
               {(niftyData?.last_price - niftyData?.ohlc.close).toFixed(2)})
             </div>
           </div>
-
-          {/* Right block: Hide on phone */}
           <div className="items-center hidden gap-4 sm:flex">
             <div>Open: {niftyData?.ohlc.open}</div>
             <div>High: {niftyData?.ohlc.high}</div>
@@ -47,7 +40,7 @@ function TickerComponent() {
           </div>
         </>
       ) : (
-        <div>Market Closed </div>
+        <div>Market Closed</div>
       )}
     </div>
   );

@@ -57,8 +57,8 @@ function AllPositions() {
 
   // Merge live data into positions for last_price
   useEffect(() => {
-    if (positions?.data && liveData) {
-      positions.data.forEach((pos) => {
+    if (positions && liveData) {
+      positions.forEach((pos) => {
         const item = liveData.find(
           (liveItem) => liveItem.instrument_token === pos.token
         );
@@ -71,10 +71,10 @@ function AllPositions() {
 
   // Recompute total P&L and capital used
   useEffect(() => {
-    if (positions?.data) {
+    if (positions) {
       let runningPnl = 0;
       let runningCap = 0;
-      positions.data.forEach((pos) => {
+      positions.forEach((pos) => {
         const currentVal = pos.last_price * pos.current_qty + pos.booked_pnl;
         runningPnl +=
           (pos.last_price - pos.entry_price) * pos.current_qty + pos.booked_pnl;
@@ -114,7 +114,7 @@ function AllPositions() {
   const handleOpenChartModal = () => setIsChartModalOpen(true);
   const handleCloseChartModal = () => setIsChartModalOpen(false);
 
-  if (!positions?.data) {
+  if (!positions) {
     return (
       <div className="flex flex-col justify-center items-center w-full h-[85vh]">
         <Spinner size="lg" />
@@ -191,7 +191,7 @@ function AllPositions() {
               <TableColumn>Actions</TableColumn>
             </TableHeader>
             <TableBody>
-              {positions.data.map((row) => {
+              {positions.map((row) => {
                 const curVal =
                   row.last_price * row.current_qty + row.booked_pnl;
                 const currentPnl =
@@ -397,7 +397,7 @@ function AllPositions() {
 
         {/* MOBILE CARD LAYOUT */}
         <div className="block mt-3 space-y-3 md:hidden">
-          {positions.data.map((row, idx) => {
+          {positions.map((row, idx) => {
             const curVal = row.last_price * row.current_qty + row.booked_pnl;
             const currentPnl =
               (row.last_price - row.entry_price) * row.current_qty +
@@ -413,7 +413,7 @@ function AllPositions() {
                 key={row.stock_name}
                 className={`flex flex-col gap-2 p-3 rounded-lg bg-zinc-900
                             ${
-                              idx < positions.data.length - 1
+                              idx < positions.length - 1
                                 ? "border-b border-zinc-700 rounded-none"
                                 : ""
                             }`}
