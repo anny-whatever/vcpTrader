@@ -42,7 +42,7 @@ const LoginPage = () => {
 
     try {
       const response = await api.post(
-        "http://api.devstatz.com/api/login",
+        "https://api.devstatz.com/api/login",
         data,
         {
           headers: {
