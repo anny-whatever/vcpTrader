@@ -1,4 +1,5 @@
 import logging.config
+import logging
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -67,4 +68,5 @@ app.include_router(data_router, prefix="/api/data")
 app.include_router(user_login_router, prefix="/api/login")
 
 if __name__ == "__main__":
+    logger.info(f"Server Running")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

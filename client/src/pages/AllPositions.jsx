@@ -167,7 +167,8 @@ function AllPositions() {
             <span className="text-sm text-zinc-400">Total Risk</span>
             <span className="mt-1 text-xl text-zinc-200">
               {(
-                (riskpool?.available_risk || 0) + (riskpool?.used_risk || 0)
+                (riskpool?.available_risk || 0) +
+                (riskpool?.used_risk || 0)
               ).toFixed(2)}
             </span>
           </div>
