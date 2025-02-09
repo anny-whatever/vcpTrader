@@ -13,6 +13,7 @@ import {
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { AuthContext } from "../utils/AuthContext"; // Adjust the path as needed
+import api from "../utils/api";
 
 const theme = createTheme({
   palette: {
@@ -30,6 +31,7 @@ const LoginPage = () => {
   const { saveToken } = useContext(AuthContext);
 
   // Handle login submission by calling the /login endpoint.
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -39,24 +41,26 @@ const LoginPage = () => {
     data.append("password", password);
 
     try {
-      const response = await fetch("http://localhost:8000/api/login", {
-        method: "POST",
+      const response = await api.post("/api/login", data, {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: data,
       });
-      if (response.ok) {
-        const result = await response.json();
-        // Save the JWT token using AuthContext (and in localStorage)
-        saveToken(result.access_token);
-        // Redirect to your protected route (dashboard)
-        window.location.href = "/";
-      } else {
-        console.error("Login failed");
-      }
+      // The response data is available on response.data
+      const result = response.data;
+
+      // Save the JWT token using AuthContext (and in localStorage)
+      saveToken(result.access_token);
+
+      // Redirect to your protected route (dashboard)
+      window.location.href = "/";
     } catch (error) {
-      console.error("Error during login:", error);
+      // Axios errors have a response property if the request was made and the server responded
+      if (error.response) {
+        console.error("Login failed:", error.response.data);
+      } else {
+        console.error("Error during login:", error.message);
+      }
     }
   };
 

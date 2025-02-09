@@ -17,19 +17,13 @@ export default defineConfig({
     },
   },
   build: {
-    // Use esbuild minification (fast and effective)
     minify: false,
-    sourcemap: true,
     rollupOptions: {
       output: {
-        // Automatically split vendor code into separate chunks
+        // Optionally, use a more conservative manualChunks strategy
         manualChunks(id) {
           if (id.includes("node_modules")) {
-            return id
-              .toString()
-              .split("node_modules/")[1]
-              .split("/")[0]
-              .toString();
+            return "vendor";
           }
         },
       },

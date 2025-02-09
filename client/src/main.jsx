@@ -1,4 +1,7 @@
-import { StrictMode } from "react";
+// index.jsx
+import React from "react"; // default import
+console.log(React);
+// import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { HeroUIProvider } from "@heroui/react";
 import App from "./App";
@@ -9,11 +12,9 @@ import "@fontsource/roboto/500.css";
 import "@fontsource/roboto/700.css";
 
 createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <HeroUIProvider>
-      <main className="h-screen text-foreground bg-background">
-        <App />
-      </main>
-    </HeroUIProvider>
-  </StrictMode>
+  <HeroUIProvider>
+    <main className="h-screen text-foreground bg-background">
+      <App />
+    </main>
+  </HeroUIProvider>
 );

@@ -1,4 +1,5 @@
 // App.jsx
+import React from "react";
 import { useState, useEffect, useContext, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/NavbarComponent.jsx";
@@ -26,7 +27,6 @@ function App() {
   const [riskpool, setRiskpool] = useState(null);
   const [historicalTrades, setHistoricalTrades] = useState(null);
 
-  // Establish WebSocket connection using the URL ws://localhost:8000/socket/ws
   useEffect(() => {
     const socket = new WebSocket("http://147.93.106.51:8000/socket/ws");
 
@@ -100,7 +100,7 @@ function App() {
   }, []);
 
   return (
-    <main className=" min-h-[100vh] bg-zinc-900">
+    <div className=" min-h-[100vh] bg-zinc-900">
       <AuthProvider>
         <DataContext.Provider
           value={{ liveData, positions, riskpool, historicalTrades }}
@@ -137,7 +137,7 @@ function App() {
           </BrowserRouter>
         </DataContext.Provider>
       </AuthProvider>
-    </main>
+    </div>
   );
 }
 
