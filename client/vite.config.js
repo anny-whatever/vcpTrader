@@ -18,7 +18,8 @@ export default defineConfig({
   },
   build: {
     // Use esbuild minification (fast and effective)
-    minify: "esbuild",
+    minify: false,
+    sourcemap: true,
     rollupOptions: {
       output: {
         // Automatically split vendor code into separate chunks
