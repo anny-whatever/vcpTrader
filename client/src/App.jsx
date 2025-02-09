@@ -6,6 +6,7 @@ import Navbar from "./components/NavbarComponent.jsx";
 import api from "./utils/api";
 import { AuthProvider, AuthContext } from "./utils/AuthContext.jsx";
 import { DataContext } from "./utils/DataContext.jsx";
+import { jwtDecode } from "jwt-decode"; // ✅ Correct import
 
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const AllPositions = lazy(() => import("./pages/AllPositions.jsx"));
@@ -26,9 +27,13 @@ function App() {
   const [positions, setPositions] = useState(null);
   const [riskpool, setRiskpool] = useState(null);
   const [historicalTrades, setHistoricalTrades] = useState(null);
+   const { token, logout } = useContext(AuthContext);
 
   useEffect(() => {
-    const socket = new WebSocket("https://api.devstatz.com/socket/ws");
+  let socket;
+
+  const connect = () => {
+    socket = new WebSocket("wss://api.devstatz.com/socket/ws");
 
     socket.onopen = () => {
       console.log("Connected to WebSocket");
@@ -51,18 +56,26 @@ function App() {
     };
 
     socket.onclose = () => {
-      console.log("WebSocket closed");
+      console.log("WebSocket closed, attempting to reconnect...");
+      // Optionally, you can use a timeout to reconnect after a delay
+      setTimeout(connect, 5000);
     };
 
     socket.onerror = (error) => {
       console.error("WebSocket error:", error);
     };
+  };
 
-    // Clean up on component unmount
-    return () => {
+  connect();
+
+  // Clean up on component unmount
+  return () => {
+    if (socket) {
       socket.close();
-    };
-  }, []);
+    }
+  };
+}, []);
+
 
   // Data fetching functions (using your axios instance)
   const fetchPositions = async () => {
@@ -94,9 +107,18 @@ function App() {
 
   // Fetch data on component mount
   useEffect(() => {
-    fetchRiskpool();
-    fetchHistoricalTrades();
-    fetchPositions();
+
+        try {
+         
+         
+            fetchRiskpool();
+            fetchHistoricalTrades();
+            fetchPositions();
+    
+        } catch (error) {
+          console.error("Please Login");
+        }
+
   }, []);
 
   return (

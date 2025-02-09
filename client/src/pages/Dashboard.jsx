@@ -25,6 +25,8 @@ import {
   BarChart,
   Bar,
 } from "recharts";
+import { AuthContext } from "../utils/AuthContext";
+import { jwtDecode } from "jwt-decode"; // ✅ Correct import
 
 // Helper to avoid calling .toFixed on undefined or NaN
 function safeNumber(val) {
@@ -49,6 +51,7 @@ function getTimestamp(dateStr) {
 
 function Dashboard() {
   const { historicalTrades } = useContext(DataContext);
+  const { token, logout } = useContext(AuthContext);
 
   // HISTORICAL TRADE STATS (like totalPnL, maxDrawdown, etc.)
   const [histTotalPnl, setHistTotalPnl] = useState(0);
@@ -71,6 +74,22 @@ function Dashboard() {
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+  let multiplier = 1;
+  
+    // Determine the user's role from the token
+    let userRole = "";
+    if (token) {
+      try {
+        const decoded = jwtDecode(token); // ✅ Use named import
+        userRole = decoded.role || "";
+        if (userRole !== "admin") {
+          multiplier = 25;
+        }
+      } catch (error) {
+        console.error("Failed to decode token:", error);
+      }
+    }
 
   // ---------- Compute Stats ----------
   useEffect(() => {
@@ -136,15 +155,15 @@ function Dashboard() {
     const profitFactorLocal =
       sumLosses === 0 ? Number.POSITIVE_INFINITY : sumWins / sumLosses;
 
-    setHistTotalPnl(totalPnLAll);
-    setMaxDrawdown(drawdownLocal);
-    setHighestCapitalUsed(maxCapital);
+    setHistTotalPnl(totalPnLAll * multiplier);
+    setMaxDrawdown(drawdownLocal * multiplier);
+    setHighestCapitalUsed(maxCapital * multiplier);
     setAccuracy(accuracyLocal);
     setRiskReward(rr);
-    setAvgProfit(avgProfitLocal);
-    setAvgLoss(avgLossLocal);
-    setAvgPnl(avgPnlLocal);
-    setProfitFactor(profitFactorLocal);
+    setAvgProfit(avgProfitLocal * multiplier);
+    setAvgLoss(avgLossLocal * multiplier);
+    setAvgPnl(avgPnlLocal * multiplier);
+    setProfitFactor(profitFactorLocal * multiplier);
   }, [historicalTrades]);
 
   // ---------- Prepare Chart Data ----------
@@ -166,7 +185,7 @@ function Dashboard() {
       cumulative += finalPnl;
       return {
         name: formatDate(t.exit_time) || `T${idx + 1}`,
-        trailingPnl: parseInt(cumulative),
+        trailingPnl: parseInt(cumulative * multiplier),
       };
     });
 
@@ -177,7 +196,7 @@ function Dashboard() {
       const diffPercent = entryP === 0 ? 0 : ((exitP - entryP) / entryP) * 100;
       return {
         name: formatDate(t.exit_time) || `T${idx + 1}`,
-        percentPnl: diffPercent.toFixed(2),
+        percentPnl: (diffPercent).toFixed(2),
       };
     });
 
@@ -511,9 +530,9 @@ function Dashboard() {
                           isPositive ? "text-green-500" : "text-red-500"
                         }
                       >
-                        {finalPnl.toFixed(2)}
+                        {(finalPnl * multiplier).toFixed(2)}
                       </TableCell>
-                      <TableCell>{highestQty}</TableCell>
+                      <TableCell>{(highestQty * multiplier).toFixed(2)}</TableCell>
                     </TableRow>
                   );
                 })}
@@ -611,7 +630,7 @@ function Dashboard() {
                       variant="caption"
                       sx={{ color: isPositive ? "#22c55e" : "#ef4444" }}
                     >
-                      {finalPnl.toFixed(2)}
+                      {(finalPnl * multiplier).toFixed(2)}
                     </Typography>
                   </Box>
                   <Box
@@ -624,7 +643,7 @@ function Dashboard() {
                     <Typography variant="caption" sx={{ color: "#a1a1aa" }}>
                       Highest Qty:
                     </Typography>
-                    <Typography variant="caption">{highestQty}</Typography>
+                    <Typography variant="caption">{(highestQty * multiplier).toFixed(2)}</Typography>
                   </Box>
                 </Box>
               );

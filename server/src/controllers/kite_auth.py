@@ -48,7 +48,7 @@ async def callback(request_token: str):
         load_ohlc_data()
 
         # Redirect to frontend with a success flag
-        return RedirectResponse(url="http://localhost:5173?login=true&kiteAuth=success")
+        return RedirectResponse(url="https://devstatz.com?login=true&kiteAuth=success")
     except Exception as e:
         logger.error(f"Error in /callback endpoint: {e}")
         raise HTTPException(status_code=400, detail="Kite callback failed")
