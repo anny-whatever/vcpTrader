@@ -44,7 +44,7 @@ export default function NavbarComponent() {
   };
 
   const redirectToZerodhaLogin = () => {
-    window.location.href = "http://147.93.106.51:8000/api/auth";
+    window.location.href = "http://api.devstatz.com/api/auth";
   };
 
   const drawer = (

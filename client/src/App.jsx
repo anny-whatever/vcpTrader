@@ -28,7 +28,7 @@ function App() {
   const [historicalTrades, setHistoricalTrades] = useState(null);
 
   useEffect(() => {
-    const socket = new WebSocket("http://147.93.106.51:8000/socket/ws");
+    const socket = new WebSocket("https://api.devstatz.com/socket/ws");
 
     socket.onopen = () => {
       console.log("Connected to WebSocket");

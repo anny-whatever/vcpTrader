@@ -41,11 +41,15 @@ const LoginPage = () => {
     data.append("password", password);
 
     try {
-      const response = await api.post("/api/login", data, {
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-      });
+      const response = await api.post(
+        "http://api.devstatz.com/api/login",
+        data,
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
       // The response data is available on response.data
       const result = response.data;
 

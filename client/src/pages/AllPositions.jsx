@@ -154,21 +154,20 @@ function AllPositions() {
           <div className="flex flex-col bg-zinc-900 rounded-lg p-3 max-w-[120px] md:max-w-[250px]">
             <span className="text-sm text-zinc-400">Used Risk</span>
             <span className="mt-1 text-xl text-zinc-200">
-              {(riskpool?.data?.used_risk || 0).toFixed(2)}
+              {(riskpool?.used_risk || 0).toFixed(2)}
             </span>
           </div>
           <div className="flex flex-col bg-zinc-900 rounded-lg p-3 max-w-[120px] md:max-w-[250px]">
             <span className="text-sm text-zinc-400">Available Risk</span>
             <span className="mt-1 text-xl text-zinc-200">
-              {(riskpool?.data?.available_risk || 0).toFixed(2)}
+              {(riskpool?.available_risk || 0).toFixed(2)}
             </span>
           </div>
           <div className="flex flex-col bg-zinc-900 rounded-lg p-3 max-w-[120px] md:max-w-[250px]">
             <span className="text-sm text-zinc-400">Total Risk</span>
             <span className="mt-1 text-xl text-zinc-200">
               {(
-                (riskpool?.data?.available_risk || 0) +
-                (riskpool?.data?.used_risk || 0)
+                (riskpool?.available_risk || 0) + (riskpool?.used_risk || 0)
               ).toFixed(2)}
             </span>
           </div>
@@ -626,40 +625,40 @@ function AllPositions() {
           onClose={handleCloseIncreaseModal}
           symbol={positionData?.stock_name}
           ltp={positionData?.last_price}
-          AvailableRisk={riskpool?.data?.available_risk}
-          UsedRisk={riskpool?.data?.used_risk}
+          AvailableRisk={riskpool?.available_risk}
+          UsedRisk={riskpool?.used_risk}
         />
         <ReduceModal
           isOpen={isReduceModalOpen}
           onClose={handleCloseReduceModal}
           symbol={positionData?.stock_name}
           ltp={positionData?.last_price}
-          AvailableRisk={riskpool?.data?.available_risk}
-          UsedRisk={riskpool?.data?.used_risk}
+          AvailableRisk={riskpool?.available_risk}
+          UsedRisk={riskpool?.used_risk}
           currentQuantity={positionData?.current_qty}
         />
         <SellModal
           isOpen={isSellModalOpen}
           onClose={handleCloseSellModal}
           symbol={positionData?.stock_name}
-          AvailableRisk={riskpool?.data?.available_risk}
-          UsedRisk={riskpool?.data?.used_risk}
+          AvailableRisk={riskpool?.available_risk}
+          UsedRisk={riskpool?.used_risk}
         />
         <ModifySlModal
           isOpen={isModifySlModalOpen}
           onClose={handleCloseModifySlModal}
           symbol={positionData?.stock_name}
           currentEntryPrice={positionData?.entry_price}
-          AvailableRisk={riskpool?.data?.available_risk}
-          UsedRisk={riskpool?.data?.used_risk}
+          AvailableRisk={riskpool?.available_risk}
+          UsedRisk={riskpool?.used_risk}
         />
         <ModifyTgtModal
           isOpen={isModifyTgtModalOpen}
           onClose={handleCloseModifyTgtModal}
           symbol={positionData?.stock_name}
           currentEntryPrice={positionData?.entry_price}
-          AvailableRisk={riskpool?.data?.available_risk}
-          UsedRisk={riskpool?.data?.used_risk}
+          AvailableRisk={riskpool?.available_risk}
+          UsedRisk={riskpool?.used_risk}
         />
         <ChartModal
           isOpen={isChartModalOpen}
