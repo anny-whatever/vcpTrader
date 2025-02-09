@@ -156,7 +156,7 @@ function Screener() {
       />
 
       {/* Top controls */}
-      <div className="flex items-center justify-between my-3">
+      <div className="flex items-center flex-col sm:flex-row justify-between my-3">
         <div className="flex items-center gap-3">
           <Button
             className="bg-green-500 bg-opacity-90 hover:bg-green-600 text-white rounded-md px-4 py-2 min-w-[130px] sm:min-w-[150px]"
@@ -310,6 +310,8 @@ function Screener() {
                     </span>
                     <ButtonGroup>
                       {/* Buy */}
+                      {userRole === "admin" && (
+                        <>
                       <Button
                         isIconOnly
                         color="success"
@@ -318,7 +320,7 @@ function Screener() {
                           populateBuyData(row);
                           handleOpenBuyModal();
                         }}
-                      >
+                        >
                         En
                       </Button>
                       {/* Sell */}
@@ -330,9 +332,11 @@ function Screener() {
                           populateSellData(row);
                           handleOpenSellModal();
                         }}
-                      >
+                        >
                         Ex
-                      </Button>
+                          </Button>
+                        </>)}
+                        
                       {/* Chart */}
                       <Button
                         isIconOnly

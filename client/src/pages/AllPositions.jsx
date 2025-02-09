@@ -324,17 +324,18 @@ function AllPositions() {
                                     100
                                   ).toFixed(2)}
                                   %)
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      populatePositionData(row);
-                                      handleOpenModifySlModal();
-                                    }}
-                                    disabled={userRole !== "admin"}
-                                    className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
-                                  >
-                                    C
-                                  </button>
+                                  {userRole === "admin" && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        populatePositionData(row);
+                                        handleOpenModifySlModal();
+                                      }}
+                                      disabled={userRole !== "admin"}
+                                      className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
+                                    >
+                                      C
+                                    </button>)}
                                 </div>
                                 <div className="py-1 text-md">
                                   Target: {row.target?.toFixed(2)} (
@@ -344,17 +345,18 @@ function AllPositions() {
                                     100
                                   ).toFixed(2)}
                                   %)
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      populatePositionData(row);
-                                      handleOpenModifyTgtModal();
-                                    }}
-                                    disabled={userRole !== "admin"}
-                                    className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
-                                  >
-                                    C
-                                  </button>
+                                  {userRole === "admin" && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        populatePositionData(row);
+                                        handleOpenModifyTgtModal();
+                                      }}
+                                      disabled={userRole !== "admin"}
+                                      className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
+                                    >
+                                      C
+                                    </button>)}
                                 </div>
                                 <div className="py-1 text-md">
                                   Capital Used:{" "}
@@ -420,41 +422,45 @@ function AllPositions() {
                   </span>
                   <ButtonGroup>
                     {/* Increase */}
-                    <Button
-                      isIconOnly
-                      color="success"
-                      variant="flat"
-                      onPress={() => {
-                        populatePositionData(row);
-                        handleOpenIncreaseModal();
-                      }}
-                    >
-                      In
-                    </Button>
-                    {/* Reduce */}
-                    <Button
-                      isIconOnly
-                      color="secondary"
-                      variant="flat"
-                      onPress={() => {
-                        populatePositionData(row);
-                        handleOpenReduceModal();
-                      }}
-                    >
-                      Re
-                    </Button>
-                    {/* Sell */}
-                    <Button
-                      isIconOnly
-                      color="danger"
-                      variant="flat"
-                      onPress={() => {
-                        populatePositionData(row);
-                        handleOpenSellModal();
-                      }}
-                    >
-                      Ex
-                    </Button>
+                    {userRole === "admin" && (
+                      <>
+                        <Button
+                          isIconOnly
+                          color="success"
+                          variant="flat"
+                          onPress={() => {
+                            populatePositionData(row);
+                            handleOpenIncreaseModal();
+                          }}
+                        >
+                          In
+                        </Button>
+                        {/* Reduce */}
+                        <Button
+                          isIconOnly
+                          color="secondary"
+                          variant="flat"
+                          onPress={() => {
+                            populatePositionData(row);
+                            handleOpenReduceModal();
+                          }}
+                        >
+                          Re
+                        </Button>
+                        {/* Sell */}
+                        <Button
+                          isIconOnly
+                          color="danger"
+                          variant="flat"
+                          onPress={() => {
+                            populatePositionData(row);
+                            handleOpenSellModal();
+                          }}
+                        >
+                          Ex
+                        </Button>
+                      </>
+                    )}
                     {/* Chart */}
                     <Button
                       isIconOnly
@@ -519,17 +525,18 @@ function AllPositions() {
                                 100
                               ).toFixed(2)}
                               %)
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  populatePositionData(row);
-                                  handleOpenModifySlModal();
-                                }}
-                                disabled={userRole !== "admin"}
-                                className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
-                              >
-                                C
-                              </button>
+                              {userRole === "admin" && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    populatePositionData(row);
+                                    handleOpenModifySlModal();
+                                  }}
+                                  disabled={userRole !== "admin"}
+                                  className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
+                                >
+                                  C
+                                </button>)}
                             </div>
                             <div className="py-1 text-md">
                               Target: {row.target?.toFixed(2)} (
@@ -539,17 +546,18 @@ function AllPositions() {
                                 100
                               ).toFixed(2)}
                               %)
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  populatePositionData(row);
-                                  handleOpenModifyTgtModal();
-                                }}
-                                disabled={userRole !== "admin"}
-                                className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
-                              >
-                                C
-                              </button>
+                              {userRole === "admin" && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    populatePositionData(row);
+                                    handleOpenModifyTgtModal();
+                                  }}
+                                  disabled={userRole !== "admin"}
+                                  className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
+                                >
+                                  C
+                                </button>)}
                             </div>
                             <div className="py-1 text-md">
                               Capital Used:{" "}
