@@ -123,5 +123,6 @@ def start_kite_ticker():
 
     try:
         kite_ticker.connect(threaded=True)
+        logger.info("Kite ticker connected")
     except Exception as e:
         logger.error(f"Error starting KiteTicker connection: {e}")

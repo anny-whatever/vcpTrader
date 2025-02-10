@@ -18,7 +18,6 @@ router = APIRouter()
 kite = KiteConnect(api_key=os.getenv("API_KEY"))
 
 # Global KiteTicker instance to be set after authentication
-kite_ticker = None
 
 @router.get("/auth")
 async def auth():
@@ -41,7 +40,6 @@ async def callback(request_token: str):
         session = kite.generate_session(request_token, os.getenv("API_SECRET"))
         access_token = session["access_token"]
         kite.set_access_token(access_token)
-        kite_ticker.close()
         kite_ticker = None
         # Initialize KiteTicker and load required data
         get_instrument_indices()
