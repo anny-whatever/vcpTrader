@@ -50,7 +50,7 @@ export const ChartComponent = ({ data }) => {
     });
     newSeries.setData(seriesData);
 
-    if (seriesData.length > 50) {
+    if (seriesData.length > 75) {
       const visibleFrom = seriesData[seriesData.length - 75].time;
       const visibleTo = seriesData[seriesData.length - 1].time;
       chart.timeScale().setVisibleRange({ from: visibleFrom, to: visibleTo });
