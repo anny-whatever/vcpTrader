@@ -12,7 +12,7 @@ import {
   Spinner,
 } from "@heroui/react";
 
-// 1) IMPORT Recharts components for both line + bar charts
+// Recharts components for both line & bar charts (Cell & ReferenceLine added)
 import {
   LineChart,
   Line,
@@ -24,6 +24,8 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  Cell,
+  ReferenceLine,
 } from "recharts";
 import { AuthContext } from "../utils/AuthContext";
 import { jwtDecode } from "jwt-decode"; // ✅ Correct import
@@ -76,20 +78,19 @@ function Dashboard() {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   let multiplier = 1;
-  
-    // Determine the user's role from the token
-    let userRole = "";
-    if (token) {
-      try {
-        const decoded = jwtDecode(token); // ✅ Use named import
-        userRole = decoded.role || "";
-        if (userRole !== "admin") {
-          multiplier = 25;
-        }
-      } catch (error) {
-        console.error("Failed to decode token:", error);
+  // Determine the user's role from the token
+  let userRole = "";
+  if (token) {
+    try {
+      const decoded = jwtDecode(token); // ✅ Use named import
+      userRole = decoded.role || "";
+      if (userRole !== "admin") {
+        multiplier = 25;
       }
+    } catch (error) {
+      console.error("Failed to decode token:", error);
     }
+  }
 
   // ---------- Compute Stats ----------
   useEffect(() => {
@@ -123,7 +124,6 @@ function Dashboard() {
     // accuracy
     const totalTrades = trades.length;
     const wins = trades.filter((t) => safeNumber(t.final_pnl) > 0).length;
-    const losses = trades.filter((t) => safeNumber(t.final_pnl) < 0).length;
     const accuracyLocal = totalTrades ? wins / totalTrades : 0;
 
     // R:R
@@ -164,7 +164,7 @@ function Dashboard() {
     setAvgLoss(avgLossLocal * multiplier);
     setAvgPnl(avgPnlLocal * multiplier);
     setProfitFactor(profitFactorLocal * multiplier);
-  }, [historicalTrades]);
+  }, [historicalTrades, multiplier]);
 
   // ---------- Prepare Chart Data ----------
   useEffect(() => {
@@ -196,13 +196,13 @@ function Dashboard() {
       const diffPercent = entryP === 0 ? 0 : ((exitP - entryP) / entryP) * 100;
       return {
         name: formatDate(t.exit_time) || `T${idx + 1}`,
-        percentPnl: (diffPercent).toFixed(2),
+        percentPnl: parseFloat(diffPercent.toFixed(2)), // store as a number
       };
     });
 
     setLineChartData(lineData);
     setBarChartData(barData);
-  }, [historicalTrades]);
+  }, [historicalTrades, multiplier]);
 
   // ---------- Sort & Paginate Trades for Table ----------
   const allTrades = (historicalTrades || []).slice();
@@ -238,7 +238,6 @@ function Dashboard() {
           flexWrap: "wrap",
           gap: 3,
           mb: 3,
-          // 1) Center on phone, left on desktop
           justifyContent: { xs: "center", md: "flex-start" },
         }}
       >
@@ -380,7 +379,6 @@ function Dashboard() {
             <Typography variant="body2" sx={{ color: "#a1a1aa", mb: 1 }}>
               Cumulative PnL Curve
             </Typography>
-
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={lineChartData}
@@ -434,7 +432,6 @@ function Dashboard() {
             <Typography variant="body2" sx={{ color: "#a1a1aa", mb: 1 }}>
               % Based PnL (Ignoring Qty)
             </Typography>
-
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={barChartData}
@@ -461,7 +458,18 @@ function Dashboard() {
                     marginTop: 10,
                   }}
                 />
-                <Bar dataKey="percentPnl" fill="#8884d8" />
+                {/* Reference line at y = 0 */}
+                <ReferenceLine y={0} stroke="#fff" strokeDasharray="3 3" />
+                <Bar dataKey="percentPnl">
+                  {barChartData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={
+                        Number(entry.percentPnl) >= 0 ? "#22c55e" : "#ef4444"
+                      }
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </Box>
@@ -532,7 +540,9 @@ function Dashboard() {
                       >
                         {(finalPnl * multiplier).toFixed(2)}
                       </TableCell>
-                      <TableCell>{(highestQty * multiplier).toFixed(2)}</TableCell>
+                      <TableCell>
+                        {(highestQty * multiplier).toFixed(2)}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -555,11 +565,7 @@ function Dashboard() {
               return (
                 <Box
                   key={row.trade_id || row.stock_name}
-                  sx={{
-                    backgroundColor: "#1e1e1e",
-                    borderRadius: 1,
-                    p: 2,
-                  }}
+                  sx={{ backgroundColor: "#1e1e1e", borderRadius: 1, p: 2 }}
                 >
                   <Typography variant="body2" fontWeight="bold">
                     {stock}
@@ -643,7 +649,9 @@ function Dashboard() {
                     <Typography variant="caption" sx={{ color: "#a1a1aa" }}>
                       Highest Qty:
                     </Typography>
-                    <Typography variant="caption">{(highestQty * multiplier).toFixed(2)}</Typography>
+                    <Typography variant="caption">
+                      {(highestQty * multiplier).toFixed(2)}
+                    </Typography>
                   </Box>
                 </Box>
               );
