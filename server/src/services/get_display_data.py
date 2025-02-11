@@ -7,6 +7,7 @@ from controllers import kite
 import pytz
 import pandas_ta as ta
 import pandas as pd
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -135,16 +136,24 @@ def get_combined_ohlc(instrument_token, symbol):
         
         # Convert to a DataFrame and compute additional columns
         formatted_data = pd.DataFrame(formatted_data)
+        # Use min(len(formatted_data), X) to ensure we have enough data points
         formatted_data['sma_50'] = ta.sma(formatted_data['close'], length=min(50, len(formatted_data)))
         formatted_data['sma_150'] = ta.sma(formatted_data['close'], length=min(150, len(formatted_data)))
         formatted_data['sma_200'] = ta.sma(formatted_data['close'], length=min(200, len(formatted_data)))
         
-        # Replace non-finite values (NaN, Inf, -Inf) in SMA columns with None
+        # Replace non-finite values in SMA columns with 0 and round the values.
         import numpy as np
         for col in ['sma_50', 'sma_150', 'sma_200']:
             formatted_data[col] = formatted_data[col].replace([np.inf, -np.inf], np.nan)
             formatted_data[col] = formatted_data[col].fillna(0)
-
+            formatted_data[col] = np.around(formatted_data[col], decimals=2)
+        
+        # EXTRA SAFEGUARD:
+        # Ensure that all float values in the DataFrame are finite.
+        import math
+        formatted_data = formatted_data.applymap(lambda x: 0 if isinstance(x, float) and not math.isfinite(x) else x)
+        
+        logger.info(f"get_combined_ohlc: returning {len(formatted_data)} rows")
         # Return the JSON serializable result
         return formatted_data.to_dict(orient="records")
     except Exception as e:
@@ -152,3 +161,4 @@ def get_combined_ohlc(instrument_token, symbol):
         raise e
     finally:
         close_db_connection()
+
