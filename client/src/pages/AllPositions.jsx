@@ -43,7 +43,7 @@ function AllPositions() {
   // Stats
   const [totalPnl, setTotalPnl] = useState(0);
   const [capitalUsed, setCapitalUsed] = useState(0);
-  
+
   let multiplier = 1;
 
   // Determine the user's role from the token
@@ -89,6 +89,14 @@ function AllPositions() {
       setCapitalUsed(runningCap);
     }
   }, [positions, liveData]);
+
+  const getMarkers = (trade) => {
+    const markers = [
+      {
+        time: trade.date,
+      },
+    ];
+  };
 
   // For row-based modals
   const populatePositionData = (row) => setPositionData({ ...row });
@@ -212,7 +220,9 @@ function AllPositions() {
                 return (
                   <TableRow key={row.stock_name} className="hover:bg-zinc-800">
                     <TableCell>{row.stock_name}</TableCell>
-                    <TableCell>{(row.current_qty * multiplier).toFixed(2)}</TableCell>
+                    <TableCell>
+                      {(row.current_qty * multiplier).toFixed(2)}
+                    </TableCell>
                     <TableCell>{row.entry_price?.toFixed(2)}</TableCell>
                     <TableCell>{row.last_price?.toFixed(2)}</TableCell>
                     <TableCell>{(curVal * multiplier).toFixed(2)}</TableCell>
@@ -335,7 +345,8 @@ function AllPositions() {
                                       className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
                                     >
                                       C
-                                    </button>)}
+                                    </button>
+                                  )}
                                 </div>
                                 <div className="py-1 text-md">
                                   Target: {row.target?.toFixed(2)} (
@@ -356,19 +367,34 @@ function AllPositions() {
                                       className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
                                     >
                                       C
-                                    </button>)}
+                                    </button>
+                                  )}
                                 </div>
                                 <div className="py-1 text-md">
                                   Capital Used:{" "}
-                                  {((row.entry_price * row.current_qty) * multiplier).toFixed(2)}
+                                  {(
+                                    row.entry_price *
+                                    row.current_qty *
+                                    multiplier
+                                  ).toFixed(2)}
                                 </div>
                                 <div className="py-1 text-md">
                                   Risk:{" "}
-                                  {(((row.stop_loss - row.entry_price) * row.current_qty + row.booked_pnl) * multiplier).toFixed(2)}
+                                  {(
+                                    ((row.stop_loss - row.entry_price) *
+                                      row.current_qty +
+                                      row.booked_pnl) *
+                                    multiplier
+                                  ).toFixed(2)}
                                 </div>
                                 <div className="py-1 text-md">
                                   Reward:{" "}
-                                  {(((row.target - row.entry_price) * row.current_qty + row.booked_pnl) * multiplier).toFixed(2)}
+                                  {(
+                                    ((row.target - row.entry_price) *
+                                      row.current_qty +
+                                      row.booked_pnl) *
+                                    multiplier
+                                  ).toFixed(2)}
                                 </div>
                                 <div
                                   className={
@@ -377,7 +403,8 @@ function AllPositions() {
                                       : "text-red-500 text-md py-1"
                                   }
                                 >
-                                  Booked: {((row.booked_pnl) * multiplier).toFixed(2)}
+                                  Booked:{" "}
+                                  {(row.booked_pnl * multiplier).toFixed(2)}
                                 </div>
                               </div>
                             </DropdownItem>
@@ -536,7 +563,8 @@ function AllPositions() {
                                   className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
                                 >
                                   C
-                                </button>)}
+                                </button>
+                              )}
                             </div>
                             <div className="py-1 text-md">
                               Target: {row.target?.toFixed(2)} (
@@ -557,19 +585,34 @@ function AllPositions() {
                                   className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
                                 >
                                   C
-                                </button>)}
+                                </button>
+                              )}
                             </div>
                             <div className="py-1 text-md">
                               Capital Used:{" "}
-                              {((row.entry_price * row.current_qty) * multiplier).toFixed(2)}
+                              {(
+                                row.entry_price *
+                                row.current_qty *
+                                multiplier
+                              ).toFixed(2)}
                             </div>
                             <div className="py-1 text-md">
                               Risk:{" "}
-                              {(((row.stop_loss - row.entry_price) * row.current_qty + row.booked_pnl) * multiplier).toFixed(2)}
+                              {(
+                                ((row.stop_loss - row.entry_price) *
+                                  row.current_qty +
+                                  row.booked_pnl) *
+                                multiplier
+                              ).toFixed(2)}
                             </div>
                             <div className="py-1 text-md">
                               Reward:{" "}
-                              {(((row.target - row.entry_price) * row.current_qty + row.booked_pnl) * multiplier).toFixed(2)}
+                              {(
+                                ((row.target - row.entry_price) *
+                                  row.current_qty +
+                                  row.booked_pnl) *
+                                multiplier
+                              ).toFixed(2)}
                             </div>
                             <div
                               className={
@@ -578,7 +621,7 @@ function AllPositions() {
                                   : "text-red-500 text-md py-1"
                               }
                             >
-                              Booked: {((row.booked_pnl) * multiplier).toFixed(2)}
+                              Booked: {(row.booked_pnl * multiplier).toFixed(2)}
                             </div>
                           </div>
                         </DropdownItem>
