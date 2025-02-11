@@ -5,6 +5,8 @@ import json
 from datetime import datetime, time
 from controllers import kite
 import pytz
+import pandas_ta as ta
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +132,11 @@ def get_combined_ohlc(instrument_token, symbol):
             for key in ['open', 'high', 'low', 'close', 'volume']:
                 formatted[key] = float(formatted[key])
             formatted_data.append(formatted)
+        
+        formatted_data =  pd.DataFrame(formatted_data)
+        formatted_data['sma_50'] = ta.SMA(formatted_data['close'], timeperiod=50)
+        formatted_data['sma_150'] = ta.SMA(formatted_data['close'], timeperiod=150)
+        formatted_data['sma_200'] = ta.SMA(formatted_data['close'], timeperiod=200)
         return formatted_data
     except Exception as e:
         logger.error(f"Error in get_combined_ohlc for instrument {instrument_token}, symbol {symbol}: {e}")

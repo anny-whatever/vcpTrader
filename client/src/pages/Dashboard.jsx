@@ -538,7 +538,12 @@ function Dashboard() {
                           isPositive ? "text-green-500" : "text-red-500"
                         }
                       >
-                        {(finalPnl * multiplier).toFixed(2)}
+                        {(finalPnl * multiplier).toFixed(2)} (
+                        {(
+                          ((exitPrice - entryPrice) / entryPrice) *
+                          100
+                        ).toFixed(1)}
+                        %)
                       </TableCell>
                       <TableCell>
                         {(highestQty * multiplier).toFixed(2)}
@@ -636,7 +641,11 @@ function Dashboard() {
                       variant="caption"
                       sx={{ color: isPositive ? "#22c55e" : "#ef4444" }}
                     >
-                      {(finalPnl * multiplier).toFixed(2)}
+                      {(finalPnl * multiplier).toFixed(2)} (
+                      {(((exitPrice - entryPrice) / entryPrice) * 100).toFixed(
+                        1
+                      )}
+                      %)
                     </Typography>
                   </Box>
                   <Box
