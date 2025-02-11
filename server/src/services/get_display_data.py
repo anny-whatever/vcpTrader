@@ -108,18 +108,19 @@ def get_combined_ohlc(instrument_token, symbol):
         if last_historical_date < today_date and MARKET_OPEN <= now.time() <= MARKET_CLOSE:
             try:
                 quote = kite.quote(instrument_token)[str(instrument_token)]
+                logger.info(f'quote: {quote}')
                 ohlc = quote.get('ohlc', {})
                 if ohlc:
-                    today_open = ohlc['open'] if ohlc['open'] > 0 else historical_data[-1]['close']
+                    # today_open = ohlc['open'] if ohlc['open'] > 0 else historical_data[-1]['close']
                     today_entry = {
                         'instrument_token': instrument_token,
                         'symbol': symbol,
                         'interval': 'day',
                         'date': TIMEZONE.localize(datetime.combine(today_date, time(15, 30))),
-                        'open': today_open,
+                        'open': ohlc['open'],
                         'high': ohlc['high'],
                         'low': ohlc['low'],
-                        'close': ohlc.get('close', quote.get('last_price', 0)),
+                        'close': quote.get('last_price', 0),
                         'volume': quote.get('volume_today', 0)
                     }
                     combined_data.append(today_entry)
