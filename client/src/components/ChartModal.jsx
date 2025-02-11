@@ -152,6 +152,7 @@ function ChartModal({ isOpen, onClose, symbol, token, markers = [] }) {
   const getChartData = async () => {
     if (symbol && token) {
       try {
+        setChartData(null);
         const response = await api.get(
           `/api/data/chartdata?token=${token}&symbol=${symbol}`
         );
@@ -167,8 +168,6 @@ function ChartModal({ isOpen, onClose, symbol, token, markers = [] }) {
           ...(item.sma_150 !== 0 ? { sma_150: item.sma_150 } : {}),
           ...(item.sma_200 !== 0 ? { sma_200: item.sma_200 } : {}),
         }));
-
-        console.log(transformedData);
 
         setChartData(transformedData);
       } catch (error) {
@@ -193,7 +192,6 @@ function ChartModal({ isOpen, onClose, symbol, token, markers = [] }) {
       open={isOpen}
       onClose={() => {
         onClose();
-        setChartData(null);
       }}
       fullWidth
       maxWidth="xl"
@@ -266,7 +264,6 @@ function ChartModal({ isOpen, onClose, symbol, token, markers = [] }) {
         <Button
           onClick={() => {
             onClose();
-            setChartData(null);
           }}
           variant="contained"
           color="error"
