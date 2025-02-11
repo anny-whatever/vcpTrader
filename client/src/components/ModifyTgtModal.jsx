@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import api from "../utils/api";
 import { Toaster, toast } from "sonner";
+import { PlayToastSound, PlayErrorSound } from "../utils/PlaySound";
 
 function ModifyTgtModal({
   isOpen,
@@ -39,6 +40,7 @@ function ModifyTgtModal({
         const response = await api.get(
           `/api/order/change_tgt?symbol=${symbol}&tgt=${tgtByPercentage}`
         );
+        PlayToastSound();
         toast.success(
           response?.data?.message ||
             "Target modified successfully (percentage)!",
@@ -48,12 +50,14 @@ function ModifyTgtModal({
         const response = await api.get(
           `/api/order/change_tgt?symbol=${symbol}&tgt=${tgt}`
         );
+        PlayToastSound();
         toast.success(
           response?.data?.message || "Target modified successfully!",
           { duration: 5000 }
         );
       }
     } catch (error) {
+      PlayErrorSound();
       console.error("Error modifying target:", error);
       toast.error("Error modifying target.", { duration: 5000 });
     }

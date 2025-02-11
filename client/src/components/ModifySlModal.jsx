@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import api from "../utils/api";
 import { Toaster, toast } from "sonner";
+import { PlayToastSound, PlayErrorSound } from "../utils/PlaySound";
 
 function ModifySlModal({
   isOpen,
@@ -39,6 +40,7 @@ function ModifySlModal({
         const response = await api.get(
           `/api/order/change_sl?symbol=${symbol}&sl=${slByPercentage}`
         );
+        PlayToastSound();
         toast.success(
           response?.data?.message ||
             "Stop-loss modified successfully (percentage)!",
@@ -48,12 +50,14 @@ function ModifySlModal({
         const response = await api.get(
           `/api/order/change_sl?symbol=${symbol}&sl=${sl}`
         );
+        PlayToastSound();
         toast.success(
           response?.data?.message || "Stop-loss modified successfully!",
           { duration: 5000 }
         );
       }
     } catch (error) {
+      PlayErrorSound();
       console.error("Error modifying stop-loss:", error);
       toast.error("Error modifying stop-loss.", { duration: 5000 });
     }

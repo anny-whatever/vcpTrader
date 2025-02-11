@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import api from "../utils/api";
 import { Toaster, toast } from "sonner";
+import { PlayToastSound, PlayErrorSound } from "../utils/PlaySound";
 
 function BuyModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol, ltp }) {
   const [quantity, setQuantity] = useState("");
@@ -42,9 +43,11 @@ function BuyModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol, ltp }) {
       const response = await api.get(
         `/api/order/buy?symbol=${symbol}&qty=${qty}`
       );
+      PlayToastSound();
       toast.success(response?.data?.message, { duration: 5000 });
     } catch (error) {
       console.error("Error executing buy order:", error);
+      PlayErrorSound();
       toast.error(
         (error?.response && error?.response?.data?.message) ||
           "Buy order failed",

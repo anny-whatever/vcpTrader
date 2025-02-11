@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import api from "../utils/api";
 import { Toaster, toast } from "sonner";
+import { PlayToastSound, PlayErrorSound } from "../utils/PlaySound";
 
 function ReduceModal({
   isOpen,
@@ -40,11 +41,13 @@ function ReduceModal({
       const response = await api.get(
         `/api/order/reduce?symbol=${symbol}&qty=${qty}`
       );
+      PlayToastSound();
       toast.success(
         response?.data?.message || "Reduce order executed successfully!",
         { duration: 5000 }
       );
     } catch (error) {
+      PlayErrorSound();
       console.error("Error executing reduce order:", error);
       toast.error("Error executing reduce order.", { duration: 5000 });
     }

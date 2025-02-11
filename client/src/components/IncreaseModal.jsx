@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import api from "../utils/api";
 import { Toaster, toast } from "sonner";
+import { PlayToastSound, PlayErrorSound } from "../utils/PlaySound";
 
 function IncreaseModal({
   isOpen,
@@ -48,11 +49,13 @@ function IncreaseModal({
       const response = await api.get(
         `/api/order/increase?symbol=${symbol}&qty=${qty}`
       );
+      PlayToastSound();
       toast.success(
         response?.data?.message || "Increase order executed successfully!",
         { duration: 5000 }
       );
     } catch (error) {
+      PlayErrorSound();
       console.error("Error executing increase order:", error);
       toast.error("Error executing increase order.", { duration: 5000 });
     }

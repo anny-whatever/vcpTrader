@@ -10,16 +10,20 @@ import {
 } from "@mui/material";
 import api from "../utils/api";
 import { Toaster, toast } from "sonner";
+import { PlayToastSound, PlayErrorSound } from "../utils/PlaySound";
 
 function SellModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol }) {
   const sendSellOrder = async () => {
     try {
       const response = await api.get(`/api/order/exit?symbol=${symbol}`);
+
+      PlayToastSound();
       toast.success(
         response?.data?.message || "Sell order executed successfully!",
         { duration: 5000 }
       );
     } catch (error) {
+      PlayErrorSound();
       console.error("Error executing sell order:", error);
       toast.error("Error executing sell order.", { duration: 5000 });
     }
