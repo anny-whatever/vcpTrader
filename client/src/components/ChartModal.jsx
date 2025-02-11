@@ -217,20 +217,6 @@ function ChartModal({ isOpen, onClose, symbol, token, markers = [] }) {
         className="flex flex-row items-center justify-between "
       >
         <span>Chart for {symbol}</span>
-        <Button
-          onClick={() => getChartData()}
-          variant="contained"
-          color="warning"
-          sx={{
-            color: "#ffffff",
-            borderRadius: "12px",
-            textTransform: "none",
-            fontWeight: "normal",
-            fontSize: "0.85rem",
-          }}
-        >
-          Refresh Chart
-        </Button>
       </DialogTitle>
       <DialogContent
         dividers
@@ -260,6 +246,20 @@ function ChartModal({ isOpen, onClose, symbol, token, markers = [] }) {
           }}
         >
           Open full chart
+        </Button>
+        <Button
+          onClick={() => getChartData()}
+          variant="contained"
+          color="warning"
+          sx={{
+            color: "#ffffff",
+            borderRadius: "12px",
+            textTransform: "none",
+            fontWeight: "normal",
+            fontSize: "0.85rem",
+          }}
+        >
+          Refresh
         </Button>
         <Button
           onClick={() => {
