@@ -111,7 +111,6 @@ def get_combined_ohlc(instrument_token, symbol):
                 logger.info(f'quote: {quote}')
                 ohlc = quote.get('ohlc', {})
                 if ohlc:
-                    # today_open = ohlc['open'] if ohlc['open'] > 0 else historical_data[-1]['close']
                     today_entry = {
                         'instrument_token': instrument_token,
                         'symbol': symbol,
@@ -134,11 +133,20 @@ def get_combined_ohlc(instrument_token, symbol):
                 formatted[key] = float(formatted[key])
             formatted_data.append(formatted)
         
-        formatted_data =  pd.DataFrame(formatted_data)
-        formatted_data['sma_50'] = ta.SMA(formatted_data['close'], timeperiod=50)
-        formatted_data['sma_150'] = ta.SMA(formatted_data['close'], timeperiod=150)
-        formatted_data['sma_200'] = ta.SMA(formatted_data['close'], timeperiod=200)
-        return formatted_data
+        # Convert to a DataFrame and compute additional columns
+        formatted_data = pd.DataFrame(formatted_data)
+        formatted_data['sma_50'] = ta.sma(formatted_data['close'], length=min(50, len(formatted_data)))
+        formatted_data['sma_150'] = ta.sma(formatted_data['close'], length=min(150, len(formatted_data)))
+        formatted_data['sma_200'] = ta.sma(formatted_data['close'], length=min(200, len(formatted_data)))
+        
+        # Replace non-finite values (NaN, Inf, -Inf) in SMA columns with None
+        import numpy as np
+        for col in ['sma_50', 'sma_150', 'sma_200']:
+            formatted_data[col] = formatted_data[col].replace([np.inf, -np.inf], np.nan)
+            formatted_data[col] = formatted_data[col].fillna(0)
+
+        # Return the JSON serializable result
+        return formatted_data.to_dict(orient="records")
     except Exception as e:
         logger.error(f"Error in get_combined_ohlc for instrument {instrument_token}, symbol {symbol}: {e}")
         raise e
