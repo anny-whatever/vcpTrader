@@ -399,15 +399,17 @@ export default function NavbarComponent() {
                         }}
                       />
                     </Typography>
-                    <Button
-                      variant="contained"
-                      color="error"
-                      size="small"
-                      onClick={() => handleDeleteAlert(alert.id)}
-                      sx={{ ml: 1 }}
-                    >
-                      Delete
-                    </Button>
+                    {userRole === "admin" && (
+                      <Button
+                        variant="contained"
+                        color="error"
+                        size="small"
+                        onClick={() => handleDeleteAlert(alert.id)}
+                        sx={{ ml: 1 }}
+                      >
+                        Delete
+                      </Button>
+                    )}
                   </Box>
                 ))
               ) : (
