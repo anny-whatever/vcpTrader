@@ -1,8 +1,10 @@
-# alert_endpoints.py
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Literal
+import json
+import decimal
+import datetime
 from auth import require_admin, require_user
 from services import (
     get_all_alerts,
@@ -19,6 +21,13 @@ class AlertData(BaseModel):
     symbol: str
     price: float
     alert_type: Literal['target', 'sl']
+
+def custom_json_encoder(obj):
+    if isinstance(obj, decimal.Decimal):
+        return float(obj)
+    if isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
 def convert_rows_to_objects(rows):
     # Map the tuple (row) to the proper keys.
@@ -67,10 +76,13 @@ async def api_list_alerts(user: dict = Depends(require_user)):
     """
     try:
         alerts = get_all_alerts()
-        # If the rows are not already dictionaries, convert them.
+        # If the rows are not dicts, convert them.
         if alerts and not isinstance(alerts[0], dict):
             alerts = convert_rows_to_objects(alerts)
-        return JSONResponse(content=alerts)
+        # Use the custom encoder to convert Decimals and datetimes.
+        serializable_alerts = json.loads(json.dumps(alerts, default=custom_json_encoder))
+        print(serializable_alerts)
+        return JSONResponse(content=serializable_alerts)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching alerts: {e}")
 
@@ -83,6 +95,8 @@ async def api_list_alert_messages(user: dict = Depends(require_user)):
         messages = get_latest_alert_messages()
         if messages and not isinstance(messages[0], dict):
             messages = convert_rows_to_objects(messages)
-        return JSONResponse(content=messages)
+        serializable_messages = json.loads(json.dumps(messages, default=custom_json_encoder))
+        print(serializable_messages)
+        return JSONResponse(content=serializable_messages)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching alert messages: {e}")
