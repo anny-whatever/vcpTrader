@@ -27,55 +27,54 @@ function App() {
   const [positions, setPositions] = useState(null);
   const [riskpool, setRiskpool] = useState(null);
   const [historicalTrades, setHistoricalTrades] = useState(null);
-   const { token, logout } = useContext(AuthContext);
+  const { token, logout } = useContext(AuthContext);
 
   useEffect(() => {
-  let socket;
+    let socket;
 
-  const connect = () => {
-    socket = new WebSocket("wss://api.devstatz.com/socket/ws");
+    const connect = () => {
+      socket = new WebSocket("wss://api.devstatz.com/socket/ws");
 
-    socket.onopen = () => {
-      console.log("Connected to WebSocket");
+      socket.onopen = () => {
+        console.log("Connected to WebSocket");
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const parsedData = JSON.parse(event.data);
+          if (parsedData?.event === "data_update") {
+            fetchRiskpool();
+            fetchHistoricalTrades();
+            fetchPositions();
+          }
+          if (parsedData?.event === "live_ticks") {
+            setLiveData(parsedData.data);
+          }
+        } catch (error) {
+          console.error("Error parsing WebSocket message:", error);
+        }
+      };
+
+      socket.onclose = () => {
+        console.log("WebSocket closed, attempting to reconnect...");
+        // Optionally, you can use a timeout to reconnect after a delay
+        setTimeout(connect, 5000);
+      };
+
+      socket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
     };
 
-    socket.onmessage = (event) => {
-      try {
-        const parsedData = JSON.parse(event.data);
-        if (parsedData?.event === "data_update") {
-          fetchRiskpool();
-          fetchHistoricalTrades();
-          fetchPositions();
-        }
-        if (parsedData?.event === "live_ticks") {
-          setLiveData(parsedData.data);
-        }
-      } catch (error) {
-        console.error("Error parsing WebSocket message:", error);
+    connect();
+
+    // Clean up on component unmount
+    return () => {
+      if (socket) {
+        socket.close();
       }
     };
-
-    socket.onclose = () => {
-      console.log("WebSocket closed, attempting to reconnect...");
-      // Optionally, you can use a timeout to reconnect after a delay
-      setTimeout(connect, 5000);
-    };
-
-    socket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-  };
-
-  connect();
-
-  // Clean up on component unmount
-  return () => {
-    if (socket) {
-      socket.close();
-    }
-  };
-}, []);
-
+  }, []);
 
   // Data fetching functions (using your axios instance)
   const fetchPositions = async () => {
@@ -107,18 +106,13 @@ function App() {
 
   // Fetch data on component mount
   useEffect(() => {
-
-        try {
-         
-         
-            fetchRiskpool();
-            fetchHistoricalTrades();
-            fetchPositions();
-    
-        } catch (error) {
-          console.error("Please Login");
-        }
-
+    try {
+      fetchRiskpool();
+      fetchHistoricalTrades();
+      fetchPositions();
+    } catch (error) {
+      console.error("Please Login");
+    }
   }, []);
 
   return (

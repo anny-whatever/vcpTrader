@@ -67,6 +67,7 @@ def initialize_kite_ticker(access_token):
 def start_kite_ticker():
     global kite_ticker
     from .ws_clients import process_and_send_live_ticks
+    from services import process_live_alerts
 
     tokens = get_instrument_token()
     if isinstance(tokens, dict):  # Means error occurred
@@ -84,6 +85,7 @@ def start_kite_ticker():
                     loop.run_until_complete(loop.shutdown_asyncgens())
                     loop.close()
             executor.submit(run_async_in_thread, process_and_send_live_ticks, ticks)
+            executor.submit(run_async_in_thread, process_live_alerts, ticks)
         except Exception as e:
             logger.error(f"Error processing ticks: {e}")
 

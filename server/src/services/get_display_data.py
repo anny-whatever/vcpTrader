@@ -8,6 +8,8 @@ import pytz
 import pandas_ta as ta
 import pandas as pd
 import numpy as np
+from models import PriceAlert, AlertMessage
+
 
 logger = logging.getLogger(__name__)
 
@@ -162,3 +164,45 @@ def get_combined_ohlc(instrument_token, symbol):
     finally:
         close_db_connection()
 
+def get_all_alerts():
+    """
+    Retrieve all active price alerts from the price_alerts table.
+    
+    :return: A list of active alerts.
+    """
+    conn, cur = None, None
+    try:
+        conn, cur = get_db_connection()
+        # Assuming that all alerts in the table are active
+        alerts = PriceAlert.fetch_all_alerts(cur)
+        if alerts is None:
+            return []
+        logger.info("All alerts fetched successfully.")
+        return alerts
+    except Exception as e:
+        logger.error(f"Error fetching alerts: {e}")
+        return []
+    finally:
+        if conn and cur:
+            close_db_connection(conn, cur)
+
+def get_latest_alert_messages():
+    """
+    Retrieve the latest 10 alert messages from the alert_messages table.
+    
+    :return: A list of alert messages.
+    """
+    conn, cur = None, None
+    try:
+        conn, cur = get_db_connection()
+        messages = AlertMessage.fetch_latest_messages(cur)
+        if messages is None:
+            return []
+        logger.info("Latest alert messages fetched successfully.")
+        return messages
+    except Exception as e:
+        logger.error(f"Error fetching latest alert messages: {e}")
+        return []
+    finally:
+        if conn and cur:
+            close_db_connection(conn, cur)

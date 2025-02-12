@@ -51,3 +51,14 @@ async def process_and_send_update_message():
     except Exception as e:
         logger.error(f"Error sending update message: {e}")
         raise e
+
+async def process_and_send_alert_update_message(message):
+    """Process an update message and send it to all WebSocket clients."""
+    try:
+        update_message_data = message
+        update_message_data_json = json.dumps(update_message_data, default=convert_datetime)
+        await send_data_to_clients(update_message_data_json)
+        logger.info("Update message sent to clients")
+    except Exception as e:
+        logger.error(f"Error sending update message: {e}")
+        raise e
