@@ -368,48 +368,62 @@ export default function NavbarComponent() {
                     key={alert.id}
                     sx={{
                       display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
+                      flexDirection: "column",
                       mb: 1,
                       py: 0.5,
                       borderBottom: "1px solid #444",
                     }}
                   >
-                    <Typography variant="body2" noWrap>
-                      <strong>{alert.symbol}</strong>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <Typography variant="body2" noWrap>
+                        <strong>{alert.symbol}</strong>
+                      </Typography>
+                      {userRole === "admin" && (
+                        <Button
+                          variant="contained"
+                          color="error"
+                          size="small"
+                          onClick={() => handleDeleteAlert(alert.id)}
+                          sx={{ ml: 1 }}
+                        >
+                          Delete
+                        </Button>
+                      )}
+                    </Box>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        gap: 1,
+                        mt: 0.5,
+                        flexWrap: "wrap",
+                      }}
+                    >
                       <Chip
                         label={
                           alert.alert_type === "sl" ? "Stop Loss" : "Target"
                         }
                         size="small"
                         sx={{
-                          ml: 1,
                           bgcolor:
                             alert.alert_type === "sl" ? "#ef4444" : "#22c55e",
                           color: "white",
                         }}
                       />
                       <Chip
-                        label={alert.price}
+                        label={`Price: ${alert.price}`}
                         size="small"
                         sx={{
-                          ml: 1,
                           bgcolor: "#4b5563",
                           color: "white",
                         }}
                       />
-                    </Typography>
-                    {userRole === "admin" && (
-                      <Button
-                        variant="contained"
-                        color="error"
-                        size="small"
-                        onClick={() => handleDeleteAlert(alert.id)}
-                        sx={{ ml: 1 }}
-                      >
-                        Delete
-                      </Button>
-                    )}
+                    </Box>
                   </Box>
                 ))
               ) : (
