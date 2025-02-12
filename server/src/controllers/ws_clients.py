@@ -3,7 +3,7 @@ import json
 import logging
 from datetime import datetime
 from fastapi import WebSocket
-from ws_endpoint import clients  # Import clients from ws_endpoint
+from .ws_endpoint import clients  # Import clients from ws_endpoint
 
 logger = logging.getLogger(__name__)
 

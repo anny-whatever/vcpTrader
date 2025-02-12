@@ -10,7 +10,7 @@ from services import (
     add_alert,
     remove_alert
 )
-from ws_clients import process_and_send_alert_update_message
+from .ws_clients import process_and_send_alert_update_message
 
 router = APIRouter()
 
@@ -20,7 +20,7 @@ class AlertData(BaseModel):
     price: float
     alert_type: Literal['target', 'sl']
 
-@router.post("/alerts/add")
+@router.post("/add")
 async def api_add_alert(alert_data: AlertData, user: dict = Depends(require_admin)):
     """
     Endpoint to add a new alert.
@@ -38,7 +38,7 @@ async def api_add_alert(alert_data: AlertData, user: dict = Depends(require_admi
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error adding alert: {e}")
 
-@router.delete("/alerts/remove")
+@router.delete("/remove")
 async def api_remove_alert(
     alert_id: int = Query(..., description="ID of the alert to remove"),
     user: dict = Depends(require_admin)
@@ -54,7 +54,7 @@ async def api_remove_alert(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error removing alert: {e}")
 
-@router.get("/alerts/list")
+@router.get("/list")
 async def api_list_alerts(user: dict = Depends(require_user)):
     """
     Endpoint to retrieve all active alerts.
@@ -65,7 +65,7 @@ async def api_list_alerts(user: dict = Depends(require_user)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching alerts: {e}")
 
-@router.get("/alerts/messages")
+@router.get("/messages")
 async def api_list_alert_messages(user: dict = Depends(require_user)):
     """
     Endpoint to retrieve the latest 10 alert messages.

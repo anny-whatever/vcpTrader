@@ -4,7 +4,7 @@ import logging
 import asyncio
 from db import get_db_connection, close_db_connection
 from models import PriceAlert, AlertMessage
-from get_display_data import get_all_alerts
+from services import get_all_alerts
 
 
 logger = logging.getLogger(__name__)
