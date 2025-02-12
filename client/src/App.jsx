@@ -1,12 +1,11 @@
 // App.jsx
-import React from "react";
-import { useState, useEffect, useContext, lazy } from "react";
+import React, { useState, useEffect, useContext, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/NavbarComponent.jsx";
 import api from "./utils/api";
 import { AuthProvider, AuthContext } from "./utils/AuthContext.jsx";
 import { DataContext } from "./utils/DataContext.jsx";
-import { jwtDecode } from "jwt-decode"; // ✅ Correct import
+import { jwtDecode } from "jwt-decode"; // Adjusted import if needed
 
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const AllPositions = lazy(() => import("./pages/AllPositions.jsx"));
@@ -27,6 +26,8 @@ function App() {
   const [positions, setPositions] = useState(null);
   const [riskpool, setRiskpool] = useState(null);
   const [historicalTrades, setHistoricalTrades] = useState(null);
+  const [priceAlerts, setPriceAlerts] = useState(null);
+  const [alertMessages, setAlertMessages] = useState(null);
   const { token, logout } = useContext(AuthContext);
 
   useEffect(() => {
@@ -46,6 +47,8 @@ function App() {
             fetchRiskpool();
             fetchHistoricalTrades();
             fetchPositions();
+            fetchPriceAlerts();
+            fetchAlertMessages();
           }
           if (parsedData?.event === "live_ticks") {
             setLiveData(parsedData.data);
@@ -59,7 +62,6 @@ function App() {
 
       socket.onclose = () => {
         console.log("WebSocket closed, attempting to reconnect...");
-        // Optionally, you can use a timeout to reconnect after a delay
         setTimeout(connect, 5000);
       };
 
@@ -78,7 +80,7 @@ function App() {
     };
   }, []);
 
-  // Data fetching functions (using your axios instance)
+  // Data fetching functions
   const fetchPositions = async () => {
     try {
       const response = await api.get("/api/data/positions");
@@ -106,22 +108,51 @@ function App() {
     }
   };
 
-  // Fetch data on component mount
+  // New: Fetch price alerts from /api/alerts/list
+  const fetchPriceAlerts = async () => {
+    try {
+      const response = await api.get("/api/alerts/list");
+      setPriceAlerts(response.data || response);
+    } catch (error) {
+      console.error("Error fetching price alerts:", error);
+    }
+  };
+
+  // New: Fetch alert messages from /api/alerts/messages
+  const fetchAlertMessages = async () => {
+    try {
+      const response = await api.get("/api/alerts/messages");
+      setAlertMessages(response.data || response);
+    } catch (error) {
+      console.error("Error fetching alert messages:", error);
+    }
+  };
+
+  // Fetch all data on component mount
   useEffect(() => {
     try {
       fetchRiskpool();
       fetchHistoricalTrades();
       fetchPositions();
+      fetchPriceAlerts();
+      fetchAlertMessages();
     } catch (error) {
-      console.error("Please Login");
+      console.error("Data fetching error:", error);
     }
   }, []);
 
   return (
-    <div className=" min-h-[100vh] bg-zinc-900">
+    <div className="min-h-[100vh] bg-zinc-900">
       <AuthProvider>
         <DataContext.Provider
-          value={{ liveData, positions, riskpool, historicalTrades }}
+          value={{
+            liveData,
+            positions,
+            riskpool,
+            historicalTrades,
+            priceAlerts,
+            alertMessages,
+          }}
         >
           <BrowserRouter>
             <Navbar />
