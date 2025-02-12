@@ -55,11 +55,7 @@ async def process_and_send_update_message():
 async def process_and_send_alert_update_message(message):
     """Process an alert update message and send it to all WebSocket clients."""
     try:
-        # Wrap the alert message in an event object.
-        if isinstance(message, dict):
-            payload = message
-        else:
-            payload = {"event": "alert_update", "data": message}
+        payload = {"event": "alert_update", "data": message}
         message_json = json.dumps(payload, default=convert_datetime)
         await send_data_to_clients(message_json)
         logger.info("Alert update message sent to clients")
@@ -69,10 +65,11 @@ async def process_and_send_alert_update_message(message):
 
 async def process_and_send_alert_triggered_message(message):
     """Send an alert triggered message (used when a live alert is triggered)."""
-    if not isinstance(message, dict):
+    try:
         payload = {"event": "alert_triggered", "data": message}
-    else:
-        payload = message
-    message_json = json.dumps(payload, default=convert_datetime)
-    await send_data_to_clients(message_json)
-    logger.info("Alert triggered message sent to clients")
+        message_json = json.dumps(payload, default=convert_datetime)
+        await send_data_to_clients(message_json)
+        logger.info("Alert triggered message sent to clients")
+    except Exception as e:
+        logger.error(f"Error sending alert update message: {e}")
+        raise

@@ -58,6 +58,7 @@ function App() {
           if (parsedData?.event === "alert_update") {
             fetchPriceAlerts();
             fetchAlertMessages();
+            console.log("Alert updated");
           }
           if (parsedData?.event === "alert_triggered") {
             fetchPriceAlerts();
