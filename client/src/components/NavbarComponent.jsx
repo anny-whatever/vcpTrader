@@ -88,20 +88,20 @@ export default function NavbarComponent() {
     try {
       await api.delete("/api/alerts/remove", { params: { alert_id: alertId } });
       PlayToastSound();
-      toast.success(response?.data?.message || "Alert Removed successfully", {
+      toast.success("Alert Removed successfully", {
         duration: 5000,
       });
       setModalAlerts((prev) => prev.filter((alert) => alert.id !== alertId));
     } catch (error) {
       if (error.response) {
         PlayToastSound();
-        toast.success(error.response.data || "Alert deletion failed", {
+        toast.success("Alert deletion failed", {
           duration: 5000,
         });
         console.error("Error deleting alert:", error.response.data);
       } else {
         PlayErrorSound();
-        toast.success(error.message || "Alert deletion failed", {
+        toast.success("Alert deletion failed", {
           duration: 5000,
         });
         console.error("Error during alert deletion:", error.message);
