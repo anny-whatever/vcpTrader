@@ -1,3 +1,4 @@
+// Screener.jsx
 import React, { useState, useEffect, useContext } from "react";
 import { DataContext } from "../utils/DataContext";
 import {
@@ -14,6 +15,7 @@ import {
 import BuyModal from "../components/BuyModal";
 import SellModal from "../components/SellModal";
 import ChartModal from "../components/ChartModal";
+import AddAlertModal from "../components/AddAlertModal"; // New modal for adding alert
 import api from "../utils/api";
 import { AuthContext } from "../utils/AuthContext";
 import { jwtDecode } from "jwt-decode"; // ✅ Correct import
@@ -25,15 +27,17 @@ function Screener() {
   const [screenerData, setScreenerData] = useState(null);
   const [screen, setScreen] = useState("VCP");
 
-  // Modals
+  // Modals for buy, sell, chart and now add alert
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
+  const [isAddAlertModalOpen, setIsAddAlertModalOpen] = useState(false);
 
   // Data for modals
   const [buyData, setBuyData] = useState(null);
   const [sellData, setSellData] = useState(null);
   const [chartData, setChartData] = useState(null);
+  const [addAlertData, setAddAlertData] = useState(null);
 
   let userRole = "";
   if (token) {
@@ -64,7 +68,6 @@ function Screener() {
   useEffect(() => {
     if (!screenerData || !liveData) return;
     let changed = false;
-    // Copy screenerData so we don't mutate state directly
     const newData = screenerData.map((item) => {
       const liveDataItem = liveData.find(
         (liveItem) => liveItem.instrument_token === item.instrument_token
@@ -119,6 +122,14 @@ function Screener() {
     });
   };
 
+  const populateAddAlertData = (row) => {
+    setAddAlertData({
+      symbol: row.symbol,
+      instrument_token: row.instrument_token,
+      ltp: row.last_price,
+    });
+  };
+
   // Modal Handlers
   const handleOpenBuyModal = () => setIsBuyModalOpen(true);
   const handleCloseBuyModal = () => setIsBuyModalOpen(false);
@@ -128,6 +139,9 @@ function Screener() {
 
   const handleOpenChartModal = () => setIsChartModalOpen(true);
   const handleCloseChartModal = () => setIsChartModalOpen(false);
+
+  const handleOpenAddAlertModal = () => setIsAddAlertModalOpen(true);
+  const handleCloseAddAlertModal = () => setIsAddAlertModalOpen(false);
 
   return (
     <div className="w-full px-6 text-white">
@@ -154,9 +168,16 @@ function Screener() {
         symbol={chartData?.symbol}
         token={chartData?.token}
       />
+      <AddAlertModal
+        isOpen={isAddAlertModalOpen}
+        onClose={handleCloseAddAlertModal}
+        symbol={addAlertData?.symbol}
+        instrument_token={addAlertData?.instrument_token}
+        ltp={addAlertData?.ltp}
+      />
 
       {/* Top controls */}
-      <div className="flex items-center flex-col sm:flex-row justify-between my-3">
+      <div className="flex flex-col items-center justify-between my-3 sm:flex-row">
         <div className="flex items-center gap-3">
           <Button
             className="bg-green-500 bg-opacity-90 hover:bg-green-600 text-white rounded-md px-4 py-2 min-w-[130px] sm:min-w-[150px]"
@@ -253,6 +274,32 @@ function Screener() {
                               </Button>
                             </>
                           )}
+                          {/* New: Add Alert Button (using second provided SVG) */}
+                          <Button
+                            isIconOnly
+                            color="primary"
+                            variant="flat"
+                            onPress={() => {
+                              populateAddAlertData(row);
+                              handleOpenAddAlertModal();
+                            }}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={1.5}
+                              stroke="currentColor"
+                              className="size-5"
+                              style={{ width: "24px", height: "24px" }}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
+                              />
+                            </svg>
+                          </Button>
                           {/* Chart */}
                           <Button
                             isIconOnly
@@ -312,31 +359,59 @@ function Screener() {
                       {/* Buy */}
                       {userRole === "admin" && (
                         <>
-                      <Button
-                        isIconOnly
-                        color="success"
-                        variant="flat"
-                        onPress={() => {
-                          populateBuyData(row);
-                          handleOpenBuyModal();
-                        }}
-                        >
-                        En
-                      </Button>
-                      {/* Sell */}
-                      <Button
-                        isIconOnly
-                        color="danger"
-                        variant="flat"
-                        onPress={() => {
-                          populateSellData(row);
-                          handleOpenSellModal();
-                        }}
-                        >
-                        Ex
+                          <Button
+                            isIconOnly
+                            color="success"
+                            variant="flat"
+                            onPress={() => {
+                              populateBuyData(row);
+                              handleOpenBuyModal();
+                            }}
+                            isDisabled={userRole !== "admin"}
+                          >
+                            En
                           </Button>
-                        </>)}
-                        
+                          {/* Sell */}
+                          <Button
+                            isIconOnly
+                            color="danger"
+                            variant="flat"
+                            onPress={() => {
+                              populateSellData(row);
+                              handleOpenSellModal();
+                            }}
+                            isDisabled={userRole !== "admin"}
+                          >
+                            Ex
+                          </Button>
+                        </>
+                      )}
+                      {/* New: Add Alert Button */}
+                      <Button
+                        isIconOnly
+                        color="primary"
+                        variant="flat"
+                        onPress={() => {
+                          populateAddAlertData(row);
+                          handleOpenAddAlertModal();
+                        }}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="size-5"
+                          style={{ width: "24px", height: "24px" }}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
+                          />
+                        </svg>
+                      </Button>
                       {/* Chart */}
                       <Button
                         isIconOnly

@@ -11,6 +11,8 @@ const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const AllPositions = lazy(() => import("./pages/AllPositions.jsx"));
 const Screener = lazy(() => import("./pages/Screener.jsx"));
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
+import { Toaster, toast } from "sonner";
+import { PlayAlertTriggerSound } from "./utils/PlaySound";
 
 // ProtectedRoute component: uses AuthContext to decide if the user is logged in.
 const ProtectedRoute = ({ children }) => {
@@ -52,6 +54,21 @@ function App() {
           }
           if (parsedData?.event === "live_ticks") {
             setLiveData(parsedData.data);
+          }
+          if (parsedData?.event === "alert_update") {
+            fetchPriceAlerts();
+            fetchAlertMessages();
+          }
+          if (parsedData?.event === "alert_triggered") {
+            fetchPriceAlerts();
+            fetchAlertMessages();
+            PlayAlertTriggerSound();
+            toast.success(
+              parsedData?.message || "Alert triggered successfully",
+              {
+                duration: 15000,
+              }
+            );
           }
         } catch (error) {
           console.error("Error parsing WebSocket message:", error);

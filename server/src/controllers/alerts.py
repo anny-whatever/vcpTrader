@@ -20,6 +20,12 @@ class AlertData(BaseModel):
     price: float
     alert_type: Literal['target', 'sl']
 
+def convert_rows_to_objects(rows):
+    # Map the tuple (row) to the proper keys.
+    # New table structure: id, instrument_token, symbol, price, alert_type, created_at, active
+    keys = ["id", "instrument_token", "symbol", "price", "alert_type", "created_at", "active"]
+    return [dict(zip(keys, row)) for row in rows]
+
 @router.post("/add")
 async def api_add_alert(alert_data: AlertData, user: dict = Depends(require_admin)):
     """
@@ -61,6 +67,9 @@ async def api_list_alerts(user: dict = Depends(require_user)):
     """
     try:
         alerts = get_all_alerts()
+        # If the rows are not already dictionaries, convert them.
+        if alerts and not isinstance(alerts[0], dict):
+            alerts = convert_rows_to_objects(alerts)
         return JSONResponse(content=alerts)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching alerts: {e}")
@@ -72,6 +81,8 @@ async def api_list_alert_messages(user: dict = Depends(require_user)):
     """
     try:
         messages = get_latest_alert_messages()
+        if messages and not isinstance(messages[0], dict):
+            messages = convert_rows_to_objects(messages)
         return JSONResponse(content=messages)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching alert messages: {e}")
