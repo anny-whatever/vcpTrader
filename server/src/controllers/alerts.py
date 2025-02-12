@@ -1,46 +1,55 @@
 # alert_endpoints.py
-
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from typing import Literal
 from auth import require_admin, require_user
-from services import get_all_alerts, get_latest_alert_messages, add_alert, remove_alert, create_and_send_alert_message, alerts
-from .ws_clients import process_and_send_alert_update_message
+from services import (
+    get_all_alerts,
+    get_latest_alert_messages,
+    add_alert,
+    remove_alert
+)
+from ws_clients import process_and_send_alert_update_message
 
 router = APIRouter()
 
+class AlertData(BaseModel):
+    instrument_token: int
+    symbol: str
+    price: float
+    alert_type: Literal['target', 'sl']
+
 @router.post("/alerts/add")
-async def api_add_alert(alert_data: dict, user: dict = Depends(require_admin)):
+async def api_add_alert(alert_data: AlertData, user: dict = Depends(require_admin)):
     """
     Endpoint to add a new alert.
-    Expected JSON payload:
-    {
-        "instrument_token": int,
-        "symbol": str,
-        "price": float,
-        "alert_type": "target" or "sl"
-    }
     """
-    global alerts
     try:
-        instrument_token = alert_data.get("instrument_token")
-        symbol = alert_data.get("symbol")
-        price = alert_data.get("price")
-        alert_type = alert_data.get("alert_type")
-        response = add_alert(instrument_token, symbol, price, alert_type)
-        await create_and_send_alert_message(alert_data, send_update_func=process_and_send_alert_update_message)
-        alerts = None
+        response = add_alert(
+            instrument_token=alert_data.instrument_token,
+            symbol=alert_data.symbol,
+            price=alert_data.price,
+            alert_type=alert_data.alert_type
+        )
+        # Send an update event to notify clients that alerts have changed.
+        await process_and_send_alert_update_message(response)
         return JSONResponse(content=response)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error adding alert: {e}")
 
-@router.get("/alerts/remove")
-async def api_remove_alert(alert_id: int, user: dict = Depends(require_admin)):
+@router.delete("/alerts/remove")
+async def api_remove_alert(
+    alert_id: int = Query(..., description="ID of the alert to remove"),
+    user: dict = Depends(require_admin)
+):
     """
     Endpoint to remove an alert.
-    Expects an alert_id as a query parameter.
     """
     try:
         response = remove_alert(alert_id)
+        # Send an update event so clients know the alerts list was modified.
+        await process_and_send_alert_update_message(response)
         return JSONResponse(content=response)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error removing alert: {e}")

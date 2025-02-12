@@ -1,25 +1,22 @@
+# get_display_data.py
 import logging
-from models import RiskPool, SaveTradeDetails, SaveHistoricalTradeDetails, SaveOHLC
-from db import get_db_connection, close_db_connection
-import json
-from datetime import datetime, time
-from controllers import kite
 import pytz
-import pandas_ta as ta
+from datetime import datetime, time
 import pandas as pd
-import numpy as np
-from models import PriceAlert, AlertMessage
-
+import pandas_ta as ta
+from db import get_db_connection, close_db_connection
+from models import PriceAlert, AlertMessage, RiskPool, SaveTradeDetails, SaveHistoricalTradeDetails, SaveOHLC
+from controllers import kite  # Assumes you have a kite module for live quotes
 
 logger = logging.getLogger(__name__)
-
 TIMEZONE = pytz.timezone("Asia/Kolkata")
 MARKET_OPEN = time(9, 15)
 MARKET_CLOSE = time(15, 35)
 
 def fetch_risk_pool_for_display():
-    conn, cur = get_db_connection()
+    conn, cur = None, None
     try:
+        conn, cur = get_db_connection()
         risk_pool = RiskPool.fetch_risk_pool(cur)
         if risk_pool:
             return {
@@ -29,15 +26,16 @@ def fetch_risk_pool_for_display():
         return None
     except Exception as e:
         logger.error(f"Error fetching risk pool for display: {e}")
-        raise e
+        raise
     finally:
-        close_db_connection()
+        if conn and cur:
+            close_db_connection()
 
 def format_trade_record(trade):
     return {
         "stock_name": trade['stock_name'],
         "token": trade['token'],
-        "entry_time": trade['entry_time'].isoformat(),
+        "entry_time": trade['entry_time'].isoformat() if trade['entry_time'] else None,
         "entry_price": float(trade['entry_price']),
         "stop_loss": float(trade['stop_loss']),
         "target": float(trade['target']),
@@ -47,8 +45,9 @@ def format_trade_record(trade):
     }
 
 def fetch_trade_details_for_display():
-    conn, cur = get_db_connection()
+    conn, cur = None, None
     try:
+        conn, cur = get_db_connection()
         trade_details = SaveTradeDetails.fetch_all_trades(cur)
         if not trade_details:
             return []
@@ -67,14 +66,15 @@ def fetch_trade_details_for_display():
         return formatted_trades
     except Exception as e:
         logger.error(f"Error in fetch_trade_details_for_display: {e}")
-        raise e
+        raise
     finally:
-        close_db_connection()
+        if conn and cur:
+            close_db_connection()
 
 def format_historical_trade_record(trade):
     return {
         "stock_name": trade['stock_name'],
-        "entry_time": trade['entry_time'].isoformat(),
+        "entry_time": trade['entry_time'].isoformat() if trade['entry_time'] else None,
         "entry_price": float(trade['entry_price']),
         "exit_time": trade['exit_time'].isoformat() if trade['exit_time'] else None,
         "exit_price": float(trade['exit_price']),
@@ -83,96 +83,83 @@ def format_historical_trade_record(trade):
     }
 
 def fetch_historical_trade_details_for_display():
-    conn, cur = get_db_connection()
+    conn, cur = None, None
     try:
+        conn, cur = get_db_connection()
         trade_details = SaveHistoricalTradeDetails.fetch_all_historical_trades(cur)
         return [format_historical_trade_record(trade) for trade in trade_details] if trade_details else []
     except Exception as e:
         logger.error(f"Error fetching historical trade details: {e}")
-        raise e
+        raise
     finally:
-        close_db_connection()
+        if conn and cur:
+            close_db_connection()
 
 def get_combined_ohlc(instrument_token, symbol):
-    """
-    Fetch historical OHLC data and combine with real-time data from Kite API.
-    Returns: List of OHLC records sorted by date (oldest first).
-    """
-    conn, cur = get_db_connection()
-    combined_data = []
+    conn, cur = None, None
     try:
+        conn, cur = get_db_connection()
         historical_data = SaveOHLC.fetch_by_instrument(cur, instrument_token)
-        combined_data = [dict(record) for record in historical_data]
+        combined_data = [dict(record) for record in historical_data] if historical_data else []
         now = datetime.now(TIMEZONE)
         today_date = now.date()
-        if not historical_data:
-            return combined_data
-        last_historical_date = historical_data[-1]['date'].astimezone(TIMEZONE).date()
-        if last_historical_date < today_date and MARKET_OPEN <= now.time() <= MARKET_CLOSE:
-            try:
-                quote = kite.quote(instrument_token)[str(instrument_token)]
-                logger.info(f'quote: {quote}')
-                ohlc = quote.get('ohlc', {})
-                if ohlc:
-                    today_entry = {
-                        'instrument_token': instrument_token,
-                        'symbol': symbol,
-                        'interval': 'day',
-                        'date': TIMEZONE.localize(datetime.combine(today_date, time(15, 30))),
-                        'open': ohlc['open'],
-                        'high': ohlc['high'],
-                        'low': ohlc['low'],
-                        'close': quote.get('last_price', 0),
-                        'volume': quote.get('volume_today', 0)
-                    }
-                    combined_data.append(today_entry)
-            except Exception as e:
-                logger.error(f"Error fetching live data for {symbol}: {e}")
+        if combined_data:
+            last_historical_date = pd.to_datetime(combined_data[-1]['date']).astimezone(TIMEZONE).date()
+            if last_historical_date < today_date and MARKET_OPEN <= now.time() <= MARKET_CLOSE:
+                try:
+                    quote = kite.quote(instrument_token)[str(instrument_token)]
+                    logger.info(f'quote: {quote}')
+                    ohlc = quote.get('ohlc', {})
+                    if ohlc:
+                        today_entry = {
+                            'instrument_token': instrument_token,
+                            'symbol': symbol,
+                            'interval': 'day',
+                            'date': TIMEZONE.localize(datetime.combine(today_date, time(15, 30))),
+                            'open': ohlc['open'],
+                            'high': ohlc['high'],
+                            'low': ohlc['low'],
+                            'close': quote.get('last_price', 0),
+                            'volume': quote.get('volume_today', 0)
+                        }
+                        combined_data.append(today_entry)
+                except Exception as e:
+                    logger.error(f"Error fetching live data for {symbol}: {e}")
         formatted_data = []
         for record in combined_data:
             formatted = record.copy()
-            formatted['date'] = formatted['date'].isoformat()
+            formatted['date'] = pd.to_datetime(formatted['date']).isoformat()
             for key in ['open', 'high', 'low', 'close', 'volume']:
                 formatted[key] = float(formatted[key])
             formatted_data.append(formatted)
         
-        # Convert to a DataFrame and compute additional columns
-        formatted_data = pd.DataFrame(formatted_data)
-        # Use min(len(formatted_data), X) to ensure we have enough data points
-        formatted_data['sma_50'] = ta.sma(formatted_data['close'], length=min(50, len(formatted_data)))
-        formatted_data['sma_150'] = ta.sma(formatted_data['close'], length=min(150, len(formatted_data)))
-        formatted_data['sma_200'] = ta.sma(formatted_data['close'], length=min(200, len(formatted_data)))
-        
-        # Replace non-finite values in SMA columns with 0 and round the values.
-        import numpy as np
-        for col in ['sma_50', 'sma_150', 'sma_200']:
-            formatted_data[col] = formatted_data[col].replace([np.inf, -np.inf], np.nan)
-            formatted_data[col] = formatted_data[col].fillna(0)
-            formatted_data[col] = np.around(formatted_data[col], decimals=2)
-        
-        # EXTRA SAFEGUARD:
-        # Ensure that all float values in the DataFrame are finite.
-        import math
-        formatted_data = formatted_data.applymap(lambda x: 0 if isinstance(x, float) and not math.isfinite(x) else x)
-        
-        logger.info(f"get_combined_ohlc: returning {len(formatted_data)} rows")
-        # Return the JSON serializable result
-        return formatted_data.to_dict(orient="records")
+        df = pd.DataFrame(formatted_data)
+        if not df.empty:
+            df['sma_50'] = ta.sma(df['close'], length=min(50, len(df)))
+            df['sma_150'] = ta.sma(df['close'], length=min(150, len(df)))
+            df['sma_200'] = ta.sma(df['close'], length=min(200, len(df)))
+            import numpy as np
+            for col in ['sma_50', 'sma_150', 'sma_200']:
+                df[col] = df[col].replace([np.inf, -np.inf], np.nan)
+                df[col] = df[col].fillna(0)
+                df[col] = np.around(df[col], decimals=2)
+            import math
+            df = df.applymap(lambda x: 0 if isinstance(x, float) and not math.isfinite(x) else x)
+            logger.info(f"get_combined_ohlc: returning {len(df)} rows")
+            return df.to_dict(orient="records")
+        else:
+            return []
     except Exception as e:
         logger.error(f"Error in get_combined_ohlc for instrument {instrument_token}, symbol {symbol}: {e}")
-        raise e
+        raise
     finally:
-        close_db_connection()
+        if conn and cur:
+            close_db_connection()
 
 def get_all_alerts():
-    """
-    Retrieve all active price alerts from the price_alerts table.
-    
-    :return: A list of active alerts.
-    """
-    conn, cur = get_db_connection()
+    conn, cur = None, None
     try:
-        # Assuming that all alerts in the table are active
+        conn, cur = get_db_connection()
         alerts = PriceAlert.fetch_all_alerts(cur)
         if alerts is None:
             return []
@@ -182,16 +169,13 @@ def get_all_alerts():
         logger.error(f"Error fetching alerts: {e}")
         return []
     finally:
-        close_db_connection()
+        if conn and cur:
+            close_db_connection()
 
 def get_latest_alert_messages():
-    """
-    Retrieve the latest 10 alert messages from the alert_messages table.
-    
-    :return: A list of alert messages.
-    """
-    conn, cur = get_db_connection()
+    conn, cur = None, None
     try:
+        conn, cur = get_db_connection()
         messages = AlertMessage.fetch_latest_messages(cur)
         if messages is None:
             return []
@@ -201,4 +185,5 @@ def get_latest_alert_messages():
         logger.error(f"Error fetching latest alert messages: {e}")
         return []
     finally:
-        close_db_connection()
+        if conn and cur:
+            close_db_connection()
