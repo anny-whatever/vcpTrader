@@ -27,6 +27,8 @@ import { AuthContext } from "../utils/AuthContext";
 import { DataContext } from "../utils/DataContext";
 import { jwtDecode } from "jwt-decode";
 import api from "../utils/api"; // our configured axios instance
+import { Toaster, toast } from "sonner";
+import { PlayToastSound, PlayErrorSound } from "../utils/PlaySound";
 
 export default function NavbarComponent() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -85,11 +87,23 @@ export default function NavbarComponent() {
   const handleDeleteAlert = async (alertId) => {
     try {
       await api.delete("/api/alerts/remove", { params: { alert_id: alertId } });
+      PlayToastSound();
+      toast.success(response?.data?.message || "Alert Removed successfully", {
+        duration: 5000,
+      });
       setModalAlerts((prev) => prev.filter((alert) => alert.id !== alertId));
     } catch (error) {
       if (error.response) {
+        PlayToastSound();
+        toast.success(error.response.data || "Alert deletion failed", {
+          duration: 5000,
+        });
         console.error("Error deleting alert:", error.response.data);
       } else {
+        PlayErrorSound();
+        toast.success(error.message || "Alert deletion failed", {
+          duration: 5000,
+        });
         console.error("Error during alert deletion:", error.message);
       }
     }
