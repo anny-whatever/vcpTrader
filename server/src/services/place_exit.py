@@ -26,7 +26,7 @@ def sell_order_execute(symbol):
         return {"status": "error", "message": f"Sell exit already in progress for {symbol}."}
 
     sell_exit_event.set()
-    conn, cur = None, None
+    
     start_time = datetime.datetime.now()  # Record start time for execution time logging
 
     try:
@@ -126,7 +126,7 @@ def monitor_sell_order_status(order_id, trade_id, symbol, entry_time, entry_pric
     """
     Monitor the sell order status and update the database and risk pool accordingly.
     """
-    conn, cur = None, None
+    
     try:
         conn, cur = get_trade_db_connection()
         start_time = time.time()

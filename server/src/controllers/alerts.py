@@ -3,7 +3,8 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from auth import require_admin, require_user
-from services import get_all_alerts, get_latest_alert_messages, add_alert, remove_alert
+from services import get_all_alerts, get_latest_alert_messages, add_alert, remove_alert, create_and_send_alert_message, alerts
+from .ws_clients import process_and_send_alert_update_message
 
 router = APIRouter()
 
@@ -19,12 +20,15 @@ async def api_add_alert(alert_data: dict, user: dict = Depends(require_admin)):
         "alert_type": "target" or "sl"
     }
     """
+    global alerts
     try:
         instrument_token = alert_data.get("instrument_token")
         symbol = alert_data.get("symbol")
         price = alert_data.get("price")
         alert_type = alert_data.get("alert_type")
         response = add_alert(instrument_token, symbol, price, alert_type)
+        await create_and_send_alert_message(alert_data, send_update_func=process_and_send_alert_update_message)
+        alerts = None
         return JSONResponse(content=response)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error adding alert: {e}")

@@ -52,6 +52,8 @@ function App() {
           }
         } catch (error) {
           console.error("Error parsing WebSocket message:", error);
+          socket.close();
+          setTimeout(connect, 5000);
         }
       };
 

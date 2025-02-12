@@ -170,9 +170,8 @@ def get_all_alerts():
     
     :return: A list of active alerts.
     """
-    conn, cur = None, None
+    conn, cur = get_db_connection()
     try:
-        conn, cur = get_db_connection()
         # Assuming that all alerts in the table are active
         alerts = PriceAlert.fetch_all_alerts(cur)
         if alerts is None:
@@ -183,8 +182,7 @@ def get_all_alerts():
         logger.error(f"Error fetching alerts: {e}")
         return []
     finally:
-        if conn and cur:
-            close_db_connection(conn, cur)
+        close_db_connection()
 
 def get_latest_alert_messages():
     """
@@ -192,9 +190,8 @@ def get_latest_alert_messages():
     
     :return: A list of alert messages.
     """
-    conn, cur = None, None
+    conn, cur = get_db_connection()
     try:
-        conn, cur = get_db_connection()
         messages = AlertMessage.fetch_latest_messages(cur)
         if messages is None:
             return []
@@ -204,5 +201,4 @@ def get_latest_alert_messages():
         logger.error(f"Error fetching latest alert messages: {e}")
         return []
     finally:
-        if conn and cur:
-            close_db_connection(conn, cur)
+        close_db_connection()
