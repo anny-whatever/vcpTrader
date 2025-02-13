@@ -29,10 +29,16 @@ def custom_json_encoder(obj):
         return obj.isoformat()
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
-def convert_rows_to_objects(rows):
+def convert_rows_to_objects_alerts(rows):
     # Map the tuple (row) to the proper keys.
     # New table structure: id, instrument_token, symbol, price, alert_type, created_at, active
     keys = ["id", "instrument_token", "symbol", "price", "alert_type", "created_at", "active"]
+    return [dict(zip(keys, row)) for row in rows]
+
+def convert_rows_to_objects_messages(rows):
+    # Map the tuple (row) to the proper keys.
+    # New table structure: id, instrument_token, symbol, price, alert_type, created_at, active
+    keys = ["id", "instrument_token", "symbol", "alert_type", "triggered_price", "message", "created_at"]
     return [dict(zip(keys, row)) for row in rows]
 
 @router.post("/add")
@@ -78,7 +84,7 @@ async def api_list_alerts(user: dict = Depends(require_user)):
         alerts = get_all_alerts()
         # If the rows are not dicts, convert them.
         if alerts and not isinstance(alerts[0], dict):
-            alerts = convert_rows_to_objects(alerts)
+            alerts = convert_rows_to_objects_alerts(alerts)
         # Use the custom encoder to convert Decimals and datetimes.
         serializable_alerts = json.loads(json.dumps(alerts, default=custom_json_encoder))
         print(serializable_alerts)
@@ -94,7 +100,7 @@ async def api_list_alert_messages(user: dict = Depends(require_user)):
     try:
         messages = get_latest_alert_messages()
         if messages and not isinstance(messages[0], dict):
-            messages = convert_rows_to_objects(messages)
+            messages = convert_rows_to_objects_messages(messages)
         serializable_messages = json.loads(json.dumps(messages, default=custom_json_encoder))
         print(serializable_messages)
         return JSONResponse(content=serializable_messages)

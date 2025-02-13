@@ -5,13 +5,16 @@ import asyncio
 from db import get_db_connection, close_db_connection
 from models import PriceAlert, AlertMessage
 from services import get_all_alerts
+import threading
 
 
 logger = logging.getLogger(__name__)
 
 # Global cache for alerts (Note: Consider thread-safe caching for highly concurrent scenarios)
-alerts_cache = None
+alert_trigger_lock = threading.Lock()
+alert_trigger_running = False
 
+alerts_cache = None
 def add_alert(instrument_token: int, symbol: str, price: float, alert_type: str):
     """
     Add a new price alert to the database.
@@ -101,38 +104,72 @@ async def create_and_send_alert_message(
 async def process_live_alerts(ticks):
     """
     Process incoming tick data and trigger alerts if conditions are met.
+    
+    This function uses a lock (alert_trigger_lock) and a boolean flag 
+    (alert_trigger_running) to ensure only one instance of the alert-processing 
+    logic runs at a time.
     """
     global alerts_cache
+    global alert_trigger_running
+
+    # Acquire the lock at the start.
+    with alert_trigger_lock:
+        if alert_trigger_running:
+            logger.info("process_live_alerts is already running; exiting.")
+            return
+        # Mark that we are now running
+        alert_trigger_running = True
+
     try:
-        for tick_data in ticks:
-            instrument_token = tick_data.get('instrument_token')
-            last_price = tick_data.get('last_price')
-            if alerts_cache is None:
-                alerts_cache = get_all_alerts()
-            for alert in alerts_cache:
-                try:
-                    alert_id = alert.get('id')
-                    symbol = alert.get('symbol')
-                    alert_type = alert.get('alert_type').lower()
-                    alert_price = float(alert.get('price'))
-                    if (alert_type == 'target' and last_price >= alert_price) or \
-                       (alert_type == 'sl' and last_price <= alert_price):
-                        logger.info(
-                            f"Alert triggered for {symbol} (token: {instrument_token}). "
-                            f"Alert type: {alert_type}, Triggered at price: {last_price}."
-                        )
-                        # When an alert is triggered, pass the dedicated sender function.
-                        await create_and_send_alert_message(
-                            instrument_token=instrument_token,
-                            symbol=symbol,
-                            alert_type=alert_type,
-                            triggered_price=last_price,
-                        )
-                        remove_alert(alert_id)
-                        alerts_cache = None
-                except (TypeError, ValueError) as e:
-                    logger.error(f"Error processing alert: {e}")
-                    continue
+        # If alerts_cache is empty or None, fetch fresh alerts from DB
+        if alerts_cache is None:
+            alerts_cache = get_all_alerts()
+
+        # Outer loop: iterate over each alert
+        for alert in alerts_cache:
+            alert_id = alert.get("id")
+            instrument_token = alert.get("instrument_token")
+            symbol = alert.get("symbol")
+            alert_type = str(alert.get("alert_type")).lower()
+            alert_price = float(alert.get("price"))
+
+            # Inner loop: check if any tick has the same instrument_token
+            matching_tick = None
+            for tick_data in ticks:
+                if tick_data.get("instrument_token") == instrument_token:
+                    matching_tick = tick_data
+                    break
+
+            # If there's no match, move on
+            if not matching_tick:
+                continue
+
+            # Check if the alert condition is met
+            last_price = matching_tick.get("last_price")
+            if (alert_type == "target" and last_price >= alert_price) or \
+               (alert_type == "sl" and last_price <= alert_price):
+                logger.info(
+                    f"Alert triggered for {symbol} (token: {instrument_token}). "
+                    f"Alert type: {alert_type}, Triggered at price: {last_price}."
+                )
+
+                # Send alert message to the frontend asynchronously
+                await create_and_send_alert_message(
+                    instrument_token=instrument_token,
+                    symbol=symbol,
+                    alert_type=alert_type,
+                    triggered_price=last_price,
+                )
+                # Remove the triggered alert from DB
+                remove_alert(alert_id)
+
+                # Force refresh the cache so we don't reprocess this alert
+                alerts_cache = None
+
     except Exception as e:
         logger.error(f"Error processing live alerts: {e}")
         raise
+    finally:
+        # Release the lock so future calls can enter
+        with alert_trigger_lock:
+            alert_trigger_running = False

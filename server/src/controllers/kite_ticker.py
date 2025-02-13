@@ -65,7 +65,7 @@ def initialize_kite_ticker(access_token):
 
 def start_kite_ticker():
     global kite_ticker
-    from ws_clients import process_and_send_live_ticks
+    from .ws_clients import process_and_send_live_ticks
     from services import process_live_alerts
 
     tokens = get_instrument_token()
