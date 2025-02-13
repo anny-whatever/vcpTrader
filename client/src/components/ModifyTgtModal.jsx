@@ -72,7 +72,6 @@ function ModifyTgtModal({
 
   return (
     <>
-      <Toaster position="bottom-right" />
       <Dialog
         open={isOpen}
         onClose={handleClose}

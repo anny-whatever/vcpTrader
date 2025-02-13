@@ -161,6 +161,7 @@ function App() {
 
   return (
     <div className="min-h-[100vh] bg-zinc-900">
+      <Toaster position="bottom-right" />
       <AuthProvider>
         <DataContext.Provider
           value={{
