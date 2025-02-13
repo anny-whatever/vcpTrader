@@ -1,18 +1,20 @@
 # ws_endpoint.py
-from typing import List
 import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from typing import List
+from .ws_clients import clients, clients_lock
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Global list of connected clients
-clients: List[WebSocket] = []
-
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    clients.append(websocket)
+
+    # Acquire the lock to append
+    async with clients_lock:
+        clients.append(websocket)
+
     try:
         while True:
             data = await websocket.receive_text()
@@ -22,7 +24,9 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
     finally:
-        try:
-            clients.remove(websocket)
-        except ValueError:
-            logger.warning("WebSocket already removed from clients list")
+        # Acquire lock to remove
+        async with clients_lock:
+            try:
+                clients.remove(websocket)
+            except ValueError:
+                logger.warning("WebSocket already removed from clients list")

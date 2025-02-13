@@ -2,28 +2,40 @@
 import json
 import logging
 from datetime import datetime
+from typing import List
 from fastapi import WebSocket
-from .ws_endpoint import clients  # Import clients from ws_endpoint
+from asyncio import Lock
 
 logger = logging.getLogger(__name__)
 
 def convert_datetime(obj):
-    """Convert datetime to ISO format for JSON serialization."""
     if isinstance(obj, datetime):
         return obj.isoformat()
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
 
+# We define an async lock and a global clients list
+clients_lock = Lock()
+clients: List[WebSocket] = []
+
 async def send_data_to_clients(message: str):
     """Send a message to all connected WebSocket clients."""
-    for client in list(clients):
+    # Copy current clients while holding the lock, but do NOT send while locked
+    async with clients_lock:
+        current_clients = list(clients)
+
+    # Now send outside the lock
+    for client in current_clients:
         try:
             await client.send_text(message)
         except Exception as e:
             logger.error(f"Error sending message to client: {e}")
-            try:
-                clients.remove(client)
-            except ValueError:
-                logger.warning("Client already removed from clients list.")
+            # Re-acquire the lock to remove
+            async with clients_lock:
+                try:
+                    clients.remove(client)
+                except ValueError:
+                    logger.warning("Client already removed from clients list.")
+
 
 async def process_and_send_live_ticks(ticks):
     """Process live tick data and send it to all WebSocket clients."""

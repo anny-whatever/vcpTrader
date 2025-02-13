@@ -6,6 +6,7 @@ from db import get_db_connection, close_db_connection
 from models import PriceAlert, AlertMessage
 from services import get_all_alerts
 import threading
+from .send_telegram_alert import _send_telegram_in_thread
 
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,8 @@ def remove_alert(alert_id: int):
     finally:
         if conn and cur:
             close_db_connection()
+            
+
 
 async def create_and_send_alert_message(
     instrument_token: int,
@@ -92,6 +95,8 @@ async def create_and_send_alert_message(
         
         # Instead of duplicating sending logic, call the dedicated alert trigger sender.
         await process_and_send_alert_triggered_message(custom_message)
+        thread = threading.Thread(target=_send_telegram_in_thread, args=(custom_message,))
+        thread.start()
         logger.info("Alert message processed and sent successfully.")
         return {"success": True, "message": "Alert message processed and sent successfully."}
     except Exception as e:
