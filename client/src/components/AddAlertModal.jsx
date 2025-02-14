@@ -120,6 +120,7 @@ function AddAlertModal({ isOpen, onClose, symbol, instrument_token, ltp }) {
               onChange={(e) => setAlertType(e.target.value)}
               variant="filled"
               size="small"
+              InputProps={{ disableUnderline: true }}
               sx={{
                 bgcolor: "#27272A",
                 borderRadius: "12px",
