@@ -25,6 +25,9 @@ import ChartModal from "../components/ChartModal";
 import AddAlertModal from "../components/AddAlertModal"; // New import for Add Alert modal
 import { AuthContext } from "../utils/AuthContext";
 import { jwtDecode } from "jwt-decode"; // ✅ Correct import
+import api from "../utils/api"; // Adjust the path as necessary
+import { toast } from "sonner";
+import { PlayToastSound } from "../utils/PlaySound";
 
 function AllPositions() {
   const { liveData, positions, riskpool } = useContext(DataContext);
@@ -130,6 +133,25 @@ function AllPositions() {
 
   const handleOpenAddAlertModal = () => setIsAddAlertModalOpen(true);
   const handleCloseAddAlertModal = () => setIsAddAlertModalOpen(false);
+
+  const toggleAutoExit = async (row) => {
+    try {
+      const newValue = !row.auto_exit;
+      const response = await api.get(
+        `/api/order/toggle_auto_exit?trade_id=${row.trade_id}&auto_exit=${newValue}`
+      );
+      if (response.data.status === "success") {
+        PlayToastSound();
+        toast.success("Auto exit toggled", {
+          duration: 5000,
+        });
+      } else {
+        console.log("Failed to toggle auto exit flag");
+      }
+    } catch (error) {
+      console.log("Error toggling auto exit flag", error);
+    }
+  };
 
   if (!positions) {
     return (
@@ -285,19 +307,151 @@ function AllPositions() {
                                 viewBox="0 0 24 24"
                                 strokeWidth={1.5}
                                 stroke="currentColor"
-                                className="size-6"
-                                style={{ width: "20px", height: "20px" }}
+                                className="size-5"
                               >
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
-                                  d="m7.875 14.25 1.214 1.942a2.25 2.25 0 0 0 1.908 1.058h2.006c.776 0 1.497-.4 1.908-1.058l1.214-1.942M2.41 9h4.636a2.25 2.25 0 0 1 1.872 1.002l.164.246a2.25 2.25 0 0 0 1.872 1.002h2.092a2.25 2.25 0 0 0 1.872-1.002l.164-.246A2.25 2.25 0 0 1 16.954 9h4.636M2.41 9a2.25 2.25 0 0 0-.16.832V12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 12V9.832c0-.287-.055-.57-.16-.832M2.41 9a2.25 2.25 0 0 1 .382-.632l3.285-3.832a2.25 2.25 0 0 1 1.708-.786h8.43c.657 0 1.281.287 1.709.786l3.284 3.832c.163.19.291.404.382.632M4.5 20.25h15A2.25 2.25 0 0 0 21.75 18v-2.625c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125V18a2.25 2.25 0 0 0 2.25 2.25Z"
+                                  d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
                                 />
                               </svg>
                             </Button>
+
+                            {/* Stats dropdown */}
+                            <Dropdown className="dark">
+                              <DropdownTrigger>
+                                <Button
+                                  isIconOnly
+                                  className="text-pink-300 bg-pink-400 bg-opacity-30"
+                                  variant="flat"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={1.5}
+                                    stroke="currentColor"
+                                    className="size-5"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+                                    />
+                                  </svg>
+                                </Button>
+                              </DropdownTrigger>
+                              <DropdownMenu
+                                aria-label="Stats Menu"
+                                className="dark"
+                              >
+                                <DropdownItem
+                                  className="p-0 hover:bg-zinc-900"
+                                  textValue="Stats"
+                                >
+                                  <div className="flex flex-col justify-between gap-1 p-3 text-left text-white rounded-lg w-72 bg-zinc-900">
+                                    <div className="text-xl">Stats</div>
+                                    <div className="py-1 text-md">
+                                      Stop-Loss: {row.stop_loss?.toFixed(2)} (
+                                      {(
+                                        ((row.stop_loss - row.entry_price) /
+                                          row.entry_price) *
+                                        100
+                                      ).toFixed(2)}
+                                      %)
+                                      {userRole === "admin" && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            populatePositionData(row);
+                                            handleOpenModifySlModal();
+                                          }}
+                                          disabled={userRole !== "admin"}
+                                          className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
+                                        >
+                                          C
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="py-1 text-md">
+                                      Target: {row.target?.toFixed(2)} (
+                                      {(
+                                        ((row.target - row.entry_price) /
+                                          row.entry_price) *
+                                        100
+                                      ).toFixed(2)}
+                                      %)
+                                      {userRole === "admin" && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            populatePositionData(row);
+                                            handleOpenModifyTgtModal();
+                                          }}
+                                          disabled={userRole !== "admin"}
+                                          className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
+                                        >
+                                          C
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="py-1 text-md">
+                                      Capital Used:{" "}
+                                      {(
+                                        row.entry_price *
+                                        row.current_qty *
+                                        multiplier
+                                      ).toFixed(2)}
+                                    </div>
+                                    <div className="py-1 text-md">
+                                      Risk:{" "}
+                                      {(
+                                        ((row.stop_loss - row.entry_price) *
+                                          row.current_qty +
+                                          row.booked_pnl) *
+                                        multiplier
+                                      ).toFixed(2)}
+                                    </div>
+                                    <div className="py-1 text-md">
+                                      Reward:{" "}
+                                      {(
+                                        ((row.target - row.entry_price) *
+                                          row.current_qty +
+                                          row.booked_pnl) *
+                                        multiplier
+                                      ).toFixed(2)}
+                                    </div>
+                                    <div
+                                      className={
+                                        row.booked_pnl > 0
+                                          ? "text-green-500 text-md py-1"
+                                          : "text-red-500 text-md py-1"
+                                      }
+                                    >
+                                      Booked:{" "}
+                                      {(row.booked_pnl * multiplier).toFixed(2)}
+                                    </div>
+                                    {userRole === "admin" && (
+                                      <div className="py-1">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleAutoExit(row);
+                                          }}
+                                          className="px-2 py-1 text-xs bg-blue-500 rounded-md bg-opacity-40 hover:bg-blue-700"
+                                        >
+                                          {`Auto Exit: ${
+                                            row.auto_exit ? "True" : "False"
+                                          }`}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </DropdownItem>
+                              </DropdownMenu>
+                            </Dropdown>
                           </>
                         )}
-                        {/* Chart Button */}
                         <Button
                           isIconOnly
                           color="warning"
@@ -410,16 +564,147 @@ function AllPositions() {
                             viewBox="0 0 24 24"
                             strokeWidth={1.5}
                             stroke="currentColor"
-                            className="size-6"
-                            style={{ width: "20px", height: "20px" }}
+                            className="size-5"
                           >
                             <path
                               strokeLinecap="round"
                               strokeLinejoin="round"
-                              d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
+                              d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
                             />
                           </svg>
                         </Button>
+                        <Dropdown className="dark">
+                          <DropdownTrigger>
+                            <Button
+                              isIconOnly
+                              className="text-pink-300 bg-pink-400 bg-opacity-30"
+                              variant="flat"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="size-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+                                />
+                              </svg>
+                            </Button>
+                          </DropdownTrigger>
+                          <DropdownMenu
+                            aria-label="Stats Menu"
+                            className="dark"
+                          >
+                            <DropdownItem
+                              className="p-0 hover:bg-zinc-900"
+                              textValue="Stats"
+                            >
+                              <div className="flex flex-col justify-between gap-1 p-3 text-left text-white rounded-lg w-72 bg-zinc-900">
+                                <div className="text-xl">Stats</div>
+                                <div className="py-1 text-md">
+                                  Stop-Loss: {row.stop_loss?.toFixed(2)} (
+                                  {(
+                                    ((row.stop_loss - row.entry_price) /
+                                      row.entry_price) *
+                                    100
+                                  ).toFixed(2)}
+                                  %)
+                                  {userRole === "admin" && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        populatePositionData(row);
+                                        handleOpenModifySlModal();
+                                      }}
+                                      disabled={userRole !== "admin"}
+                                      className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
+                                    >
+                                      C
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="py-1 text-md">
+                                  Target: {row.target?.toFixed(2)} (
+                                  {(
+                                    ((row.target - row.entry_price) /
+                                      row.entry_price) *
+                                    100
+                                  ).toFixed(2)}
+                                  %)
+                                  {userRole === "admin" && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        populatePositionData(row);
+                                        handleOpenModifyTgtModal();
+                                      }}
+                                      disabled={userRole !== "admin"}
+                                      className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
+                                    >
+                                      C
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="py-1 text-md">
+                                  Capital Used:{" "}
+                                  {(
+                                    row.entry_price *
+                                    row.current_qty *
+                                    multiplier
+                                  ).toFixed(2)}
+                                </div>
+                                <div className="py-1 text-md">
+                                  Risk:{" "}
+                                  {(
+                                    ((row.stop_loss - row.entry_price) *
+                                      row.current_qty +
+                                      row.booked_pnl) *
+                                    multiplier
+                                  ).toFixed(2)}
+                                </div>
+                                <div className="py-1 text-md">
+                                  Reward:{" "}
+                                  {(
+                                    ((row.target - row.entry_price) *
+                                      row.current_qty +
+                                      row.booked_pnl) *
+                                    multiplier
+                                  ).toFixed(2)}
+                                </div>
+                                <div
+                                  className={
+                                    row.booked_pnl > 0
+                                      ? "text-green-500 text-md py-1"
+                                      : "text-red-500 text-md py-1"
+                                  }
+                                >
+                                  Booked:{" "}
+                                  {(row.booked_pnl * multiplier).toFixed(2)}
+                                </div>
+                                {userRole === "admin" && (
+                                  <div className="py-1">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleAutoExit(row);
+                                      }}
+                                      className="px-2 py-1 text-xs bg-blue-500 rounded-md bg-opacity-40 hover:bg-blue-700"
+                                    >
+                                      {`Auto Exit: ${
+                                        row.auto_exit ? "True" : "False"
+                                      }`}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </DropdownItem>
+                          </DropdownMenu>
+                        </Dropdown>
                       </>
                     )}
                     {/* Chart Button */}

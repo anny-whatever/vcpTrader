@@ -288,7 +288,6 @@ function Screener() {
                                   strokeWidth={1.5}
                                   stroke="currentColor"
                                   className="size-5"
-                                  style={{ width: "24px", height: "24px" }}
                                 >
                                   <path
                                     strokeLinecap="round"
@@ -400,7 +399,6 @@ function Screener() {
                               strokeWidth={1.5}
                               stroke="currentColor"
                               className="size-5"
-                              style={{ width: "24px", height: "24px" }}
                             >
                               <path
                                 strokeLinecap="round"
