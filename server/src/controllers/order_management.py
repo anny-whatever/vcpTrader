@@ -84,6 +84,7 @@ async def toggle_auto_exit(trade_id: int, auto_exit: bool, user: dict = Depends(
     try:
         result = toggle_auto_exit_flag(trade_id, auto_exit)
         if result.get("status") == "success":
+            print(result, "dfgjkhsjdhfghjksdfhjhsdhfijsdhfjhsdhfhjsdghfhjsdfshjdfgsdhjfgsjdhfgsdjhfgdsxzhjkfg")
             await process_and_send_update_message()
         return JSONResponse(content=result)
     except Exception as e:

@@ -33,6 +33,7 @@ def fetch_risk_pool_for_display():
 
 def format_trade_record(trade):
     return {
+        "trade_id" : trade['trade_id'],
         "stock_name": trade['stock_name'],
         "token": trade['token'],
         "entry_time": trade['entry_time'].isoformat() if trade['entry_time'] else None,
@@ -41,7 +42,8 @@ def format_trade_record(trade):
         "target": float(trade['target']),
         "initial_qty": float(trade['initial_qty']),
         "current_qty": float(trade['current_qty']),
-        "booked_pnl": float(trade['booked_pnl'])
+        "booked_pnl": float(trade['booked_pnl']),
+        "auto_exit": trade['auto_exit']
     }
 
 def fetch_trade_details_for_display():
