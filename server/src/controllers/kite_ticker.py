@@ -16,12 +16,13 @@ logger = logging.getLogger(__name__)
 kite_ticker = None
 executor = ThreadPoolExecutor(max_workers=20)
 
-START_TIME = dtime(9, 15)
-END_TIME = dtime(15, 30)
-RESAMPLE_START_TIME = dtime(9, 15)
-RESAMPLE_END_TIME = dtime(15, 30, 5)
-MONITOR_LIVE_TRADE_START = dtime(9, 15, 15)
-MONITOR_LIVE_TRADE_END = dtime(15, 29, 30)
+
+MONITOR_LIVE_TRADE_START = dtime(9, 20)
+MONITOR_LIVE_TRADE_END = dtime(15, 29)
+
+def is_within_monitor_live_trade_time_range():
+    now = datetime.now().time()
+    return MONITOR_LIVE_TRADE_START <= now <= MONITOR_LIVE_TRADE_END
 
 def get_instrument_token():
     conn, cur = None, None
@@ -66,7 +67,7 @@ def initialize_kite_ticker(access_token):
 def start_kite_ticker():
     global kite_ticker
     from .ws_clients import process_and_send_live_ticks
-    from services import process_live_alerts
+    from services import process_live_alerts, process_live_auto_exit
 
     tokens = get_instrument_token()
     if isinstance(tokens, dict):  # Indicates an error
@@ -85,6 +86,11 @@ def start_kite_ticker():
                     loop.close()
             executor.submit(run_async_in_thread, process_and_send_live_ticks, ticks)
             executor.submit(run_async_in_thread, process_live_alerts, ticks)
+            
+            # Only run auto-exit if the time is within the monitored range.
+            if is_within_monitor_live_trade_time_range():
+                executor.submit(run_async_in_thread, process_live_auto_exit, ticks)
+                
         except Exception as e:
             logger.error(f"Error processing ticks: {e}")
 

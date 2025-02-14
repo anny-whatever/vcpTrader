@@ -1,10 +1,10 @@
-# order_management.py
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from services import buy_order_execute, sell_order_execute, adjust_order_execute, adjust_trade_parameters
 from .ws_clients import process_and_send_update_message
 from auth import require_admin
+from services import toggle_auto_exit_flag  # Import the toggle function
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -74,3 +74,18 @@ async def change_tgt(symbol: str, tgt, user: dict = Depends(require_admin)):
     except Exception as e:
         logger.error(f"Error in change_tgt (symbol: {symbol}, tgt: {tgt}): {e}")
         raise HTTPException(status_code=500, detail="Failed to change target")
+
+@router.get("/toggle_auto_exit")
+async def toggle_auto_exit(trade_id: int, auto_exit: bool, user: dict = Depends(require_admin)):
+    """
+    Toggle the auto_exit flag for a given trade.
+    This endpoint allows the frontend to update the auto_exit setting.
+    """
+    try:
+        result = toggle_auto_exit_flag(trade_id, auto_exit)
+        if result.get("status") == "success":
+            await process_and_send_update_message()
+        return JSONResponse(content=result)
+    except Exception as e:
+        logger.error(f"Error toggling auto_exit for trade_id {trade_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to toggle auto_exit flag")

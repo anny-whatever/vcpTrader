@@ -61,8 +61,6 @@ def remove_alert(alert_id: int):
         if conn and cur:
             close_db_connection()
             
-
-
 async def create_and_send_alert_message(
     instrument_token: int,
     symbol: str,

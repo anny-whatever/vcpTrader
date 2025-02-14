@@ -125,7 +125,7 @@ def monitor_order_status(order_id, qty, entry_price, stop_loss, symbol, timeout=
                 # Apply risk pool update with actual order price
                 apply_risk_pool_update_on_buy(cur, avg_price, stop_loss, qty)
 
-                # Save trade details
+                # Save trade details including the new auto_exit flag (set to False by default)
                 SaveTradeDetails(
                     stock_name=buy_order[-1]['tradingsymbol'],
                     token=buy_order[-1]['instrument_token'],
@@ -135,7 +135,8 @@ def monitor_order_status(order_id, qty, entry_price, stop_loss, symbol, timeout=
                     target=target,
                     initial_qty=qty,
                     current_qty=qty,
-                    booked_pnl=0
+                    booked_pnl=0,
+                    auto_exit=False  # New field as per the updated table
                 ).save(cur)
                 conn.commit()
                 break
