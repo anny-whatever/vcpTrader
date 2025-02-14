@@ -17,6 +17,7 @@ def load_ohlc_data():
     Returns:
         pd.DataFrame: DataFrame containing OHLC data.
     """
+    global ohlc_data
     conn, cur = get_db_connection()
     try:
         query = "SELECT * FROM ohlc"
@@ -27,6 +28,7 @@ def load_ohlc_data():
         for col in decimal_columns:
             df[col] = df[col].astype(float)
         df["date"] = pd.to_datetime(df["date"])
+        ohlc_data = df
         return df
     except Exception as err:
         logger.error(f"Error fetching OHLC data: {err}")

@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import threading
+import select
 from db import get_trade_db_connection, release_trade_db_connection
 from .place_exit import sell_order_execute
 from .send_telegram_alert import _send_telegram_in_thread
@@ -12,10 +13,13 @@ logging.basicConfig(level=logging.INFO)
 auto_exit_lock = threading.Lock()
 auto_exit_running = False
 
-def get_all_active_trades():
+# Global cache for active trades and a lock to protect it.
+active_trades_cache = []
+cache_lock = threading.Lock()
+
+def get_all_active_trades_from_db():
     """
-    Fetch all active trades from the trades table.
-    Since all rows represent active trades, no extra filtering is needed.
+    Fetch all active trades directly from the database.
     Returns a list of dictionaries with keys: trade_id, stock_name, token, entry_price, stop_loss, auto_exit.
     """
     try:
@@ -29,24 +33,51 @@ def get_all_active_trades():
         release_trade_db_connection(conn, cur)
         return trades
     except Exception as e:
-        logger.error(f"Error fetching active trades: {e}")
+        logger.error(f"Error fetching active trades from DB: {e}")
         return []
+
+def listen_for_trade_changes():
+    """
+    Listen for NOTIFY events on the 'trades_changed' channel.
+    When a notification is received, update the global active_trades_cache.
+    """
+    try:
+        # Unpack the connection and cursor.
+        conn, _ = get_trade_db_connection()
+        # Set autocommit mode.
+        conn.set_isolation_level(0)
+        # Create a new cursor to execute the LISTEN command.
+        cur = conn.cursor()
+        cur.execute("LISTEN trades_changed;")
+        logger.info("Listening on channel 'trades_changed'")
+        while True:
+            if select.select([conn], [], [], None):
+                conn.poll()
+                while conn.notifies:
+                    notify = conn.notifies.pop(0)
+                    logger.info("Received notification: " + notify.payload)
+                    new_trades = get_all_active_trades_from_db()
+                    with cache_lock:
+                        global active_trades_cache
+                        active_trades_cache = new_trades
+    except Exception as e:
+        logger.error(f"Error in listen_for_trade_changes: {e}")
+
+
+# Start the listener thread (daemonized so it shuts down with your application).
+listener_thread = threading.Thread(target=listen_for_trade_changes, daemon=True)
+listener_thread.start()
 
 async def process_live_auto_exit(ticks):
     """
-    Process live tick data to check for auto exit conditions.
+    Process live tick data to check for auto exit conditions using the cached trades.
     
-    For each active trade with auto_exit enabled, it looks for a matching tick (by token).
-    If the live price is at or below the trade's stop_loss, the trade exit is triggered
-    by calling sell_order_execute for that symbol.
-    
-    This function is intended to be called from your KiteTicker on_ticks callback,
-    similar to process_live_alerts.
+    For each cached trade with auto_exit enabled, if the live price is at or below its stop_loss,
+    the trade exit is triggered by calling sell_order_execute.
     
     :param ticks: List of tick data dictionaries received from KiteTicker.
     """
     global auto_exit_running
-    # Ensure only one instance runs at a time.
     with auto_exit_lock:
         if auto_exit_running:
             logger.info("process_live_auto_exit is already running; exiting this call.")
@@ -54,9 +85,10 @@ async def process_live_auto_exit(ticks):
         auto_exit_running = True
 
     try:
-        active_trades = get_all_active_trades()
-        for trade in active_trades:
-            # Proceed only if auto_exit flag is enabled.
+        with cache_lock:
+            trades = active_trades_cache.copy()  # Work on a snapshot of the cache.
+        for trade in trades:
+            # Only process trades with auto_exit enabled.
             if not trade.get("auto_exit"):
                 continue
 
@@ -64,7 +96,7 @@ async def process_live_auto_exit(ticks):
             stop_loss = float(trade["stop_loss"])
             token = trade["token"]
 
-            # Find a matching tick for this trade (match based on instrument token).
+            # Look for a matching tick by instrument token.
             matching_tick = None
             for tick in ticks:
                 if tick.get("instrument_token") == token:
@@ -80,32 +112,29 @@ async def process_live_auto_exit(ticks):
             if current_price <= stop_loss:
                 logger.info(f"Auto exit triggered for {symbol}: current price {current_price} reached stop loss {stop_loss}")
                 custom_message = f"Auto exit triggered for {symbol}: current price {current_price} reached stop loss {stop_loss}."
-                # Run sell_order_execute in a separate thread (non-blocking).
+                # Execute exit in a non-blocking thread.
                 await asyncio.to_thread(sell_order_execute, symbol)
                 thread = threading.Thread(target=_send_telegram_in_thread, args=(custom_message,))
                 thread.start()
-
     except Exception as e:
         logger.exception(f"Error in process_live_auto_exit: {e}")
     finally:
         with auto_exit_lock:
             auto_exit_running = False
 
-
 def toggle_auto_exit_flag(trade_id, new_auto_exit):
     """
     Toggle the auto_exit flag for a given trade.
     
-    This function is intended to be used in an API endpoint to allow the frontend
-    to change the auto_exit setting for a trade.
+    Intended for use in an API endpoint to allow the frontend
+    to change the auto_exit setting.
     
     :param trade_id: The ID of the trade to update.
-    :param new_auto_exit: Boolean value to set for the auto_exit flag.
-    :return: A dictionary with the status and a message.
+    :param new_auto_exit: Boolean value to set for auto_exit.
+    :return: A dictionary with status and a message.
     """
     try:
         conn, cur = get_trade_db_connection()
-        # Import the model here to avoid circular dependency issues.
         from models import SaveTradeDetails
         SaveTradeDetails.update_auto_exit(cur, trade_id, new_auto_exit)
         conn.commit()

@@ -2,7 +2,7 @@
 import logging
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import List
-from .ws_clients import clients, clients_lock
+from .ws_clients import clients, get_clients_lock
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -12,7 +12,7 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
 
     # Acquire the lock to append
-    async with clients_lock:
+    async with get_clients_lock():
         clients.append(websocket)
 
     try:
@@ -25,7 +25,7 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.error(f"WebSocket error: {e}")
     finally:
         # Acquire lock to remove
-        async with clients_lock:
+        async with get_clients_lock():
             try:
                 clients.remove(websocket)
             except ValueError:
