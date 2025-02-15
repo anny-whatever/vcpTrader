@@ -1,5 +1,4 @@
 import datetime
-import time
 import pandas as pd
 import pandas_ta as ta
 import pytz
@@ -9,13 +8,12 @@ from db import get_db_connection, close_db_connection
 
 logger = logging.getLogger(__name__)
 TIMEZONE = pytz.timezone("Asia/Kolkata")
-ohlc_data = None
+ohlc_data = None  # Global DataFrame holding precomputed OHLC data with indicators
 
 def load_ohlc_data():
     """
-    Fetch OHLC data from the database and convert Decimal values to float.
-    Returns:
-        pd.DataFrame: DataFrame containing OHLC data.
+    Fetch OHLC data from the database, convert numeric columns,
+    and compute historical indicators for each instrument token.
     """
     global ohlc_data
     conn, cur = get_db_connection()
@@ -23,13 +21,31 @@ def load_ohlc_data():
         query = "SELECT * FROM ohlc"
         cur.execute(query)
         data = cur.fetchall()
-        df = pd.DataFrame(data, columns=["instrument_token", "symbol", "interval", "date", "open", "high", "low", "close", "volume", "segment"])
-        decimal_columns = ["open", "high", "low", "close", "volume"]
-        for col in decimal_columns:
+        df = pd.DataFrame(
+            data,
+            columns=["instrument_token", "symbol", "interval", "date", "open", "high", "low", "close", "volume", "segment"]
+        )
+        # Convert numeric columns to float and parse dates.
+        for col in ["open", "high", "low", "close", "volume"]:
             df[col] = df[col].astype(float)
         df["date"] = pd.to_datetime(df["date"])
-        ohlc_data = df
-        return df
+        
+        # Compute technical indicators for each instrument token.
+        groups = []
+        for token, group in df.groupby("instrument_token"):
+            group = group.sort_values("date").reset_index(drop=True)
+            group["sma_50"] = ta.sma(group["close"], length=min(50, len(group)))
+            group["sma_150"] = ta.sma(group["close"], length=min(150, len(group)))
+            group["sma_200"] = ta.sma(group["close"], length=min(200, len(group)))
+            group["atr"] = ta.atr(group["high"], group["low"], group["close"], length=min(50, len(group)))
+            group["52_week_high"] = group["high"].rolling(window=min(252, len(group)), min_periods=1).max()
+            group["52_week_low"] = group["low"].rolling(window=min(252, len(group)), min_periods=1).min()
+            group["away_from_high"] = ((group["52_week_high"] - group["close"]) / group["52_week_high"]) * 100
+            group["away_from_low"] = ((group["close"] - group["52_week_low"]) / group["52_week_low"]) * 100
+            group = group.fillna(0)
+            groups.append(group)
+        ohlc_data = pd.concat(groups, ignore_index=True)
+        return ohlc_data
     except Exception as err:
         logger.error(f"Error fetching OHLC data: {err}")
         return pd.DataFrame()
@@ -40,7 +56,7 @@ def fetch_live_quotes():
     """
     Fetch live quote data for all instrument tokens from the equity_tokens table.
     Returns:
-        dict: A dictionary mapping instrument_tokens to their last_price.
+        dict: Mapping from instrument_token to its last_price.
     """
     conn, cur = get_db_connection()
     try:
@@ -56,75 +72,101 @@ def fetch_live_quotes():
     finally:
         close_db_connection()
 
-def calculate_smas(ohlc_data, live_data={}):
-    updated_data = []
-    try:
-        for instrument_token, group in ohlc_data.groupby("instrument_token"):
-            if instrument_token in live_data:
-                live_price = live_data[instrument_token]
-                last_row = group.iloc[-1]
-                new_row = {
-                    "instrument_token": instrument_token,
-                    "symbol": last_row["symbol"],
-                    "interval": last_row["interval"],
-                    "date": datetime.datetime.now(TIMEZONE),
-                    "open": last_row["close"],
-                    "high": max(last_row["close"], live_price),
-                    "low": min(last_row["close"], live_price),
-                    "close": live_price,
-                    "volume": 0,
-                    "segment": last_row["segment"]
-                }
-                group = pd.concat([group, pd.DataFrame([new_row])], ignore_index=True)
-            group["sma_50"] = ta.sma(group["close"], length=min(50, len(group)))
-            group["sma_150"] = ta.sma(group["close"], length=min(150, len(group)))
-            group["sma_200"] = ta.sma(group["close"], length=min(200, len(group)))
-            group['atr'] = ta.atr(group['high'], group['low'], group['close'], length=min(50, len(group)))
-            group["52_week_high"] = group['high'].rolling(window=min(252, len(group)), min_periods=1).max()
-            group["52_week_low"] = group['low'].rolling(window=min(252, len(group)), min_periods=1).min()
-            group['away_from_high'] = ((group['52_week_high'] - group['close']) / group['52_week_high']) * 100
-            group['away_from_low'] = ((group['close'] - group['52_week_low']) / group['52_week_low']) * 100
-            group = group.fillna({
-                "sma_50": 0,
-                "sma_150": 0,
-                "sma_200": 0,
-                "atr": 0,
-                "52_week_high": 0,
-                "52_week_low": 0,
-                "away_from_high": 0,
-                "away_from_low": 0
-            })
-            updated_data.append(group)
-        return pd.concat(updated_data, ignore_index=True)
-    except Exception as e:
-        logger.error(f"Error calculating SMAs: {e}")
-        raise e
+def update_live_data(existing_data, live_data):
+    """
+    For each instrument token with a live quote, append a new live data row (as done in the original code)
+    and recalculate the indicator values only for the new row using an appropriate tail window.
+    """
+    updated_groups = []
+    for token, group in existing_data.groupby("instrument_token"):
+        # Ensure the group is sorted by date
+        group = group.sort_values("date").reset_index(drop=True)
+        if token in live_data:
+            live_price = live_data[token]
+            last_row = group.iloc[-1]
+            # Construct new row using the last historical row and the live price.
+            new_row = {
+                "instrument_token": token,
+                "symbol": last_row["symbol"],
+                "interval": last_row["interval"],
+                "date": datetime.datetime.now(TIMEZONE),
+                "open": last_row["close"],
+                "high": max(last_row["close"], live_price),
+                "low": min(last_row["close"], live_price),
+                "close": live_price,
+                "volume": 0,
+                "segment": last_row["segment"]
+            }
+            # Append the new row to the historical group.
+            group_updated = pd.concat([group, pd.DataFrame([new_row])], ignore_index=True)
+            len_group = len(group_updated)
+            
+            # Determine window lengths.
+            win_50 = min(50, len_group)
+            win_150 = min(150, len_group)
+            win_200 = min(200, len_group)
+            win_252 = min(252, len_group)
+            
+            # Compute indicators for the new (last) row using the appropriate tail window.
+            sma_50 = ta.sma(group_updated["close"].tail(win_50), length=win_50).iloc[-1]
+            sma_150 = ta.sma(group_updated["close"].tail(win_150), length=win_150).iloc[-1]
+            sma_200 = ta.sma(group_updated["close"].tail(win_200), length=win_200).iloc[-1]
+            atr_val = ta.atr(
+                group_updated["high"],
+                group_updated["low"],
+                group_updated["close"],
+                length=min(50, len_group)
+            ).iloc[-1]
+            week_high = group_updated["high"].tail(win_252).max()
+            week_low = group_updated["low"].tail(win_252).min()
+            away_high = ((week_high - live_price) / week_high) * 100 if week_high != 0 else 0
+            away_low = ((live_price - week_low) / week_low) * 100 if week_low != 0 else 0
+
+            # Update the new row's indicator columns with the computed values.
+            group_updated.at[len_group - 1, "sma_50"] = sma_50
+            group_updated.at[len_group - 1, "sma_150"] = sma_150
+            group_updated.at[len_group - 1, "sma_200"] = sma_200
+            group_updated.at[len_group - 1, "atr"] = atr_val
+            group_updated.at[len_group - 1, "52_week_high"] = week_high
+            group_updated.at[len_group - 1, "52_week_low"] = week_low
+            group_updated.at[len_group - 1, "away_from_high"] = away_high
+            group_updated.at[len_group - 1, "away_from_low"] = away_low
+
+            updated_groups.append(group_updated)
+        else:
+            updated_groups.append(group)
+    return pd.concat(updated_groups, ignore_index=True)
 
 def screen_eligible_stocks_vcp():
+    """
+    Screen non-IPO stocks (VCP pattern) using precomputed indicators.
+    During market hours, update the latest data using live quotes.
+    """
     global ohlc_data
     try:
-        if ohlc_data is None:
+        if ohlc_data is None or ohlc_data.empty:
             ohlc_data = load_ohlc_data()
-    
+
+        # Use live quotes only during market hours.
         START_TIME = datetime.time(9, 15)
         END_TIME = datetime.time(15, 30, 5)
-        now = datetime.datetime.now().time()
-        if START_TIME <= now <= END_TIME:
-            live_data = fetch_live_quotes()
-        else:
-            live_data = {}
+        now = datetime.datetime.now(TIMEZONE).time()
+        live_data = fetch_live_quotes() if (START_TIME <= now <= END_TIME) else {}
 
-        if ohlc_data.empty:
-            logger.info("No data available for screening.")
-            return []
-    
-        updated_data = ohlc_data[ohlc_data['segment'] != 'IPO']
-        updated_data = calculate_smas(ohlc_data, live_data)
-    
+        # Exclude IPO stocks for VCP screening.
+        data_to_screen = ohlc_data[ohlc_data['segment'] != 'IPO']
+
+        # Update only the latest rows if live data is available.
+        if live_data:
+            data_to_screen = update_live_data(data_to_screen, live_data)
+
         eligible_stocks = []
-        for symbol, group in updated_data.groupby("symbol"):
+        for symbol, group in data_to_screen.groupby("symbol"):
             group = group.sort_values("date").reset_index(drop=True)
+            if len(group) < 2:
+                continue
             last_index = len(group) - 1
+            # Apply screening criteria.
             if (
                 group.iloc[last_index]["close"] > group.iloc[last_index]["sma_50"] and
                 group.iloc[last_index]["sma_50"] > group.iloc[last_index]["sma_150"] > group.iloc[last_index]["sma_200"] and
@@ -136,7 +178,8 @@ def screen_eligible_stocks_vcp():
                     "instrument_token": int(group.iloc[last_index]["instrument_token"]),
                     "symbol": symbol,
                     "last_price": float(group.iloc[last_index]["close"]),
-                    "change": ((float(group.iloc[last_index]["close"]) - float(group.iloc[last_index - 1]["close"]))/float(group.iloc[last_index - 1]["close"]))*100,
+                    "change": ((float(group.iloc[last_index]["close"]) - float(group.iloc[last_index - 1]["close"]))
+                               / float(group.iloc[last_index - 1]["close"])) * 100,
                     "sma_50": float(group.iloc[last_index]["sma_50"]),
                     "sma_150": float(group.iloc[last_index]["sma_150"]),
                     "sma_200": float(group.iloc[last_index]["sma_200"]),
@@ -149,29 +192,29 @@ def screen_eligible_stocks_vcp():
         raise e
 
 def screen_eligible_stocks_ipo():
+    """
+    Screen IPO stocks using simplified criteria.
+    During market hours, update the latest data using live quotes.
+    """
     global ohlc_data
     try:
-        if ohlc_data is None:
+        if ohlc_data is None or ohlc_data.empty:
             ohlc_data = load_ohlc_data()
-    
+
         START_TIME = datetime.time(9, 15)
         END_TIME = datetime.time(15, 30, 5)
-        now = datetime.datetime.now().time()
-        if START_TIME <= now <= END_TIME:
-            live_data = fetch_live_quotes()
-        else:
-            live_data = {}
-    
-        if ohlc_data.empty:
-            logger.info("No data available for screening.")
-            return []    
-    
-        updated_data = ohlc_data[ohlc_data['segment'] == 'IPO']
-        updated_data = calculate_smas(updated_data, live_data)
-    
+        now = datetime.datetime.now(TIMEZONE).time()
+        live_data = fetch_live_quotes() if (START_TIME <= now <= END_TIME) else {}
+
+        data_to_screen = ohlc_data[ohlc_data['segment'] == 'IPO']
+        if live_data:
+            data_to_screen = update_live_data(data_to_screen, live_data)
+
         eligible_stocks = []
-        for symbol, group in updated_data.groupby("symbol"):
+        for symbol, group in data_to_screen.groupby("symbol"):
             group = group.sort_values("date").reset_index(drop=True)
+            if len(group) < 2:
+                continue
             last_index = len(group) - 1
             if (
                 group.iloc[last_index]["away_from_high"] < 25 and
@@ -181,7 +224,8 @@ def screen_eligible_stocks_ipo():
                     "instrument_token": int(group.iloc[last_index]["instrument_token"]),
                     "symbol": symbol,
                     "last_price": float(group.iloc[last_index]["close"] or 0),
-                    "change": ((float(group.iloc[last_index]["close"]) - float(group.iloc[last_index - 1]["close"]))/float(group.iloc[last_index - 1]["close"]))*100,
+                    "change": ((float(group.iloc[last_index]["close"]) - float(group.iloc[last_index - 1]["close"]))
+                               / float(group.iloc[last_index - 1]["close"])) * 100,
                     "sma_50": float(group.iloc[last_index]["sma_50"] or 0),
                     "sma_150": float(group.iloc[last_index]["sma_150"] or 0),
                     "sma_200": float(group.iloc[last_index]["sma_200"] or 0),
@@ -192,4 +236,3 @@ def screen_eligible_stocks_ipo():
     except Exception as e:
         logger.error(f"Error screening eligible stocks for IPO: {e}")
         raise e
-
