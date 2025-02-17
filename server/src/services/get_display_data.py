@@ -146,7 +146,7 @@ def get_combined_ohlc(instrument_token, symbol):
                 df[col] = df[col].fillna(0)
                 df[col] = np.around(df[col], decimals=2)
             import math
-            df = df.applymap(lambda x: 0 if isinstance(x, float) and not math.isfinite(x) else x)
+            df = df.map(lambda x: 0 if isinstance(x, float) and not math.isfinite(x) else x)
             logger.info(f"get_combined_ohlc: returning {len(df)} rows")
             return df.to_dict(orient="records")
         else:

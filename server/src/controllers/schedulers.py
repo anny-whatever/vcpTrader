@@ -23,6 +23,7 @@ def get_ohlc_on_schedule():
         download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv", "500")
         download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_niftymicrocap250_list.csv", "250")
         download_nse_csv("https://www.niftyindices.com/IndexConstituent/ind_niftyIPO_list.csv", "IPO")
+        download_nse_csv("https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv", "ALL")
         logger.info("OHLC data retrieval job completed.")
     except Exception as e:
         logger.error(f"Error in get_ohlc_on_schedule: {e}")

@@ -29,7 +29,7 @@ def get_instrument_token():
     try:
         conn, cur = get_db_connection()
         tokens = [256265]  # Default token
-        select_query = "SELECT instrument_token FROM equity_tokens;"
+        select_query = "SELECT instrument_token FROM equity_tokens WHERE segment != 'ALL';"
         cur.execute(select_query)
         equity_tokens = cur.fetchall()
         tokens.extend(item['instrument_token'] for item in equity_tokens)
