@@ -1,18 +1,17 @@
-// App.jsx
 import React, { useState, useEffect, useContext, lazy } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Navbar from "./components/NavbarComponent.jsx";
 import api from "./utils/api";
 import { AuthProvider, AuthContext } from "./utils/AuthContext.jsx";
 import { DataContext } from "./utils/DataContext.jsx";
-import { jwtDecode } from "jwt-decode"; // Adjusted import if needed
+import { Toaster, toast } from "sonner";
+import { PlayAlertTriggerSound } from "./utils/PlaySound";
 
+// Lazy-loaded pages
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const AllPositions = lazy(() => import("./pages/AllPositions.jsx"));
 const Screener = lazy(() => import("./pages/Screener.jsx"));
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
-import { Toaster, toast } from "sonner";
-import { PlayAlertTriggerSound } from "./utils/PlaySound";
 
 // ProtectedRoute component: uses AuthContext to decide if the user is logged in.
 const ProtectedRoute = ({ children }) => {
@@ -30,7 +29,7 @@ function App() {
   const [historicalTrades, setHistoricalTrades] = useState(null);
   const [priceAlerts, setPriceAlerts] = useState(null);
   const [alertMessages, setAlertMessages] = useState(null);
-  const { token, logout } = useContext(AuthContext);
+  const { token } = useContext(AuthContext);
 
   useEffect(() => {
     let socket;
@@ -45,6 +44,12 @@ function App() {
       socket.onmessage = (event) => {
         try {
           const parsedData = JSON.parse(event.data);
+
+          // Ignore ping messages
+          if (parsedData?.event === "ping") {
+            return;
+          }
+
           if (parsedData?.event === "data_update") {
             fetchRiskpool();
             fetchHistoricalTrades();
@@ -70,6 +75,10 @@ function App() {
                 duration: 15000,
               }
             );
+          }
+          // Optionally handle echo messages
+          if (parsedData?.event === "echo") {
+            console.log("Echo from server:", parsedData.data);
           }
         } catch (error) {
           console.error("Error parsing WebSocket message:", error);
@@ -126,7 +135,6 @@ function App() {
     }
   };
 
-  // New: Fetch price alerts from /api/alerts/list
   const fetchPriceAlerts = async () => {
     try {
       const response = await api.get("/api/alerts/list");
@@ -136,7 +144,6 @@ function App() {
     }
   };
 
-  // New: Fetch alert messages from /api/alerts/messages
   const fetchAlertMessages = async () => {
     try {
       const response = await api.get("/api/alerts/messages");
@@ -148,15 +155,11 @@ function App() {
 
   // Fetch all data on component mount
   useEffect(() => {
-    try {
-      fetchRiskpool();
-      fetchHistoricalTrades();
-      fetchPositions();
-      fetchPriceAlerts();
-      fetchAlertMessages();
-    } catch (error) {
-      console.error("Data fetching error:", error);
-    }
+    fetchRiskpool();
+    fetchHistoricalTrades();
+    fetchPositions();
+    fetchPriceAlerts();
+    fetchAlertMessages();
   }, []);
 
   return (
