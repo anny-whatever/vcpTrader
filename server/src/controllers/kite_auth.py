@@ -31,7 +31,7 @@ async def auth():
     
 @router.get("/callback")
 async def callback(request_token: str):
-    from services import get_instrument_indices, get_instrument_equity, load_ohlc_data
+    from services import get_instrument_indices, get_instrument_equity
     if not scheduler.running:
         setup_scheduler()
     try:
@@ -43,7 +43,7 @@ async def callback(request_token: str):
         get_instrument_indices()
         get_instrument_equity()
         initialize_kite_ticker(access_token)
-        load_ohlc_data()
+
 
         # Redirect to frontend with a success flag
         return RedirectResponse(url="https://devstatz.com?login=true&kiteAuth=success")

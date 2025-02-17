@@ -18,12 +18,13 @@ def check_exits_on_schedule():
 
 def get_ohlc_on_schedule():
     try:
-        from services import get_equity_ohlc_data_loop, download_nse_csv
+        from services import get_equity_ohlc_data_loop, download_nse_csv, load_ohlc_data
         get_equity_ohlc_data_loop("day")
         download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv", "500")
         download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_niftymicrocap250_list.csv", "250")
         download_nse_csv("https://www.niftyindices.com/IndexConstituent/ind_niftyIPO_list.csv", "IPO")
         download_nse_csv("https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv", "ALL")
+        load_ohlc_data()
         logger.info("OHLC data retrieval job completed.")
     except Exception as e:
         logger.error(f"Error in get_ohlc_on_schedule: {e}")

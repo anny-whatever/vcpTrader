@@ -18,7 +18,7 @@ def load_ohlc_data():
     global ohlc_data
     conn, cur = get_db_connection()
     try:
-        query = "SELECT * FROM ohlc"
+        query = "SELECT * FROM ohlc WHERE segment != 'ALL'"
         cur.execute(query)
         data = cur.fetchall()
         df = pd.DataFrame(

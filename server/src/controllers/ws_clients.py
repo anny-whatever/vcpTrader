@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from typing import List
 from fastapi import WebSocket
-from starlette.websockets import WebSocketState  # Import the enum for connection statesonnection states
+from starlette.websockets import WebSocketState
 
 logger = logging.getLogger(__name__)
 
@@ -99,3 +99,14 @@ async def process_and_send_alert_triggered_message(message):
     except Exception as e:
         logger.error(f"Error sending alert update message: {e}")
         raise
+
+async def heartbeat(websocket: WebSocket):
+    """Send a ping message periodically to keep the connection alive."""
+    while websocket.client_state == WebSocketState.CONNECTED:
+        try:
+            ping_message = json.dumps({"event": "ping", "data": "keepalive"})
+            await websocket.send_text(ping_message)
+        except Exception as e:
+            logger.error(f"Error sending ping: {e}")
+            break
+        await asyncio.sleep(30)
