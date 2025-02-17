@@ -32,6 +32,10 @@ def get_instrument_token():
         select_query = "SELECT instrument_token FROM equity_tokens WHERE segment != 'ALL';"
         cur.execute(select_query)
         equity_tokens = cur.fetchall()
+        watchlist_tokens = "SELECT instrument_token FROM watchlist;"
+        cur.execute(watchlist_tokens)
+        watchlist_tokens = cur.fetchall()
+        tokens.extend(item['instrument_token'] for item in equity_tokens + watchlist_tokens)
         tokens.extend(item['instrument_token'] for item in equity_tokens)
         logger.info(f"Instrument tokens retrieved: {tokens}")
         return tokens
