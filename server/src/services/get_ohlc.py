@@ -13,8 +13,9 @@ def delay(ms):
     """Delay function to simulate async pauses."""
     time.sleep(ms / 1000)
 
-def get_ohlc(conn, cur, instrument_token, interval, symbol, segment):
+def get_ohlc(instrument_token, interval, symbol, segment):
 
+    conn, cur = get_db_connection()  # Get connection and cursor
     try:
         try:
             SaveOHLC.delete_all(cur, instrument_token, interval)
@@ -83,7 +84,7 @@ def get_ohlc(conn, cur, instrument_token, interval, symbol, segment):
         try:
             close_db_connection()
         except Exception as e:
-            logger.error(f"Error closing DB connection in get_ohlc: {e}")
+            logger.error(f"Error closing DB connection: {e}")
 
 def get_equity_ohlc_data_loop(interval):
     conn, cur = get_db_connection()  # Get connection and cursor
@@ -92,7 +93,7 @@ def get_equity_ohlc_data_loop(interval):
         cur.execute(select_query)
         tokens = cur.fetchall()
         for token in tokens:
-            get_ohlc(conn, cur, token[0], interval, token[1], token[4])
+            get_ohlc(token[0], interval, token[1], token[4])
         return {"data": "Done"}
     except Exception as err:
         logger.error(f"Error in get_equity_ohlc_data_loop: {err}")
@@ -107,7 +108,7 @@ def get_indices_ohlc_data_loop(interval):
         cur.execute(select_query)
         tokens = cur.fetchall()
         for token in tokens:
-            get_ohlc(conn, cur, token[0], interval, token[2], token[7])
+            get_ohlc(token[0], interval, token[2], token[7])
         return {"data": "Done"}
     except Exception as err:
         logger.error(f"Error in get_indices_ohlc_data_loop: {err}")
