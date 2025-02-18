@@ -1,3 +1,5 @@
+# models/equity_tokens.py
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,7 +21,7 @@ class EquityToken:
     def create_table(cls, cur):
         """
         Create the equity_tokens table if it doesn't exist.
-        Adjust column types and constraints as appropriate.
+        (If you're already running 'database_setup.py', you can omit this.)
         """
         create_table_query = """
         CREATE TABLE IF NOT EXISTS equity_tokens (
@@ -95,6 +97,8 @@ class EquityToken:
     def delete_by_segment(cls, cur, segment):
         """
         Deletes all rows where the 'segment' matches the provided value.
+        With 'ON DELETE CASCADE' on the watchlist table, any watchlist rows
+        referencing these tokens will also be removed automatically.
         """
         delete_query = "DELETE FROM equity_tokens WHERE segment = %s;"
         try:
@@ -113,7 +117,7 @@ class EquityToken:
             cur.execute(select_query)
             return cur.fetchall()
         except Exception as e:
-            logger.error("Error fetching all equity tokens: %s", e)
+            logger.error(f"Error fetching all equity tokens: {e}")
             raise
 
     @classmethod
@@ -137,7 +141,6 @@ class EquityToken:
         Returns up to 10 results.
         """
         like_query = f"%{query_str}%"
-        logger.info(f"Search function hit. Query: {query_str}, Like Query: {like_query}")
         sql = """
         SELECT * FROM equity_tokens
         WHERE tradingsymbol ILIKE %s OR company_name ILIKE %s
@@ -146,13 +149,10 @@ class EquityToken:
         try:
             cur.execute(sql, (like_query, like_query))
             rows = cur.fetchall()
-            # Get column names from the cursor description
             col_names = [desc[0] for desc in cur.description]
-            # Convert each tuple into a dict
+            # Convert each row tuple into a dict
             results = [dict(zip(col_names, row)) for row in rows]
-            logger.info(f"Search results: {results}")
             return results
         except Exception as e:
             logger.error(f"Error searching equity_tokens: {e}")
             raise
-
