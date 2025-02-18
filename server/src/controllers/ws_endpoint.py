@@ -11,17 +11,17 @@ router = APIRouter()
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
 
-    # Acquire the lock to append the client
+    # Add the client to the set.
     async with get_clients_lock():
-        clients.append(websocket)
+        clients.add(websocket)
 
-    # Launch a heartbeat task to send periodic pings
+    # Launch a heartbeat task to send periodic pings.
     heartbeat_task = asyncio.create_task(heartbeat(websocket))
 
     try:
         while True:
             data = await websocket.receive_text()
-            # Instead of sending a plain text echo, wrap it as JSON
+            # Instead of sending a plain text echo, wrap it as JSON.
             echo_payload = {"event": "echo", "data": data}
             await websocket.send_text(json.dumps(echo_payload))
     except WebSocketDisconnect:
@@ -29,11 +29,8 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
     finally:
-        # Cancel the heartbeat task
+        # Cancel the heartbeat task.
         heartbeat_task.cancel()
-        # Remove the client from the list
+        # Remove the client from the set.
         async with get_clients_lock():
-            try:
-                clients.remove(websocket)
-            except ValueError:
-                logger.warning("WebSocket already removed from clients list")
+            clients.discard(websocket)

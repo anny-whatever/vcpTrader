@@ -8,6 +8,7 @@ from kiteconnect import KiteTicker
 from dotenv import load_dotenv
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
+
 from db import get_db_connection, close_db_connection
 
 load_dotenv()
@@ -28,15 +29,17 @@ def get_instrument_token():
     conn, cur = None, None
     try:
         conn, cur = get_db_connection()
-        tokens = [256265]  # Default token
+        tokens = []
         select_query = "SELECT instrument_token FROM equity_tokens WHERE segment != 'ALL';"
         cur.execute(select_query)
         equity_tokens = cur.fetchall()
-        watchlist_tokens = "SELECT instrument_token FROM watchlist;"
-        cur.execute(watchlist_tokens)
+        select_query = "SELECT instrument_token FROM watchlist;"
+        cur.execute(select_query)
         watchlist_tokens = cur.fetchall()
-        tokens.extend(item['instrument_token'] for item in equity_tokens + watchlist_tokens)
-        tokens.extend(item['instrument_token'] for item in equity_tokens)
+        select_query = "SELECT instrument_token FROM indices_instruments;"
+        cur.execute(select_query)
+        indices_tokens = cur.fetchall()
+        tokens.extend(item['instrument_token'] for item in equity_tokens + watchlist_tokens + indices_tokens)
         logger.info(f"Instrument tokens retrieved: {tokens}")
         return tokens
     except Exception as err:
@@ -94,7 +97,7 @@ def start_kite_ticker():
             # Only run auto-exit if the time is within the monitored range.
             if is_within_monitor_live_trade_time_range():
                 executor.submit(run_async_in_thread, process_live_auto_exit, ticks)
-                
+            
         except Exception as e:
             logger.error(f"Error processing ticks: {e}")
 
@@ -118,7 +121,7 @@ def start_kite_ticker():
 
     def retry_connection(ws):
         logger.info("Attempting to reconnect to KiteTicker...")
-        max_retries = 5
+        max_retries = 50
         retries = 0
         while retries < max_retries:
             try:

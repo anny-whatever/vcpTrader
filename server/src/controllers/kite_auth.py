@@ -10,6 +10,7 @@ from .kite_ticker import initialize_kite_ticker
 from .schedulers import scheduler, setup_scheduler
 from auth import create_access_token, require_admin
 
+
 load_dotenv()
 logger = logging.getLogger(__name__)
 router = APIRouter()

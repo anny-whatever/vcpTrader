@@ -2,14 +2,14 @@ import asyncio
 import json
 import logging
 from datetime import datetime
-from typing import List
+from typing import Set
 from fastapi import WebSocket
 from starlette.websockets import WebSocketState
 
 logger = logging.getLogger(__name__)
 
-# Global clients list
-clients: List[WebSocket] = []
+# Use a set for clients to avoid duplicates.
+clients: Set[WebSocket] = set()
 
 # Store a tuple (lock, loop) so we know which event loop the lock was created on.
 _lock_info = None
@@ -30,32 +30,25 @@ def convert_datetime(obj):
 async def send_data_to_clients(message: str):
     """Send a message to all connected WebSocket clients."""
     lock = get_clients_lock()
-    # Copy the current clients list while holding the lock.
+    # Copy the current clients set while holding the lock.
     async with lock:
-        current_clients = list(clients)
+        current_clients = set(clients)
 
     # Send messages outside the lock.
     for client in current_clients:
-        # Check if the client is still connected
+        # Check if the client is still connected.
         if client.client_state != WebSocketState.CONNECTED:
-            logger.info("Client not connected, removing from list.")
+            logger.info("Client not connected, removing from set.")
             async with lock:
-                try:
-                    clients.remove(client)
-                except ValueError:
-                    logger.warning("Client already removed from clients list.")
+                clients.discard(client)  # Discard avoids KeyError if not present.
             continue
 
         try:
             await client.send_text(message)
         except Exception as e:
             logger.error(f"Error sending message to client: {e}")
-            # Remove client if sending fails.
             async with lock:
-                try:
-                    clients.remove(client)
-                except ValueError:
-                    logger.warning("Client already removed from clients list.")
+                clients.discard(client)
 
 async def process_and_send_live_ticks(ticks):
     """Process live tick data and send it to all WebSocket clients."""
@@ -97,7 +90,7 @@ async def process_and_send_alert_triggered_message(message):
         await send_data_to_clients(message_json)
         logger.info("Alert triggered message sent to clients")
     except Exception as e:
-        logger.error(f"Error sending alert update message: {e}")
+        logger.error(f"Error sending alert triggered message: {e}")
         raise
 
 async def heartbeat(websocket: WebSocket):

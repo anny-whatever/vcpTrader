@@ -11,16 +11,14 @@ from auth import require_admin, require_user
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Pydantic schemas for request/response.
+# Updated Pydantic schemas without user_id.
 class WatchlistEntryIn(BaseModel):
-    user_id: int
     watchlist_name: str
     instrument_token: int
     symbol: str
 
 class WatchlistEntryOut(BaseModel):
     id: int
-    user_id: int
     watchlist_name: str
     instrument_token: int
     symbol: str
@@ -36,7 +34,6 @@ def add_to_watchlist(entry: WatchlistEntryIn, user: dict = Depends(require_admin
         conn, cur = get_db_connection()
         saved_entry = add_stock_to_watchlist(
             cur,
-            entry.user_id,
             entry.watchlist_name,
             entry.instrument_token,
             entry.symbol
@@ -57,7 +54,7 @@ def add_to_watchlist(entry: WatchlistEntryIn, user: dict = Depends(require_admin
             close_db_connection(conn, cur)
 
 @router.delete("/watchlist", response_model=dict)
-def remove_from_watchlist(user_id: int, watchlist_name: str, instrument_token: int, user: dict = Depends(require_admin)):
+def remove_from_watchlist(watchlist_name: str, instrument_token: int, user: dict = Depends(require_admin)):
     """
     Remove a stock from a watchlist. Requires admin privileges.
     """
@@ -65,7 +62,7 @@ def remove_from_watchlist(user_id: int, watchlist_name: str, instrument_token: i
     try:
         from models import WatchlistEntry  # Import if needed
         conn, cur = get_db_connection()
-        removed = WatchlistEntry.delete_by_user_and_instrument(cur, user_id, watchlist_name, instrument_token)
+        removed = WatchlistEntry.delete_by_instrument(cur, watchlist_name, instrument_token)
         conn.commit()
         return {"detail": "Watchlist entry removed"} if removed else {"detail": "Entry not found"}
     except Exception as e:
@@ -77,15 +74,15 @@ def remove_from_watchlist(user_id: int, watchlist_name: str, instrument_token: i
         if conn and cur:
             close_db_connection(conn, cur)
 
-@router.get("/watchlist/{user_id}/{watchlist_name}", response_model=List[WatchlistEntryOut])
-def get_watchlist(user_id: int, watchlist_name: str, user: dict = Depends(require_user)):
+@router.get("/watchlist/{watchlist_name}", response_model=List[WatchlistEntryOut])
+def get_watchlist(watchlist_name: str, user: dict = Depends(require_user)):
     """
-    Retrieve a user's watchlist. Requires observer or admin privileges.
+    Retrieve a watchlist. Requires observer or admin privileges.
     """
     conn, cur = None, None
     try:
         conn, cur = get_db_connection()
-        entries = get_watchlist_entries(cur, user_id, watchlist_name)
+        entries = get_watchlist_entries(cur, watchlist_name)
         return entries
     except Exception as e:
         logger.error(f"Error in get_watchlist: {e}")

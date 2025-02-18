@@ -87,7 +87,6 @@ async def api_list_alerts(user: dict = Depends(require_user)):
             alerts = convert_rows_to_objects_alerts(alerts)
         # Use the custom encoder to convert Decimals and datetimes.
         serializable_alerts = json.loads(json.dumps(alerts, default=custom_json_encoder))
-        print(serializable_alerts)
         return JSONResponse(content=serializable_alerts)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching alerts: {e}")
@@ -102,7 +101,6 @@ async def api_list_alert_messages(user: dict = Depends(require_user)):
         if messages and not isinstance(messages[0], dict):
             messages = convert_rows_to_objects_messages(messages)
         serializable_messages = json.loads(json.dumps(messages, default=custom_json_encoder))
-        print(serializable_messages)
         return JSONResponse(content=serializable_messages)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching alert messages: {e}")
