@@ -182,7 +182,7 @@ export default function NavbarComponent() {
             color="inherit"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { md: "none" } }}
+            sx={{ mr: 2, display: { lg: "none" } }}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
           >
             <MenuIcon />
@@ -190,7 +190,7 @@ export default function NavbarComponent() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             theTerminal
           </Typography>
-          <Box sx={{ display: { xs: "none", md: "block" } }}>
+          <Box sx={{ display: { xs: "none", lg: "block" } }}>
             <Button
               component={Link}
               to="/"
@@ -245,6 +245,25 @@ export default function NavbarComponent() {
               }}
             >
               Screener
+            </Button>
+            <Button
+              component={Link}
+              to="/watchlist"
+              sx={{
+                color: "white",
+                bgcolor:
+                  currentPath === "/screener"
+                    ? "rgba(255,255,255,0.1)"
+                    : "transparent",
+                mx: 1,
+                borderRadius: "8px",
+                textTransform: "none",
+                fontWeight: "normal",
+                px: 3,
+                "&:hover": { bgcolor: "rgba(255,255,255,0.15)" },
+              }}
+            >
+              Watchlist
             </Button>
             {userRole === "admin" && (
               <Button
@@ -451,7 +470,7 @@ export default function NavbarComponent() {
           onClose={handleDrawerToggle}
           ModalProps={{ keepMounted: true }}
           sx={{
-            display: { xs: "block", md: "none" },
+            display: { xs: "block", lg: "none" },
             "& .MuiDrawer-paper": {
               boxSizing: "border-box",
               width: 240,

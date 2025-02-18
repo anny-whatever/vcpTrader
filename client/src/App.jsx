@@ -12,6 +12,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
 const AllPositions = lazy(() => import("./pages/AllPositions.jsx"));
 const Screener = lazy(() => import("./pages/Screener.jsx"));
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
+const Watchlist = lazy(() => import("./pages/Watchlist.jsx"));
 
 // ProtectedRoute component: uses AuthContext to decide if the user is logged in.
 const ProtectedRoute = ({ children }) => {
@@ -29,6 +30,7 @@ function App() {
   const [historicalTrades, setHistoricalTrades] = useState(null);
   const [priceAlerts, setPriceAlerts] = useState(null);
   const [alertMessages, setAlertMessages] = useState(null);
+  const [watchlistAlerts, setWatchlistAlerts] = useState(null);
   const { token } = useContext(AuthContext);
 
   useEffect(() => {
@@ -75,6 +77,10 @@ function App() {
                 duration: 15000,
               }
             );
+          }
+          if (parsedData?.event === "watchlist_updated") {
+            setWatchlistAlerts(parsedData.data);
+            PlayAlertTriggerSound();
           }
           // Optionally handle echo messages
           if (parsedData?.event === "echo") {
@@ -174,6 +180,7 @@ function App() {
             historicalTrades,
             priceAlerts,
             alertMessages,
+            watchlistAlerts,
           }}
         >
           <BrowserRouter>
@@ -200,6 +207,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Screener />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/watchlist"
+                element={
+                  <ProtectedRoute>
+                    <Watchlist />
                   </ProtectedRoute>
                 }
               />
