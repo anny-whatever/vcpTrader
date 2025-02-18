@@ -1,5 +1,5 @@
 // src/components/ChartModal.jsx
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useContext } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -8,6 +8,8 @@ import {
   Button,
   Box,
   Typography,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import api from "../utils/api";
 import {
@@ -17,15 +19,20 @@ import {
   LineSeries,
   HistogramSeries,
 } from "lightweight-charts";
-
-import { createSeriesMarkers } from "lightweight-charts";
-
+import { DataContext } from "../utils/DataContext";
 import { Spinner } from "@heroui/react";
 
-export const ChartComponent = ({ data, markers }) => {
+/**
+ * ChartComponent:
+ * Renders a daily bar chart with SMAs and volume histogram.
+ */
+export const ChartComponent = ({ data }) => {
   const chartContainerRef = useRef();
 
   useEffect(() => {
+    if (!data || !data.length) return;
+    if (!chartContainerRef.current) return;
+
     const getDimensions = () => {
       const container = chartContainerRef.current;
       return {
@@ -50,9 +57,8 @@ export const ChartComponent = ({ data, markers }) => {
       crosshair: { mode: 0 },
     });
 
-    const seriesData = data || [];
+    const seriesData = data;
 
-    // Prepare SMA data series
     const sma50Data = seriesData.map((item) => ({
       time: item.time,
       value: item.sma_50,
@@ -66,16 +72,14 @@ export const ChartComponent = ({ data, markers }) => {
       value: item.sma_200,
     }));
 
-    // Add the main price (bar) series
-    const newSeries = chart.addSeries(BarSeries, {
+    const barSeries = chart.addSeries(BarSeries, {
       upColor: "#26a69a",
       downColor: "#ef5350",
       borderVisible: false,
       thinBars: false,
     });
-    newSeries.setData(seriesData);
+    barSeries.setData(seriesData);
 
-    // Add SMA series as line series
     const ma50Series = chart.addSeries(LineSeries, {
       color: "#2962ff62",
       lineWidth: 2,
@@ -94,20 +98,18 @@ export const ChartComponent = ({ data, markers }) => {
     });
     ma200Series.setData(sma200Data);
 
-    // Prepare and add the volume series
     const volumeData = seriesData.map((item) => ({
       time: item.time,
       value: item.volume,
     }));
-
     const volumeSeries = chart.addSeries(HistogramSeries, {
       color: "#ffffff4b",
       priceFormat: {
         type: "volume",
       },
-      priceScaleId: "", // set as an overlay by setting a blank priceScaleId
+      priceScaleId: "",
       scaleMargins: {
-        top: 0.7, // highest point will be 70% away from the top
+        top: 0.7,
         bottom: 0,
       },
     });
@@ -119,22 +121,22 @@ export const ChartComponent = ({ data, markers }) => {
     });
     volumeSeries.setData(volumeData);
 
-    // Set the visible time range if enough data is available
     if (seriesData.length > 75) {
-      const visibleFrom = seriesData[seriesData.length - 75].time;
-      const visibleTo = seriesData[seriesData.length - 1].time;
-      chart.timeScale().setVisibleRange({ from: visibleFrom, to: visibleTo });
+      const fromIdx = seriesData.length - 75;
+      chart.timeScale().setVisibleRange({
+        from: seriesData[fromIdx].time,
+        to: seriesData[seriesData.length - 1].time,
+      });
     } else {
       chart.timeScale().fitContent();
     }
 
-    // Handle chart container resizing
     const handleResize = () => {
       const { width, height } = getDimensions();
       chart.applyOptions({ width, height });
     };
-
     window.addEventListener("resize", handleResize);
+
     return () => {
       window.removeEventListener("resize", handleResize);
       chart.remove();
@@ -142,37 +144,51 @@ export const ChartComponent = ({ data, markers }) => {
   }, [data]);
 
   return (
-    <div ref={chartContainerRef} style={{ width: "100%", height: "100%" }} />
+    <div
+      ref={chartContainerRef}
+      style={{ width: "100%", height: "100%", minHeight: 300 }}
+    />
   );
 };
 
-function ChartModal({ isOpen, onClose, symbol, token, markers = [] }) {
+/**
+ * ChartModal:
+ * - Fetches daily candle data (including SMAs) from the backend.
+ * - Displays a spinner while loading.
+ * - Updates the last candle in real-time if the market is open.
+ * - Renders full screen (vertically and horizontally) on phone view (md breakpoint and below).
+ */
+function ChartModal({ isOpen, onClose, symbol, token }) {
+  const { liveData } = useContext(DataContext);
   const [chartData, setChartData] = useState(null);
 
-  const getChartData = async () => {
-    if (symbol && token) {
-      try {
-        setChartData(null);
-        const response = await api.get(
-          `/api/data/chartdata?token=${token}&symbol=${symbol}`
-        );
-        // Transform the API response to include all needed fields
-        const transformedData = response.data.map((item) => ({
-          time: item.date.split("T")[0],
-          open: item.open,
-          high: item.high,
-          low: item.low,
-          close: item.close,
-          volume: item.volume,
-          ...(item.sma_50 !== 0 ? { sma_50: item.sma_50 } : {}),
-          ...(item.sma_150 !== 0 ? { sma_150: item.sma_150 } : {}),
-          ...(item.sma_200 !== 0 ? { sma_200: item.sma_200 } : {}),
-        }));
+  // Use theme and media query: fullScreen for screens md and below.
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
 
-        setChartData(transformedData);
-      } catch (error) {
-        console.error("Error fetching chart data:", error);
-      }
+  const getChartData = async () => {
+    if (!symbol || !token) return;
+    try {
+      setChartData(null);
+      const response = await api.get(
+        `/api/data/chartdata?token=${token}&symbol=${symbol}`
+      );
+
+      const transformedData = response.data.map((item) => ({
+        time: item.date.split("T")[0],
+        open: item.open,
+        high: item.high,
+        low: item.low,
+        close: item.close,
+        volume: item.volume,
+        ...(item.sma_50 !== 0 ? { sma_50: item.sma_50 } : {}),
+        ...(item.sma_150 !== 0 ? { sma_150: item.sma_150 } : {}),
+        ...(item.sma_200 !== 0 ? { sma_200: item.sma_200 } : {}),
+      }));
+
+      setChartData(transformedData);
+    } catch (error) {
+      console.error("Error fetching chart data:", error);
     }
   };
 
@@ -184,15 +200,45 @@ function ChartModal({ isOpen, onClose, symbol, token, markers = [] }) {
   };
 
   useEffect(() => {
-    getChartData();
-  }, [symbol, token]);
+    if (isOpen) {
+      getChartData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, symbol, token]);
+
+  useEffect(() => {
+    if (!liveData || !liveData.length || !chartData || !chartData.length)
+      return;
+
+    const tick = liveData.find((t) => t.instrument_token === token);
+    if (!tick) return;
+
+    setChartData((prevData) => {
+      if (!prevData || !prevData.length) return prevData;
+      const newData = [...prevData];
+      const lastIndex = newData.length - 1;
+      const lastBar = { ...newData[lastIndex] };
+
+      const todayStr = new Date().toISOString().split("T")[0];
+      if (lastBar.time === todayStr) {
+        const newClose = tick.last_price;
+        if (newClose > lastBar.high) lastBar.high = newClose;
+        if (newClose < lastBar.low) lastBar.low = newClose;
+        lastBar.close = newClose;
+        if (tick.volume) {
+          lastBar.volume = tick.volume;
+        }
+        newData[lastIndex] = lastBar;
+      }
+      return newData;
+    });
+  }, [liveData, chartData, token]);
 
   return (
     <Dialog
+      fullScreen={fullScreen}
       open={isOpen}
-      onClose={() => {
-        onClose();
-      }}
+      onClose={onClose}
       fullWidth
       maxWidth="xl"
       PaperProps={{
@@ -201,7 +247,7 @@ function ChartModal({ isOpen, onClose, symbol, token, markers = [] }) {
           color: "white",
           borderRadius: "8px",
           p: 1,
-          height: "70vh",
+          height: fullScreen ? "100%" : "70vh",
         },
       }}
     >
@@ -214,16 +260,23 @@ function ChartModal({ isOpen, onClose, symbol, token, markers = [] }) {
           justifyContent: "space-between",
           width: "100%",
         }}
-        className="flex flex-row items-center justify-between "
+        className="flex flex-row items-center justify-between"
       >
-        <span>Chart for {symbol}</span>
+        <Typography variant="h6" component="span">
+          Chart for {symbol}
+        </Typography>
       </DialogTitle>
+
       <DialogContent
         dividers
-        sx={{ p: 0, height: "calc(70vh - 80px)", overflow: "hidden" }}
+        sx={{
+          p: 0,
+          height: fullScreen ? "calc(100% - 80px)" : "calc(70vh - 80px)",
+          overflow: "hidden",
+        }}
       >
         {chartData ? (
-          <ChartComponent data={chartData} markers={markers} />
+          <ChartComponent data={chartData} />
         ) : (
           <Box sx={{ p: 2 }}>
             <div className="flex flex-col items-center justify-center w-full h-[55vh]">
@@ -233,6 +286,7 @@ function ChartModal({ isOpen, onClose, symbol, token, markers = [] }) {
           </Box>
         )}
       </DialogContent>
+
       <DialogActions sx={{ pt: 0.5 }}>
         <Button
           onClick={() => openChart(symbol)}
@@ -248,7 +302,7 @@ function ChartModal({ isOpen, onClose, symbol, token, markers = [] }) {
           Open full chart
         </Button>
         <Button
-          onClick={() => getChartData()}
+          onClick={getChartData}
           variant="contained"
           color="warning"
           sx={{
@@ -262,9 +316,7 @@ function ChartModal({ isOpen, onClose, symbol, token, markers = [] }) {
           Refresh
         </Button>
         <Button
-          onClick={() => {
-            onClose();
-          }}
+          onClick={onClose}
           variant="contained"
           color="error"
           sx={{

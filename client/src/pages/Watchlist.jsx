@@ -1,35 +1,28 @@
-// src/pages/WatchlistPage.js
 import React, { useEffect, useState, useRef, useContext } from "react";
 import { toast } from "sonner";
 import api from "../utils/api"; // Adjust as necessary
 import { Button, ButtonGroup, Spinner } from "@heroui/react";
 
-// Live Data & Riskpool (optional) from DataContext, if you use them
 import { DataContext } from "../utils/DataContext";
-
-// AuthContext to check user role (admin vs. observer)
 import { AuthContext } from "../utils/AuthContext";
-import { jwtDecode } from "jwt-decode"; // Make sure you have the correct import or alternative decode
+import { jwtDecode } from "jwt-decode";
 
-// Import your modals
 import BuyModal from "../components/BuyModal";
 import SellModal from "../components/SellModal";
 import ChartModal from "../components/ChartModal";
 import AddAlertModal from "../components/AddAlertModal";
-// Import the new AddWatchlistModal
 import AddWatchlistModal from "../components/AddWatchlistModal";
 
-// Import your toast sound utility (adjust path as needed)
 import { PlayToastSound } from "../utils/PlaySound";
+import SideChart from "../components/SideChart";
 
 function Watchlist() {
-  // -- DataContext (including watchlistAlerts for real-time updates)
+  // -------------------------------------------------------
+  // CONTEXTS & STATE
+  // -------------------------------------------------------
   const { liveData, riskpool, watchlistAlerts } = useContext(DataContext);
-
-  // -- AuthContext
   const { token } = useContext(AuthContext);
 
-  // Determine user role
   let userRole = "";
   if (token) {
     try {
@@ -40,25 +33,16 @@ function Watchlist() {
     }
   }
 
-  // -- Watchlist containers (from watchlist_name table)
   const [watchlists, setWatchlists] = useState([]);
   const [selectedWatchlist, setSelectedWatchlist] = useState(null);
-
-  // -- Watchlist entries (from watchlist table)
   const [watchlistEntries, setWatchlistEntries] = useState([]);
-
-  // -- Loading indicator
   const [isLoading, setIsLoading] = useState(false);
-
-  // -- Search bar
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-
-  // -- For hiding search results when clicking outside
   const searchContainerRef = useRef(null);
 
   // -------------------------------------------------------
-  // Modals: buy, sell, chart, add alert, add watchlist
+  // MODAL STATES & DATA
   // -------------------------------------------------------
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
@@ -66,32 +50,27 @@ function Watchlist() {
   const [isAddAlertModalOpen, setIsAddAlertModalOpen] = useState(false);
   const [isAddWatchlistModalOpen, setIsAddWatchlistModalOpen] = useState(false);
 
-  // Data for each modal
   const [buyData, setBuyData] = useState(null);
   const [sellData, setSellData] = useState(null);
   const [chartData, setChartData] = useState(null);
   const [addAlertData, setAddAlertData] = useState(null);
 
   // -------------------------------------------------------
-  // Modal Handlers
+  // MODAL HANDLERS
   // -------------------------------------------------------
   const handleOpenBuyModal = () => setIsBuyModalOpen(true);
   const handleCloseBuyModal = () => setIsBuyModalOpen(false);
-
   const handleOpenSellModal = () => setIsSellModalOpen(true);
   const handleCloseSellModal = () => setIsSellModalOpen(false);
-
   const handleOpenChartModal = () => setIsChartModalOpen(true);
   const handleCloseChartModal = () => setIsChartModalOpen(false);
-
   const handleOpenAddAlertModal = () => setIsAddAlertModalOpen(true);
   const handleCloseAddAlertModal = () => setIsAddAlertModalOpen(false);
-
   const handleOpenAddWatchlistModal = () => setIsAddWatchlistModalOpen(true);
   const handleCloseAddWatchlistModal = () => setIsAddWatchlistModalOpen(false);
 
   // -------------------------------------------------------
-  // 1. Fetch all watchlists on mount
+  // FETCH WATCHLIST NAMES ON MOUNT
   // -------------------------------------------------------
   useEffect(() => {
     fetchWatchlistNames();
@@ -103,13 +82,11 @@ function Watchlist() {
       const response = await api.get("/api/watchlist/watchlistname/");
       let wls = response.data;
 
-      // If no watchlists exist, create "Default"
       if (wls.length === 0) {
         await createDefaultWatchlist();
         wls = (await api.get("/api/watchlist/watchlistname/")).data;
       }
 
-      // If watchlists exist but no "Default" found, create it
       const defaultWl = wls.find((wl) => wl.name === "Default");
       if (!defaultWl) {
         await createDefaultWatchlist();
@@ -118,7 +95,6 @@ function Watchlist() {
 
       setWatchlists(wls);
 
-      // Select "Default" watchlist if none is selected
       if (!selectedWatchlist) {
         const finalDefault = wls.find((wl) => wl.name === "Default");
         if (finalDefault) {
@@ -138,7 +114,7 @@ function Watchlist() {
   };
 
   // -------------------------------------------------------
-  // 2. When user selects a watchlist, fetch its entries
+  // FETCH ENTRIES WHEN WATCHLIST IS SELECTED
   // -------------------------------------------------------
   const handleSelectWatchlist = async (wl) => {
     setSelectedWatchlist(wl);
@@ -156,7 +132,7 @@ function Watchlist() {
   };
 
   // -------------------------------------------------------
-  // 3. Debounced Search logic: fetch stocks as user types
+  // DEBOUNCED SEARCH
   // -------------------------------------------------------
   useEffect(() => {
     if (!searchQuery) {
@@ -165,25 +141,22 @@ function Watchlist() {
     }
     const delayDebounceFn = setTimeout(async () => {
       try {
-        // GET /api/watchlist/search/{query}
         const res = await api.get(`/api/watchlist/search/${searchQuery}`);
         setSearchResults(res.data);
       } catch (error) {
         console.error("Error searching stocks:", error);
       }
-    }, 1000); // 1 second debounce
+    }, 1000);
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
   // -------------------------------------------------------
-  // 4. Add stock to watchlist
-  //    If no watchlists exist, create "Default" first.
+  // ADD STOCK TO WATCHLIST
   // -------------------------------------------------------
   const handleAddStock = async (instrument_token, symbol) => {
     setIsLoading(true);
     try {
       let targetWatchlistName = "Default";
-      // Use selected watchlist if available.
       if (watchlists.length > 0) {
         targetWatchlistName =
           selectedWatchlist?.name || watchlists[0].name || "Default";
@@ -191,7 +164,6 @@ function Watchlist() {
         await createDefaultWatchlist();
         await fetchWatchlistNames();
       }
-      // Now add the stock to the determined watchlist.
       await api.post("/api/watchlist/add", {
         watchlist_name: targetWatchlistName,
         instrument_token,
@@ -230,7 +202,7 @@ function Watchlist() {
   };
 
   // -------------------------------------------------------
-  // Delete a watchlist container (only for admins)
+  // DELETE WATCHLIST (ADMIN ONLY)
   // -------------------------------------------------------
   const handleDeleteWatchlist = async () => {
     if (!selectedWatchlist) return;
@@ -241,7 +213,6 @@ function Watchlist() {
         `/api/watchlist/watchlistname/remove/${selectedWatchlist.id}`
       );
       toast.success(`Deleted watchlist: ${selectedWatchlist.name}`);
-      // After deletion, refetch the watchlists.
       setSelectedWatchlist(null);
       await fetchWatchlistNames();
     } catch (error) {
@@ -253,7 +224,7 @@ function Watchlist() {
   };
 
   // -------------------------------------------------------
-  // Hide Search Results if user clicks outside
+  // HIDE SEARCH RESULTS ON CLICK OUTSIDE
   // -------------------------------------------------------
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -271,7 +242,7 @@ function Watchlist() {
   }, []);
 
   // -------------------------------------------------------
-  // 5. Merge liveData into watchlist entries (like Screener)
+  // MERGE LIVE DATA INTO WATCHLIST ENTRIES
   // -------------------------------------------------------
   useEffect(() => {
     if (!watchlistEntries || !liveData) return;
@@ -293,7 +264,7 @@ function Watchlist() {
   }, [liveData]);
 
   // -------------------------------------------------------
-  // Populate data for modals (like in Screener)
+  // POPULATE DATA FOR MODALS
   // -------------------------------------------------------
   const populateBuyData = (row) => {
     setBuyData({
@@ -331,11 +302,10 @@ function Watchlist() {
   };
 
   // -------------------------------------------------------
-  // Listen for real-time watchlist update alerts from DataContext
+  // LISTEN FOR REAL-TIME WATCHLIST ALERTS
   // -------------------------------------------------------
   useEffect(() => {
     if (watchlistAlerts) {
-      // When watchlistAlerts changes, refetch watchlist names and entries.
       fetchWatchlistNames();
       if (selectedWatchlist) {
         handleSelectWatchlist(selectedWatchlist);
@@ -344,12 +314,23 @@ function Watchlist() {
   }, [watchlistAlerts]);
 
   // -------------------------------------------------------
-  // UI
+  // RENDER
   // -------------------------------------------------------
   return (
     <div
-      className="mx-auto w-[95%] bg-[#1a1a1c] flex flex-col md:flex-row text-white relative"
-      style={{ height: "calc(100vh - 96px)" }}
+      className="
+        mx-auto 
+        w-full 
+        max-w-[1600px] 
+        bg-[#1a1a1c] 
+        flex 
+        flex-col 
+        md:flex-row
+        text-white 
+        relative
+        md:h-[calc(100vh-96px)]
+        h-auto
+      "
     >
       {/* Modals */}
       <BuyModal
@@ -381,7 +362,6 @@ function Watchlist() {
         instrument_token={addAlertData?.instrument_token}
         ltp={addAlertData?.ltp}
       />
-      {/* New Add Watchlist Modal */}
       <AddWatchlistModal
         isOpen={isAddWatchlistModalOpen}
         onClose={handleCloseAddWatchlistModal}
@@ -389,12 +369,8 @@ function Watchlist() {
       />
 
       {/* LEFT SIDEBAR: Search + Watchlist Entries */}
-      <div
-        className="relative flex flex-col 
-          lg:w-3/12 md:w-5/12 sm:w-full 
-          h-full p-4 border-b md:border-b-0 md:border-r bg-[#1a1a1c]"
-      >
-        {/* Search Bar Container */}
+      <div className="relative flex flex-col w-full md:w-[380px] h-full p-4 border-b md:border-b-0 md:border-r bg-[#1a1a1c]">
+        {/* Search Bar */}
         <div
           ref={searchContainerRef}
           className="relative pb-2 mb-2 border-b border-zinc-600"
@@ -422,7 +398,6 @@ function Watchlist() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {/* Search Results */}
           {searchResults.length > 0 && (
             <div className="absolute left-0 z-10 w-full mt-1 border rounded top-12 bg-[#1a1a1c] border-zinc-700">
               {searchResults.map((stock) => {
@@ -567,7 +542,6 @@ function Watchlist() {
                             size="sm"
                             onPress={() => {
                               populateChartData(entry);
-                              handleOpenChartModal();
                             }}
                           >
                             <svg
@@ -624,13 +598,13 @@ function Watchlist() {
         </div>
       </div>
 
-      {/* RIGHT SIDE: Placeholder for future charts, etc. */}
-      <div className="w-full h-full p-4 md:flex-1">
-        <h2 className="mb-2 text-xl font-bold">Chart / Other Stuff</h2>
-        <p className="text-zinc-400">
-          This area can be used to display charts, analytics, or other content
-          related to the selected stock/watchlist.
-        </p>
+      {/* 
+        RIGHT SIDE: 
+        The ONLY fix here is adding "overflow-hidden" 
+        and letting the chart fully occupy the parent's height. 
+      */}
+      <div className="w-full p-4 md:flex-1 md:h-full h-[65vh] overflow-hidden">
+        <SideChart symbol={chartData?.symbol} token={chartData?.token} />
       </div>
 
       {/* FOOTER */}
@@ -641,7 +615,6 @@ function Watchlist() {
             : "No watchlist selected"}
         </div>
         <div className="flex items-center gap-2 mr-4">
-          {/* Dropdown of watchlists */}
           <select
             className="px-2 py-1 rounded bg-zinc-900 text-zinc-300 focus:outline-none"
             value={selectedWatchlist?.id || ""}
@@ -663,7 +636,6 @@ function Watchlist() {
               </option>
             ))}
           </select>
-          {/* Plus button to open Add Watchlist Modal */}
           <button
             className="px-3 py-1 text-white bg-blue-600 rounded"
             onClick={handleOpenAddWatchlistModal}
@@ -683,7 +655,6 @@ function Watchlist() {
               />
             </svg>
           </button>
-          {/* Delete button for watchlist (only for admin) */}
           {userRole === "admin" && selectedWatchlist && (
             <button
               className="px-3 py-1 text-white bg-red-600 rounded"
