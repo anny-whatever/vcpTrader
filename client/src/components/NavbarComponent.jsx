@@ -252,7 +252,7 @@ export default function NavbarComponent() {
               sx={{
                 color: "white",
                 bgcolor:
-                  currentPath === "/screener"
+                  currentPath === "/watchlist"
                     ? "rgba(255,255,255,0.1)"
                     : "transparent",
                 mx: 1,
