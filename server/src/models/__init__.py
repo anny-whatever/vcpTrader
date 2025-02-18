@@ -7,6 +7,6 @@ from .save_trade_details import SaveTradeDetails
 from .save_ohlc import SaveOHLC
 from .save_risk_pool import RiskPool
 from .save_alerts import PriceAlert, AlertMessage
-from .save_watchlist import WatchlistEntry
+from .save_watchlist import WatchlistEntry, WatchlistName
 from .save_tokens import EquityToken
 __all__ = ["IndicesInstruments", "EquityInstruments", "saveHistoricalTradeDetails", "EquityHistoricalData", "FetchPosition", "HistoricalTrades", "saveTradeDetails", "SaveOHLC", "RiskPool"]

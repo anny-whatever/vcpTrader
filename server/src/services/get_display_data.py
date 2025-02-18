@@ -14,7 +14,7 @@ MARKET_OPEN = time(9, 15)
 MARKET_CLOSE = time(15, 35)
 
 def fetch_risk_pool_for_display():
-    conn, cur = None, None
+    
     try:
         conn, cur = get_db_connection()
         risk_pool = RiskPool.fetch_risk_pool(cur)
@@ -47,7 +47,7 @@ def format_trade_record(trade):
     }
 
 def fetch_trade_details_for_display():
-    conn, cur = None, None
+    
     try:
         conn, cur = get_db_connection()
         trade_details = SaveTradeDetails.fetch_all_trades(cur)
@@ -85,7 +85,7 @@ def format_historical_trade_record(trade):
     }
 
 def fetch_historical_trade_details_for_display():
-    conn, cur = None, None
+    
     try:
         conn, cur = get_db_connection()
         trade_details = SaveHistoricalTradeDetails.fetch_all_historical_trades(cur)
@@ -98,7 +98,7 @@ def fetch_historical_trade_details_for_display():
             close_db_connection()
 
 def get_combined_ohlc(instrument_token, symbol):
-    conn, cur = None, None
+    
     try:
         conn, cur = get_db_connection()
         historical_data = SaveOHLC.fetch_by_instrument(cur, instrument_token)
@@ -159,7 +159,7 @@ def get_combined_ohlc(instrument_token, symbol):
             close_db_connection()
 
 def get_all_alerts():
-    conn, cur = None, None
+    
     try:
         conn, cur = get_db_connection()
         alerts = PriceAlert.fetch_all_alerts(cur)
@@ -175,7 +175,7 @@ def get_all_alerts():
             close_db_connection()
 
 def get_latest_alert_messages():
-    conn, cur = None, None
+    
     try:
         conn, cur = get_db_connection()
         messages = AlertMessage.fetch_latest_messages(cur)

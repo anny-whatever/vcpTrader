@@ -21,7 +21,7 @@ def add_alert(instrument_token: int, symbol: str, price: float, alert_type: str)
     Add a new price alert to the database.
     """
     global alerts_cache
-    conn, cur = None, None
+    
     try:
         conn, cur = get_db_connection()
         alert = PriceAlert(instrument_token, symbol, price, alert_type)
@@ -44,7 +44,7 @@ def remove_alert(alert_id: int):
     Remove a price alert from the database.
     """
     global alerts_cache
-    conn, cur = None, None
+    
     try:
         conn, cur = get_db_connection()
         PriceAlert.delete_alert(cur, alert_id)
@@ -75,7 +75,7 @@ async def create_and_send_alert_message(
     It leverages the provided send_update_func (which should be process_and_send_alert_triggered_message)
     to send a WebSocket message with the event "alert_triggered".
     """
-    conn, cur = None, None
+    
     from controllers import process_and_send_alert_triggered_message  # Import the dedicated alert trigger sender
     try:
         conn, cur = get_db_connection()

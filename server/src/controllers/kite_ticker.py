@@ -26,7 +26,7 @@ def is_within_monitor_live_trade_time_range():
     return MONITOR_LIVE_TRADE_START <= now <= MONITOR_LIVE_TRADE_END
 
 def get_instrument_token():
-    conn, cur = None, None
+    
     try:
         conn, cur = get_db_connection()
         tokens = []

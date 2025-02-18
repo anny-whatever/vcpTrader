@@ -92,6 +92,17 @@ async def process_and_send_alert_triggered_message(message):
     except Exception as e:
         logger.error(f"Error sending alert triggered message: {e}")
         raise
+    
+async def process_and_send_watchlist_update_message(message):
+    """Send an alert triggered message (used when a live alert is triggered)."""
+    try:
+        payload = {"event": "watchlist_updated", "data": message}
+        message_json = json.dumps(payload, default=convert_datetime)
+        await send_data_to_clients(message_json)
+        logger.info("Alert triggered message sent to clients")
+    except Exception as e:
+        logger.error(f"Error sending alert triggered message: {e}")
+        raise
 
 async def heartbeat(websocket: WebSocket):
     """Send a ping message periodically to keep the connection alive."""

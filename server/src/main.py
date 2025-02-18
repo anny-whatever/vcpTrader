@@ -45,7 +45,8 @@ from controllers import (
     screener_router, 
     data_router, 
     user_login_router,
-    alerts_router
+    alerts_router,
+    watchlist_router
 )
 
 app = FastAPI()
@@ -69,6 +70,8 @@ app.include_router(screener_router, prefix="/api/screener")
 app.include_router(data_router, prefix="/api/data")
 app.include_router(user_login_router, prefix="/api/login")
 app.include_router(alerts_router, prefix="/api/alerts")
+app.include_router(watchlist_router, prefix="/api/watchlist")
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

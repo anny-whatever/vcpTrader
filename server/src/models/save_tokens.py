@@ -134,9 +134,10 @@ class EquityToken:
     def search(cls, cur, query_str: str):
         """
         Search for tokens matching the query in either 'tradingsymbol' or 'company_name'.
-        Returns up to 10 results (adjust LIMIT as needed).
+        Returns up to 10 results.
         """
         like_query = f"%{query_str}%"
+        logger.info(f"Search function hit. Query: {query_str}, Like Query: {like_query}")
         sql = """
         SELECT * FROM equity_tokens
         WHERE tradingsymbol ILIKE %s OR company_name ILIKE %s
@@ -144,7 +145,14 @@ class EquityToken:
         """
         try:
             cur.execute(sql, (like_query, like_query))
-            return cur.fetchall()
+            rows = cur.fetchall()
+            # Get column names from the cursor description
+            col_names = [desc[0] for desc in cur.description]
+            # Convert each tuple into a dict
+            results = [dict(zip(col_names, row)) for row in rows]
+            logger.info(f"Search results: {results}")
+            return results
         except Exception as e:
             logger.error(f"Error searching equity_tokens: {e}")
             raise
+
