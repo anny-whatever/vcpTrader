@@ -149,6 +149,15 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
     // Save the last candle for live updates
     lastCandleRef.current = chartData[chartData.length - 1];
 
+    setOHLC(chartData[chartData.length - 1]);
+    setLiveChange(
+      ((chartData[chartData.length - 1]?.close -
+        chartData[chartData.length - 2]?.close) /
+        chartData[chartData.length - 2]?.close) *
+        100
+    );
+    setLivePrice(chartData[chartData.length - 1]?.close);
+
     // Volume histogram series
     const volumeData = chartData.map((item) => ({
       time: item.time,
@@ -337,7 +346,7 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
             top: "16px",
             left: "16px",
             zIndex: 10,
-            backgroundColor: "#2c2c2e",
+            backgroundColor: "#2c2c2e4D",
             color: "#fff",
             padding: "6px 10px",
             borderRadius: "4px",
@@ -358,7 +367,7 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
               {liveChange?.toFixed(2)}%
             </span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 ">
             <span>O: {OHLC?.open?.toFixed(2)}</span>
             <span>H: {OHLC?.high?.toFixed(2)}</span>
             <span>L: {OHLC?.low?.toFixed(2)}</span>

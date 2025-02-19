@@ -122,6 +122,14 @@ function SideChart({ symbol, token }) {
 
     // Keep track of the last candle for real-time updates
     lastCandleRef.current = seriesData[seriesData.length - 1];
+    setOHLC(seriesData[seriesData.length - 1]);
+    setLiveChange(
+      ((seriesData[seriesData.length - 1]?.close -
+        seriesData[seriesData.length - 2]?.close) /
+        seriesData[seriesData.length - 2]?.close) *
+        100
+    );
+    setLivePrice(seriesData[seriesData.length - 1]?.close);
 
     // Volume Series
     const volumeData = seriesData.map((item) => ({
@@ -132,10 +140,10 @@ function SideChart({ symbol, token }) {
       color: "#ffffff4b",
       priceFormat: { type: "volume" },
       priceScaleId: "",
-      scaleMargins: { top: 0.7, bottom: 0 },
+      scaleMargins: { top: 0.9, bottom: 0 },
     });
     volumeSeries.priceScale().applyOptions({
-      scaleMargins: { top: 0.7, bottom: 0 },
+      scaleMargins: { top: 0.9, bottom: 0 },
     });
     volumeSeries.setData(volumeData);
     volumeSeriesRef.current = volumeSeries;
@@ -326,7 +334,7 @@ function SideChart({ symbol, token }) {
           top: "8px",
           left: "8px",
           zIndex: 10,
-          backgroundColor: "#2c2c2e",
+          backgroundColor: "#2c2c2e4D",
           color: "#fff",
           padding: "6px 10px",
           borderRadius: "4px",
@@ -345,7 +353,7 @@ function SideChart({ symbol, token }) {
             {liveChange?.toFixed(2)}%
           </span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <span>O: {OHLC?.open?.toFixed(2)}</span>
           <span>H: {OHLC?.high?.toFixed(2)}</span>
           <span>L: {OHLC?.low?.toFixed(2)}</span>
@@ -359,7 +367,7 @@ function SideChart({ symbol, token }) {
           top: "8px",
           right: "8px",
           zIndex: 10,
-          backgroundColor: "#2c2c2e",
+          backgroundColor: "#2c2c2e4D",
           color: "#fff",
           padding: "6px 10px",
           borderRadius: "4px",
@@ -369,7 +377,20 @@ function SideChart({ symbol, token }) {
           marginRight: "60px",
         }}
       >
-        Open Full Chart
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.5}
+          stroke="currentColor"
+          className="size-6"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
+          />
+        </svg>
       </button>
     </Box>
   );
