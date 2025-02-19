@@ -1,4 +1,5 @@
 # screener.py
+import asyncio
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
@@ -11,7 +12,7 @@ router = APIRouter()
 @router.get("/vcpscreen")
 async def screen_vcp(user: dict = Depends(get_current_user)):
     try:
-        response = screen_eligible_stocks_vcp()
+        response = await asyncio.to_thread(screen_eligible_stocks_vcp)
         return JSONResponse(content=response)
     except Exception as e:
         logger.error(f"Error in screen_vcp: {e}")
@@ -20,7 +21,7 @@ async def screen_vcp(user: dict = Depends(get_current_user)):
 @router.get("/iposcreen")
 async def screen_ipo(user: dict = Depends(get_current_user)):
     try:
-        response = screen_eligible_stocks_ipo()
+        response = await asyncio.to_thread(screen_eligible_stocks_ipo)
         return JSONResponse(content=response)
     except Exception as e:
         logger.error(f"Error in screen_ipo: {e}")

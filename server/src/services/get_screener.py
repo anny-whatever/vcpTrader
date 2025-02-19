@@ -1,3 +1,5 @@
+# get_screener.py
+import threading
 import datetime
 import pandas as pd
 import pandas_ta as ta
@@ -9,7 +11,7 @@ from db import get_db_connection, close_db_connection
 logger = logging.getLogger(__name__)
 TIMEZONE = pytz.timezone("Asia/Kolkata")
 ohlc_data = None  # Global DataFrame holding precomputed OHLC data with indicators
-
+ohlc_data_lock = threading.Lock()  # Lock for thread-safe access
 
 def load_ohlc_data():
     """
@@ -17,43 +19,43 @@ def load_ohlc_data():
     and compute historical indicators for each instrument token.
     """
     global ohlc_data
-    conn, cur = get_db_connection()
-    try:
-        query = "SELECT * FROM ohlc WHERE segment != 'ALL'"
-        cur.execute(query)
-        data = cur.fetchall()
-        df = pd.DataFrame(
-            data,
-            columns=["instrument_token", "symbol", "interval", "date", "open", "high", "low", "close", "volume", "segment"]
-        )
-        # Convert numeric columns to float and parse dates.
-        for col in ["open", "high", "low", "close", "volume"]:
-            df[col] = df[col].astype(float)
-        df["date"] = pd.to_datetime(df["date"])
+    with ohlc_data_lock:
+        conn, cur = get_db_connection()
+        try:
+            query = "SELECT * FROM ohlc WHERE segment != 'ALL'"
+            cur.execute(query)
+            data = cur.fetchall()
+            df = pd.DataFrame(
+                data,
+                columns=["instrument_token", "symbol", "interval", "date", "open", "high", "low", "close", "volume", "segment"]
+            )
+            # Convert numeric columns to float and parse dates.
+            for col in ["open", "high", "low", "close", "volume"]:
+                df[col] = df[col].astype(float)
+            df["date"] = pd.to_datetime(df["date"])
 
-        # Compute technical indicators for each instrument token.
-        groups = []
-        for token, group in df.groupby("instrument_token"):
-            group = group.sort_values("date").reset_index(drop=True)
-            group["sma_50"] = ta.sma(group["close"], length=min(50, len(group)))
-            group["sma_150"] = ta.sma(group["close"], length=min(150, len(group)))
-            group["sma_200"] = ta.sma(group["close"], length=min(200, len(group)))
-            group["atr"] = ta.atr(group["high"], group["low"], group["close"], length=min(50, len(group)))
-            group["52_week_high"] = group["high"].rolling(window=min(252, len(group)), min_periods=1).max()
-            group["52_week_low"] = group["low"].rolling(window=min(252, len(group)), min_periods=1).min()
-            group["away_from_high"] = ((group["52_week_high"] - group["close"]) / group["52_week_high"]) * 100
-            group["away_from_low"] = ((group["close"] - group["52_week_low"]) / group["52_week_low"]) * 100
-            group = group.fillna(0)
-            groups.append(group)
+            # Compute technical indicators for each instrument token.
+            groups = []
+            for token, group in df.groupby("instrument_token"):
+                group = group.sort_values("date").reset_index(drop=True)
+                group["sma_50"] = ta.sma(group["close"], length=min(50, len(group)))
+                group["sma_150"] = ta.sma(group["close"], length=min(150, len(group)))
+                group["sma_200"] = ta.sma(group["close"], length=min(200, len(group)))
+                group["atr"] = ta.atr(group["high"], group["low"], group["close"], length=min(50, len(group)))
+                group["52_week_high"] = group["high"].rolling(window=min(252, len(group)), min_periods=1).max()
+                group["52_week_low"] = group["low"].rolling(window=min(252, len(group)), min_periods=1).min()
+                group["away_from_high"] = ((group["52_week_high"] - group["close"]) / group["52_week_high"]) * 100
+                group["away_from_low"] = ((group["close"] - group["52_week_low"]) / group["52_week_low"]) * 100
+                group = group.fillna(0)
+                groups.append(group)
 
-        ohlc_data = pd.concat(groups, ignore_index=True)
-        return ohlc_data
-    except Exception as err:
-        logger.error(f"Error fetching OHLC data: {err}")
-        return pd.DataFrame()
-    finally:
-        close_db_connection()
-
+            ohlc_data = pd.concat(groups, ignore_index=True)
+            return ohlc_data
+        except Exception as err:
+            logger.error(f"Error fetching OHLC data: {err}")
+            return pd.DataFrame()
+        finally:
+            close_db_connection()
 
 def fetch_live_quotes(batch_size=250):
     """
@@ -61,7 +63,7 @@ def fetch_live_quotes(batch_size=250):
     to avoid exceeding the URL length limit.
     
     Args:
-        batch_size (int): Number of tokens to fetch in a single request. Defaults to 100.
+        batch_size (int): Number of tokens to fetch in a single request. Defaults to 250.
     
     Returns:
         dict: Mapping from instrument_token to its last_price.
@@ -90,7 +92,6 @@ def fetch_live_quotes(batch_size=250):
         return {}
     finally:
         close_db_connection()
-
 
 def update_live_data(existing_data, live_data):
     """
@@ -156,7 +157,6 @@ def update_live_data(existing_data, live_data):
             updated_groups.append(group)
     return pd.concat(updated_groups, ignore_index=True)
 
-
 def screen_eligible_stocks_vcp():
     """
     Screen non-IPO stocks (VCP pattern) using precomputed indicators.
@@ -215,7 +215,6 @@ def screen_eligible_stocks_vcp():
     except Exception as e:
         logger.error(f"Error screening eligible stocks for VCP: {e}")
         raise e
-
 
 def screen_eligible_stocks_ipo():
     """
