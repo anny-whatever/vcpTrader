@@ -24,6 +24,9 @@ import { Spinner } from "@heroui/react";
 function ChartModal({ isOpen, onClose, symbol, token }) {
   const { liveData } = useContext(DataContext);
   const [chartData, setChartData] = useState(null);
+  const [liveChange, setLiveChange] = useState(null);
+  const [OHLC, setOHLC] = useState(null);
+  const [livePrice, setLivePrice] = useState(null);
   const chartContainerRef = useRef(null);
 
   // Refs for chart objects and series
@@ -254,6 +257,10 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
     const newSma150 = tick.sma_150;
     const newSma200 = tick.sma_200;
 
+    setLiveChange(tick.change);
+    setOHLC(tick.ohlc);
+    setLivePrice(newPrice);
+
     // Update the last candle
     const updatedCandle = {
       ...lastCandleRef.current,
@@ -304,23 +311,10 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
           color: "white",
           borderRadius: "8px",
           p: 1,
-          height: fullScreen ? "100%" : "70vh",
+          height: fullScreen ? "100%" : "80vh",
         },
       }}
     >
-      <DialogTitle
-        sx={{
-          fontSize: "1rem",
-          pb: 0.5,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <Typography variant="h6" component="span">
-          Chart for {symbol}
-        </Typography>
-      </DialogTitle>
       <DialogContent
         dividers
         sx={{
@@ -337,6 +331,40 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
             </div>
           </Box>
         )}
+        <div
+          style={{
+            position: "absolute",
+            top: "16px",
+            left: "16px",
+            zIndex: 10,
+            backgroundColor: "#2c2c2e",
+            color: "#fff",
+            padding: "6px 10px",
+            borderRadius: "4px",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "0.9rem",
+            marginRight: "60px",
+          }}
+          className="flex flex-col justify-center items-left"
+        >
+          <span>Symbol: {symbol}</span>
+
+          <div>
+            Change:{" "}
+            <span
+              className={liveChange > 0 ? "text-green-500" : "text-red-500"}
+            >
+              {liveChange?.toFixed(2)}%
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <span>O: {OHLC?.open?.toFixed(2)}</span>
+            <span>H: {OHLC?.high?.toFixed(2)}</span>
+            <span>L: {OHLC?.low?.toFixed(2)}</span>
+            <span>C: {livePrice?.toFixed(2)}</span>
+          </div>
+        </div>
         <div
           ref={chartContainerRef}
           style={{ width: "100%", height: "100%" }}
