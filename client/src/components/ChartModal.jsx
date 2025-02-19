@@ -45,6 +45,7 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
   const getChartData = async () => {
     if (!symbol || !token) return;
     try {
+      setChartData(null);
       const response = await api.get(
         `/api/data/chartdata?token=${token}&symbol=${symbol}`
       );
