@@ -16,6 +16,19 @@ function SideChart({ symbol, token }) {
   const [chartData, setChartData] = useState(null);
   const chartContainerRef = useRef();
 
+  // References for chart objects (for real-time updates)
+  const chartRef = useRef(null);
+  const barSeriesRef = useRef(null);
+  const volumeSeriesRef = useRef(null);
+
+  // References for the three SMA line series
+  const ma50SeriesRef = useRef(null);
+  const ma150SeriesRef = useRef(null);
+  const ma200SeriesRef = useRef(null);
+
+  // Reference to track the last candle we’re updating
+  const lastCandleRef = useRef(null);
+
   // --------------------------------------------
   // 1. Helper function to open TradingView chart
   // --------------------------------------------
@@ -36,8 +49,10 @@ function SideChart({ symbol, token }) {
       const response = await api.get(
         `/api/data/chartdata?token=${token}&symbol=${symbol}`
       );
+
+      // Transform your data to the structure needed by Lightweight Charts
       const transformedData = response.data.map((item) => ({
-        time: item.date.split("T")[0],
+        time: item.date.split("T")[0], // e.g. "YYYY-MM-DD"
         open: item.open,
         high: item.high,
         low: item.low,
@@ -62,39 +77,7 @@ function SideChart({ symbol, token }) {
   }, [symbol, token]);
 
   // --------------------------------------------
-  // 3. Real-time Updates
-  // --------------------------------------------
-  useEffect(() => {
-    if (!liveData || !liveData.length || !chartData || !chartData.length)
-      return;
-
-    const tick = liveData.find((t) => t.instrument_token === token);
-    if (!tick) return;
-
-    setChartData((prevData) => {
-      if (!prevData || !prevData.length) return prevData;
-      const newData = [...prevData];
-      const lastIndex = newData.length - 1;
-      const lastBar = { ...newData[lastIndex] };
-
-      const todayStr = new Date().toISOString().split("T")[0];
-      if (lastBar.time === todayStr) {
-        const newClose = tick.last_price;
-        if (newClose > lastBar.high) lastBar.high = newClose;
-        if (newClose < lastBar.low) lastBar.low = newClose;
-        lastBar.close = newClose;
-
-        if (tick.volume) {
-          lastBar.volume = tick.volume;
-        }
-        newData[lastIndex] = lastBar;
-      }
-      return newData;
-    });
-  }, [liveData, chartData, token]);
-
-  // --------------------------------------------
-  // 4. Render the Chart
+  // 3. Create Chart and Set Initial Data
   // --------------------------------------------
   useEffect(() => {
     if (!chartData || !chartData.length) return;
@@ -105,7 +88,6 @@ function SideChart({ symbol, token }) {
       width: container.clientWidth,
       height: container.clientHeight,
     });
-
     const { width, height } = getDimensions();
 
     const chart = createChart(container, {
@@ -121,10 +103,11 @@ function SideChart({ symbol, token }) {
       },
       crosshair: { mode: 0 },
     });
+    chartRef.current = chart;
 
     const seriesData = chartData;
 
-    // Main Bar Series
+    // Main Bar Series (candlestick-like)
     const barSeries = chart.addSeries(BarSeries, {
       upColor: "#26a69a",
       downColor: "#ef5350",
@@ -132,6 +115,10 @@ function SideChart({ symbol, token }) {
       thinBars: false,
     });
     barSeries.setData(seriesData);
+    barSeriesRef.current = barSeries;
+
+    // Keep track of the last candle for real-time updates
+    lastCandleRef.current = seriesData[seriesData.length - 1];
 
     // Volume Series
     const volumeData = seriesData.map((item) => ({
@@ -140,22 +127,15 @@ function SideChart({ symbol, token }) {
     }));
     const volumeSeries = chart.addSeries(HistogramSeries, {
       color: "#ffffff4b",
-      priceFormat: {
-        type: "volume",
-      },
+      priceFormat: { type: "volume" },
       priceScaleId: "",
-      scaleMargins: {
-        top: 0.7,
-        bottom: 0,
-      },
+      scaleMargins: { top: 0.7, bottom: 0 },
     });
     volumeSeries.priceScale().applyOptions({
-      scaleMargins: {
-        top: 0.7,
-        bottom: 0,
-      },
+      scaleMargins: { top: 0.7, bottom: 0 },
     });
     volumeSeries.setData(volumeData);
+    volumeSeriesRef.current = volumeSeries;
 
     // SMA lines
     const sma50Data = seriesData.map((item) => ({
@@ -176,18 +156,21 @@ function SideChart({ symbol, token }) {
       lineWidth: 2,
     });
     ma50Series.setData(sma50Data);
+    ma50SeriesRef.current = ma50Series;
 
     const ma150Series = chart.addSeries(LineSeries, {
       color: "#3bfa2d4b",
       lineWidth: 2,
     });
     ma150Series.setData(sma150Data);
+    ma150SeriesRef.current = ma150Series;
 
     const ma200Series = chart.addSeries(LineSeries, {
       color: "#fa642d4b",
       lineWidth: 2,
     });
     ma200Series.setData(sma200Data);
+    ma200SeriesRef.current = ma200Series;
 
     // Adjust visible range
     if (seriesData.length > 75) {
@@ -200,7 +183,7 @@ function SideChart({ symbol, token }) {
       chart.timeScale().fitContent();
     }
 
-    // Handle resize
+    // Resize handler
     const handleResize = () => {
       const { width, height } = getDimensions();
       chart.applyOptions({ width, height });
@@ -212,6 +195,70 @@ function SideChart({ symbol, token }) {
       chart.remove();
     };
   }, [chartData]);
+
+  // --------------------------------------------
+  // 4. Real-time Updates (Price, Volume, SMAs)
+  // --------------------------------------------
+  useEffect(() => {
+    if (
+      !liveData ||
+      !liveData.length ||
+      !chartData ||
+      !chartData.length ||
+      !barSeriesRef.current ||
+      !volumeSeriesRef.current ||
+      !ma50SeriesRef.current ||
+      !ma150SeriesRef.current ||
+      !ma200SeriesRef.current ||
+      !lastCandleRef.current
+    ) {
+      return;
+    }
+
+    // Find the tick for this token
+    const tick = liveData.find((t) => t.instrument_token === token);
+    if (!tick) return;
+
+    // Extract the new price, volume, SMAs from the real-time feed
+    // (Adjust the property names if your feed is different)
+    const newPrice = tick.last_price;
+    const newVolume = tick.volume_traded;
+    const newSma50 = tick.sma_50;
+    const newSma150 = tick.sma_150;
+    const newSma200 = tick.sma_200;
+
+    // Update the last candle
+    const updatedCandle = {
+      ...lastCandleRef.current,
+      close: newPrice,
+      high: Math.max(lastCandleRef.current.high, newPrice),
+      low: Math.min(lastCandleRef.current.low, newPrice),
+      volume: newVolume,
+    };
+
+    // If the feed includes updated SMA values, update them too
+    if (newSma50 !== undefined) {
+      updatedCandle.sma_50 = newSma50;
+    }
+    if (newSma150 !== undefined) {
+      updatedCandle.sma_150 = newSma150;
+    }
+    if (newSma200 !== undefined) {
+      updatedCandle.sma_200 = newSma200;
+    }
+
+    // Save the updated candle for future increments
+    lastCandleRef.current = updatedCandle;
+
+    // Update the bar/candlestick series (OHLC data)
+    barSeriesRef.current.update(updatedCandle);
+
+    // Update volume
+    volumeSeriesRef.current.update({
+      time: updatedCandle.time,
+      value: updatedCandle.volume,
+    });
+  }, [liveData, chartData, token]);
 
   // --------------------------------------------
   // 5. UI / Return

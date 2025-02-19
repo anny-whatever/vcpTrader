@@ -1,4 +1,3 @@
-// src/components/ChartModal.jsx
 import React, { useEffect, useRef, useState, useContext } from "react";
 import {
   Dialog,
@@ -22,28 +21,104 @@ import {
 import { DataContext } from "../utils/DataContext";
 import { Spinner } from "@heroui/react";
 
-/**
- * ChartComponent:
- * Renders a daily bar chart with SMAs and volume histogram.
- */
-export const ChartComponent = ({ data }) => {
-  const chartContainerRef = useRef();
+function ChartModal({ isOpen, onClose, symbol, token }) {
+  const { liveData } = useContext(DataContext);
+  const [chartData, setChartData] = useState(null);
+  const chartContainerRef = useRef(null);
+
+  // Refs for chart objects and series
+  const chartRef = useRef(null);
+  const barSeriesRef = useRef(null);
+  const volumeSeriesRef = useRef(null);
+  const ma50SeriesRef = useRef(null);
+  const ma150SeriesRef = useRef(null);
+  const ma200SeriesRef = useRef(null);
+  // Reference to track the last candle
+  const lastCandleRef = useRef(null);
+
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
+
+  // --------------------------------------------
+  // 1. Fetch Chart Data from the backend
+  // --------------------------------------------
+  const getChartData = async () => {
+    if (!symbol || !token) return;
+    try {
+      const response = await api.get(
+        `/api/data/chartdata?token=${token}&symbol=${symbol}`
+      );
+      const transformedData = response.data.map((item) => ({
+        time: item.date.split("T")[0],
+        open: item.open,
+        high: item.high,
+        low: item.low,
+        close: item.close,
+        volume: item.volume,
+        ...(item.sma_50 !== 0 ? { sma_50: item.sma_50 } : {}),
+        ...(item.sma_150 !== 0 ? { sma_150: item.sma_150 } : {}),
+        ...(item.sma_200 !== 0 ? { sma_200: item.sma_200 } : {}),
+      }));
+      setChartData(transformedData);
+    } catch (error) {
+      console.error("Error fetching chart data:", error);
+    }
+  };
 
   useEffect(() => {
-    if (!data || !data.length) return;
+    if (isOpen) {
+      getChartData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, symbol, token]);
+
+  // --------------------------------------------
+  // 2. Create the chart (or update series if already created)
+  // --------------------------------------------
+  useEffect(() => {
+    if (!chartData || !chartData.length) return;
     if (!chartContainerRef.current) return;
 
-    const getDimensions = () => {
-      const container = chartContainerRef.current;
-      return {
-        width: container.clientWidth,
-        height: container.clientHeight - 10,
-      };
-    };
+    // If the chart already exists, update the series data (without re-creating)
+    if (chartRef.current) {
+      // Update main (bar) series
+      barSeriesRef.current.setData(chartData);
+      // Update volume series
+      const volumeData = chartData.map((item) => ({
+        time: item.time,
+        value: item.volume,
+      }));
+      volumeSeriesRef.current.setData(volumeData);
+      // Update SMA line series
+      const sma50Data = chartData.map((item) => ({
+        time: item.time,
+        value: item.sma_50,
+      }));
+      const sma150Data = chartData.map((item) => ({
+        time: item.time,
+        value: item.sma_150,
+      }));
+      const sma200Data = chartData.map((item) => ({
+        time: item.time,
+        value: item.sma_200,
+      }));
+      ma50SeriesRef.current.setData(sma50Data);
+      ma150SeriesRef.current.setData(sma150Data);
+      ma200SeriesRef.current.setData(sma200Data);
+      // Update our reference to the last candle
+      lastCandleRef.current = chartData[chartData.length - 1];
+      return;
+    }
 
+    // Otherwise, create the chart for the first time
+    const container = chartContainerRef.current;
+    const getDimensions = () => ({
+      width: container.clientWidth,
+      height: container.clientHeight,
+    });
     const { width, height } = getDimensions();
 
-    const chart = createChart(chartContainerRef.current, {
+    const chart = createChart(container, {
       layout: {
         background: { type: ColorType.Solid, color: "#181818" },
         textColor: "#d1d4dc",
@@ -56,183 +131,164 @@ export const ChartComponent = ({ data }) => {
       },
       crosshair: { mode: 0 },
     });
+    chartRef.current = chart;
 
-    const seriesData = data;
-
-    const sma50Data = seriesData.map((item) => ({
-      time: item.time,
-      value: item.sma_50,
-    }));
-    const sma150Data = seriesData.map((item) => ({
-      time: item.time,
-      value: item.sma_150,
-    }));
-    const sma200Data = seriesData.map((item) => ({
-      time: item.time,
-      value: item.sma_200,
-    }));
-
+    // Main bar series (candlestick-like)
     const barSeries = chart.addSeries(BarSeries, {
       upColor: "#26a69a",
       downColor: "#ef5350",
       borderVisible: false,
       thinBars: false,
     });
-    barSeries.setData(seriesData);
+    barSeries.setData(chartData);
+    barSeriesRef.current = barSeries;
+    // Save the last candle for live updates
+    lastCandleRef.current = chartData[chartData.length - 1];
+
+    // Volume histogram series
+    const volumeData = chartData.map((item) => ({
+      time: item.time,
+      value: item.volume,
+    }));
+    const volumeSeries = chart.addSeries(HistogramSeries, {
+      color: "#ffffff4b",
+      priceFormat: { type: "volume" },
+      priceScaleId: "",
+      scaleMargins: { top: 0.7, bottom: 0 },
+    });
+    volumeSeries.priceScale().applyOptions({
+      scaleMargins: { top: 0.7, bottom: 0 },
+    });
+    volumeSeries.setData(volumeData);
+    volumeSeriesRef.current = volumeSeries;
+
+    // SMA line series
+    const sma50Data = chartData.map((item) => ({
+      time: item.time,
+      value: item.sma_50,
+    }));
+    const sma150Data = chartData.map((item) => ({
+      time: item.time,
+      value: item.sma_150,
+    }));
+    const sma200Data = chartData.map((item) => ({
+      time: item.time,
+      value: item.sma_200,
+    }));
 
     const ma50Series = chart.addSeries(LineSeries, {
       color: "#2962ff62",
       lineWidth: 2,
     });
     ma50Series.setData(sma50Data);
+    ma50SeriesRef.current = ma50Series;
 
     const ma150Series = chart.addSeries(LineSeries, {
       color: "#3bfa2d4b",
       lineWidth: 2,
     });
     ma150Series.setData(sma150Data);
+    ma150SeriesRef.current = ma150Series;
 
     const ma200Series = chart.addSeries(LineSeries, {
       color: "#fa642d4b",
       lineWidth: 2,
     });
     ma200Series.setData(sma200Data);
+    ma200SeriesRef.current = ma200Series;
 
-    const volumeData = seriesData.map((item) => ({
-      time: item.time,
-      value: item.volume,
-    }));
-    const volumeSeries = chart.addSeries(HistogramSeries, {
-      color: "#ffffff4b",
-      priceFormat: {
-        type: "volume",
-      },
-      priceScaleId: "",
-      scaleMargins: {
-        top: 0.7,
-        bottom: 0,
-      },
-    });
-    volumeSeries.priceScale().applyOptions({
-      scaleMargins: {
-        top: 0.7,
-        bottom: 0,
-      },
-    });
-    volumeSeries.setData(volumeData);
-
-    if (seriesData.length > 75) {
-      const fromIdx = seriesData.length - 75;
+    // Adjust visible range
+    if (chartData.length > 75) {
+      const fromIdx = chartData.length - 75;
       chart.timeScale().setVisibleRange({
-        from: seriesData[fromIdx].time,
-        to: seriesData[seriesData.length - 1].time,
+        from: chartData[fromIdx].time,
+        to: chartData[chartData.length - 1].time,
       });
     } else {
       chart.timeScale().fitContent();
     }
 
+    // Resize handler
     const handleResize = () => {
       const { width, height } = getDimensions();
       chart.applyOptions({ width, height });
     };
     window.addEventListener("resize", handleResize);
 
+    // Cleanup on unmount
     return () => {
       window.removeEventListener("resize", handleResize);
       chart.remove();
+      chartRef.current = null;
     };
-  }, [data]);
+  }, [chartData]);
 
-  return (
-    <div
-      ref={chartContainerRef}
-      style={{ width: "100%", height: "100%", minHeight: 300 }}
-    />
-  );
-};
-
-/**
- * ChartModal:
- * - Fetches daily candle data (including SMAs) from the backend.
- * - Displays a spinner while loading.
- * - Updates the last candle in real-time if the market is open.
- * - Renders full screen (vertically and horizontally) on phone view (md breakpoint and below).
- */
-function ChartModal({ isOpen, onClose, symbol, token }) {
-  const { liveData } = useContext(DataContext);
-  const [chartData, setChartData] = useState(null);
-
-  // Use theme and media query: fullScreen for screens md and below.
-  const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
-
-  const getChartData = async () => {
-    if (!symbol || !token) return;
-    try {
-      setChartData(null);
-      const response = await api.get(
-        `/api/data/chartdata?token=${token}&symbol=${symbol}`
-      );
-
-      const transformedData = response.data.map((item) => ({
-        time: item.date.split("T")[0],
-        open: item.open,
-        high: item.high,
-        low: item.low,
-        close: item.close,
-        volume: item.volume,
-        ...(item.sma_50 !== 0 ? { sma_50: item.sma_50 } : {}),
-        ...(item.sma_150 !== 0 ? { sma_150: item.sma_150 } : {}),
-        ...(item.sma_200 !== 0 ? { sma_200: item.sma_200 } : {}),
-      }));
-
-      setChartData(transformedData);
-    } catch (error) {
-      console.error("Error fetching chart data:", error);
+  // --------------------------------------------
+  // 3. Real-Time Updates via .update() on the last candle
+  // --------------------------------------------
+  useEffect(() => {
+    if (
+      !liveData ||
+      !liveData.length ||
+      !chartData ||
+      !chartData.length ||
+      !barSeriesRef.current ||
+      !volumeSeriesRef.current ||
+      !ma50SeriesRef.current ||
+      !ma150SeriesRef.current ||
+      !ma200SeriesRef.current ||
+      !lastCandleRef.current
+    ) {
+      return;
     }
-  };
 
-  const openChart = (symbol) => {
+    // Find the tick for this token
+    const tick = liveData.find((t) => t.instrument_token === token);
+    if (!tick) return;
+
+    // Extract the new values from the real-time feed
+    const newPrice = tick.last_price;
+    const newVolume = tick.volume_traded;
+    const newSma50 = tick.sma_50;
+    const newSma150 = tick.sma_150;
+    const newSma200 = tick.sma_200;
+
+    // Update the last candle
+    const updatedCandle = {
+      ...lastCandleRef.current,
+      close: newPrice,
+      high: Math.max(lastCandleRef.current.high, newPrice),
+      low: Math.min(lastCandleRef.current.low, newPrice),
+      volume: newVolume,
+    };
+    if (newSma50 !== undefined) {
+      updatedCandle.sma_50 = newSma50;
+    }
+    if (newSma150 !== undefined) {
+      updatedCandle.sma_150 = newSma150;
+    }
+    if (newSma200 !== undefined) {
+      updatedCandle.sma_200 = newSma200;
+    }
+
+    // Save the updated candle and update the chart using .update()
+    lastCandleRef.current = updatedCandle;
+    barSeriesRef.current.update(updatedCandle);
+    volumeSeriesRef.current.update({
+      time: updatedCandle.time,
+      value: updatedCandle.volume,
+    });
+  }, [liveData, chartData, token]);
+
+  // --------------------------------------------
+  // 4. UI / Render Modal
+  // --------------------------------------------
+  const openFullChart = (symbol) => {
     window.open(
       `https://www.tradingview.com/chart/?symbol=NSE:${symbol}`,
       "_blank"
     );
   };
-
-  useEffect(() => {
-    if (isOpen) {
-      getChartData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, symbol, token]);
-
-  useEffect(() => {
-    if (!liveData || !liveData.length || !chartData || !chartData.length)
-      return;
-
-    const tick = liveData.find((t) => t.instrument_token === token);
-    if (!tick) return;
-
-    setChartData((prevData) => {
-      if (!prevData || !prevData.length) return prevData;
-      const newData = [...prevData];
-      const lastIndex = newData.length - 1;
-      const lastBar = { ...newData[lastIndex] };
-
-      const todayStr = new Date().toISOString().split("T")[0];
-      if (lastBar.time === todayStr) {
-        const newClose = tick.last_price;
-        if (newClose > lastBar.high) lastBar.high = newClose;
-        if (newClose < lastBar.low) lastBar.low = newClose;
-        lastBar.close = newClose;
-        if (tick.volume) {
-          lastBar.volume = tick.volume;
-        }
-        newData[lastIndex] = lastBar;
-      }
-      return newData;
-    });
-  }, [liveData, chartData, token]);
 
   return (
     <Dialog
@@ -255,18 +311,15 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
         sx={{
           fontSize: "1rem",
           pb: 0.5,
-          flex: 1,
-          items: "center",
+          display: "flex",
+          alignItems: "center",
           justifyContent: "space-between",
-          width: "100%",
         }}
-        className="flex flex-row items-center justify-between"
       >
         <Typography variant="h6" component="span">
           Chart for {symbol}
         </Typography>
       </DialogTitle>
-
       <DialogContent
         dividers
         sx={{
@@ -275,9 +328,7 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
           overflow: "hidden",
         }}
       >
-        {chartData ? (
-          <ChartComponent data={chartData} />
-        ) : (
+        {!chartData && (
           <Box sx={{ p: 2 }}>
             <div className="flex flex-col items-center justify-center w-full h-[55vh]">
               <Spinner size="lg" />
@@ -285,11 +336,14 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
             </div>
           </Box>
         )}
+        <div
+          ref={chartContainerRef}
+          style={{ width: "100%", height: "100%" }}
+        />
       </DialogContent>
-
       <DialogActions sx={{ pt: 0.5 }}>
         <Button
-          onClick={() => openChart(symbol)}
+          onClick={() => openFullChart(symbol)}
           variant="text"
           sx={{
             color: "#EB455F",
