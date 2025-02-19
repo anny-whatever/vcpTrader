@@ -146,6 +146,15 @@ export default function NavbarComponent() {
             <ListItemText primary="Screener" sx={{ color: "white" }} />
           </ListItemButton>
         </ListItem>
+        <ListItem disablePadding>
+          <ListItemButton
+            component={Link}
+            to="/watchlist"
+            sx={{ textAlign: "center" }}
+          >
+            <ListItemText primary="Watchlist" sx={{ color: "white" }} />
+          </ListItemButton>
+        </ListItem>
         {userRole === "admin" && (
           <ListItem disablePadding>
             <ListItemButton
