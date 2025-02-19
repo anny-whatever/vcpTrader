@@ -12,7 +12,6 @@ import {
 } from "@mui/material";
 import api from "../utils/api";
 import { toast } from "sonner";
-import { PlayToastSound, PlayErrorSound } from "../utils/PlaySound";
 
 function AddWatchlistModal({ isOpen, onClose }) {
   const [watchlistName, setWatchlistName] = useState("");
@@ -26,7 +25,7 @@ function AddWatchlistModal({ isOpen, onClose }) {
       const response = await api.post("/api/watchlist/watchlistname/add", {
         name: watchlistName,
       });
-      PlayToastSound();
+
       toast.success(
         response?.data?.message || "Watchlist added successfully!",
         { duration: 5000 }

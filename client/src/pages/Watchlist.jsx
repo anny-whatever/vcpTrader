@@ -13,7 +13,6 @@ import ChartModal from "../components/ChartModal";
 import AddAlertModal from "../components/AddAlertModal";
 import AddWatchlistModal from "../components/AddWatchlistModal";
 
-import { PlayToastSound } from "../utils/PlaySound";
 import SideChart from "../components/SideChart";
 
 function Watchlist() {
@@ -146,7 +145,7 @@ function Watchlist() {
       } catch (error) {
         console.error("Error searching stocks:", error);
       }
-    }, 1000);
+    }, 500);
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
@@ -169,7 +168,7 @@ function Watchlist() {
         instrument_token,
         symbol,
       });
-      PlayToastSound();
+
       toast.success(`Added ${symbol} to ${targetWatchlistName}!`);
       if (selectedWatchlist?.name === targetWatchlistName) {
         handleSelectWatchlist(selectedWatchlist);
@@ -369,7 +368,7 @@ function Watchlist() {
       />
 
       {/* LEFT SIDEBAR: Search + Watchlist Entries */}
-      <div className="relative flex flex-col w-full md:w-[380px] h-full p-4 border-b md:border-b-0 md:border-r bg-[#1a1a1c]">
+      <div className="relative flex flex-col w-full md:w-[420px] h-[calc(100vh-98px)] md:h-full p-4 border-b border-zinc-700 md:border-b-0 md:border-r md:border-zinc-700 bg-[#1a1a1c]">
         {/* Search Bar */}
         <div
           ref={searchContainerRef}
@@ -440,7 +439,7 @@ function Watchlist() {
         </div>
 
         {/* Watchlist Entries */}
-        <div className="flex-1 mt-2 space-y-1 overflow-auto">
+        <div className="flex-1 mt-2 space-y-1 overflow-auto custom-scrollbar">
           {isLoading && (
             <div className="flex items-center justify-center">
               <Spinner size="lg" />
@@ -598,11 +597,7 @@ function Watchlist() {
         </div>
       </div>
 
-      {/* 
-        RIGHT SIDE: 
-        The ONLY fix here is adding "overflow-hidden" 
-        and letting the chart fully occupy the parent's height. 
-      */}
+      {/* RIGHT SIDE: The Chart */}
       <div className="w-full p-4 md:flex-1 md:h-full h-[65vh] overflow-hidden">
         <SideChart symbol={chartData?.symbol} token={chartData?.token} />
       </div>
@@ -678,6 +673,25 @@ function Watchlist() {
           )}
         </div>
       </div>
+      {/* Custom Scrollbar Styles for Left Sidebar */}
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #6b7280; /* medium gray */
+          border-radius: 9999px; /* rounded */
+          border: 2px solid transparent;
+          background-clip: content-box;
+        }
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: #6b7280 transparent;
+        }
+      `}</style>
     </div>
   );
 }

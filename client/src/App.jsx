@@ -80,7 +80,6 @@ function App() {
           }
           if (parsedData?.event === "watchlist_updated") {
             setWatchlistAlerts(parsedData.data);
-            PlayAlertTriggerSound();
           }
           // Optionally handle echo messages
           if (parsedData?.event === "echo") {
