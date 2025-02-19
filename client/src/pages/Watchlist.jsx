@@ -39,6 +39,7 @@ function Watchlist() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const searchContainerRef = useRef(null);
+  const chartContainerRef = useRef(null);
 
   // -------------------------------------------------------
   // MODAL STATES & DATA
@@ -541,6 +542,12 @@ function Watchlist() {
                             size="sm"
                             onPress={() => {
                               populateChartData(entry);
+                              if (chartContainerRef.current) {
+                                chartContainerRef.current.scrollIntoView({
+                                  behavior: "smooth",
+                                  block: "start",
+                                });
+                              }
                             }}
                           >
                             <svg
@@ -598,7 +605,10 @@ function Watchlist() {
       </div>
 
       {/* RIGHT SIDE: The Chart */}
-      <div className="w-full p-4 md:flex-1 md:h-full h-[65vh] overflow-hidden">
+      <div
+        className="w-full p-4 md:flex-1 md:h-full h-[95vh] overflow-hidden"
+        ref={chartContainerRef}
+      >
         <SideChart symbol={chartData?.symbol} token={chartData?.token} />
       </div>
 
