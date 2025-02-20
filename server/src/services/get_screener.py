@@ -1,17 +1,34 @@
 # get_screener.py
+
 import threading
 import datetime
 import pandas as pd
 import pandas_ta as ta
 import pytz
 import logging
+import math
+
 from controllers import kite
 from db import get_db_connection, close_db_connection
 
 logger = logging.getLogger(__name__)
 TIMEZONE = pytz.timezone("Asia/Kolkata")
-ohlc_data = None  # Global DataFrame holding precomputed OHLC data with indicators
-ohlc_data_lock = threading.Lock()  # Lock for thread-safe access
+
+# Global DataFrame holding precomputed OHLC data with indicators
+ohlc_data = None
+# Lock for thread-safe access
+ohlc_data_lock = threading.Lock()
+
+def safe_float(value, default=0.0):
+    """
+    Utility to convert a value to float safely.
+    Returns `default` if the value is NaN, infinite, or otherwise invalid.
+    """
+    try:
+        val = float(value)
+        return val if math.isfinite(val) else default
+    except (TypeError, ValueError):
+        return default
 
 def load_ohlc_data():
     """
@@ -22,7 +39,18 @@ def load_ohlc_data():
     with ohlc_data_lock:
         conn, cur = get_db_connection()
         try:
-            query = "SELECT * FROM ohlc WHERE segment != 'ALL'"
+            # Modified query to select only the required columns.
+            query = """
+            SELECT instrument_token, symbol, interval, date, open, high, low, close, volume, segment
+            FROM (
+                SELECT 
+                    *,
+                    ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY date DESC) AS rn
+                FROM ohlc
+                WHERE segment != 'ALL'
+            ) sub
+            WHERE rn <= 450;
+            """
             cur.execute(query)
             data = cur.fetchall()
             df = pd.DataFrame(
@@ -46,24 +74,32 @@ def load_ohlc_data():
                 group["52_week_low"] = group["low"].rolling(window=min(252, len(group)), min_periods=1).min()
                 group["away_from_high"] = ((group["52_week_high"] - group["close"]) / group["52_week_high"]) * 100
                 group["away_from_low"] = ((group["close"] - group["52_week_low"]) / group["52_week_low"]) * 100
+                # Replace NaN/inf with 0 to keep things finite
                 group = group.fillna(0)
+                for col in [
+                    "sma_50", "sma_150", "sma_200", "atr",
+                    "52_week_high", "52_week_low", "away_from_high", "away_from_low"
+                ]:
+                    group[col] = group[col].apply(lambda x: safe_float(x, 0.0))
                 groups.append(group)
 
             ohlc_data = pd.concat(groups, ignore_index=True)
+            logger.info(f"OHLC data fetched: {len(ohlc_data)} rows.")
             return ohlc_data
         except Exception as err:
             logger.error(f"Error fetching OHLC data: {err}")
             return pd.DataFrame()
         finally:
-            close_db_connection()
+            if conn and cur:
+                close_db_connection()
 
-def fetch_live_quotes(batch_size=1000):
+def fetch_live_quotes(batch_size=250):
     """
     Fetch live quote data for all instrument tokens from the equity_tokens table in batches
     to avoid exceeding the URL length limit.
     
     Args:
-        batch_size (int): Number of tokens to fetch in a single request. Defaults to 250.
+        batch_size (int): Number of tokens to fetch in a single request.
     
     Returns:
         dict: Mapping from instrument_token to its last_price.
@@ -76,22 +112,23 @@ def fetch_live_quotes(batch_size=1000):
         instrument_tokens = [int(token[0]) for token in tokens]
 
         live_quotes_all = {}
-        # Process tokens in batches
+        # Process tokens in batches.
         for i in range(0, len(instrument_tokens), batch_size):
             batch = instrument_tokens[i:i+batch_size]
-            # Fetch quotes for this batch
+            # Fetch quotes for this batch.
             live_quotes = kite.quote(batch)
-            # Merge batch results into the main dictionary
-            live_quotes_all.update({
-                int(token): live_quotes[token]["last_price"] for token in live_quotes
-            })
+            # Merge batch results into the main dictionary.
+            for tkn in live_quotes:
+                last_price = live_quotes[tkn].get("last_price", 0.0)
+                live_quotes_all[int(tkn)] = safe_float(last_price, 0.0)
 
         return live_quotes_all
     except Exception as err:
         logger.error(f"Error fetching live quotes in get_screener: {err}")
         return {}
     finally:
-        close_db_connection()
+        if conn and cur:
+            close_db_connection()
 
 def update_live_data(existing_data, live_data):
     """
@@ -102,18 +139,18 @@ def update_live_data(existing_data, live_data):
     for token, group in existing_data.groupby("instrument_token"):
         group = group.sort_values("date").reset_index(drop=True)
         if token in live_data:
-            live_price = live_data[token]
+            live_price = safe_float(live_data[token], 0.0)
             last_row = group.iloc[-1]
 
-            # Construct new row using the last historical row and the live price
+            # Construct new row using the last historical row and the live price.
             new_row = {
                 "instrument_token": token,
                 "symbol": last_row["symbol"],
                 "interval": last_row["interval"],
                 "date": datetime.datetime.now(TIMEZONE),
-                "open": last_row["close"],
-                "high": max(last_row["close"], live_price),
-                "low": min(last_row["close"], live_price),
+                "open": safe_float(last_row["close"], 0.0),
+                "high": max(safe_float(last_row["close"], 0.0), live_price),
+                "low": min(safe_float(last_row["close"], 0.0), live_price),
                 "close": live_price,
                 "volume": 0,
                 "segment": last_row["segment"]
@@ -122,27 +159,41 @@ def update_live_data(existing_data, live_data):
             group_updated = pd.concat([group, pd.DataFrame([new_row])], ignore_index=True)
             len_group = len(group_updated)
 
-            # Determine window lengths
+            # Determine window lengths.
             win_50 = min(50, len_group)
             win_150 = min(150, len_group)
             win_200 = min(200, len_group)
             win_252 = min(252, len_group)
 
-            # Compute indicators for the new (last) row
-            sma_50 = ta.sma(group_updated["close"].tail(win_50), length=win_50).iloc[-1]
-            sma_150 = ta.sma(group_updated["close"].tail(win_150), length=win_150).iloc[-1]
-            sma_200 = ta.sma(group_updated["close"].tail(win_200), length=win_200).iloc[-1]
-            atr_val = ta.atr(
-                group_updated["high"],
-                group_updated["low"],
-                group_updated["close"],
-                length=win_50
-            ).iloc[-1]
-            week_high = group_updated["high"].tail(win_252).max()
-            week_low = group_updated["low"].tail(win_252).min()
-            away_high = ((week_high - live_price) / week_high) * 100 if week_high != 0 else 0
-            away_low = ((live_price - week_low) / week_low) * 100 if week_low != 0 else 0
+            # Compute indicators for the new (last) row.
+            sma_50_series = ta.sma(group_updated["close"].tail(win_50), length=win_50)
+            sma_50 = safe_float(sma_50_series.iloc[-1] if not sma_50_series.empty else 0.0)
+            
+            sma_150_series = ta.sma(group_updated["close"].tail(win_150), length=win_150)
+            sma_150 = safe_float(sma_150_series.iloc[-1] if not sma_150_series.empty else 0.0)
+            
+            sma_200_series = ta.sma(group_updated["close"].tail(win_200), length=win_200)
+            sma_200 = safe_float(sma_200_series.iloc[-1] if not sma_200_series.empty else 0.0)
 
+            atr_series = ta.atr(
+                group_updated["high"].tail(win_50),
+                group_updated["low"].tail(win_50),
+                group_updated["close"].tail(win_50),
+                length=win_50
+            )
+            atr_val = safe_float(atr_series.iloc[-1] if not atr_series.empty else 0.0)
+
+            week_high = safe_float(group_updated["high"].tail(win_252).max(), 0.0)
+            week_low = safe_float(group_updated["low"].tail(win_252).min(), 0.0)
+
+            away_high = 0.0
+            if week_high != 0.0:
+                away_high = safe_float(((week_high - live_price) / week_high) * 100, 0.0)
+            away_low = 0.0
+            if week_low != 0.0:
+                away_low = safe_float(((live_price - week_low) / week_low) * 100, 0.0)
+
+            # Update the new row in the group
             group_updated.at[len_group - 1, "sma_50"] = sma_50
             group_updated.at[len_group - 1, "sma_150"] = sma_150
             group_updated.at[len_group - 1, "sma_200"] = sma_200
@@ -167,16 +218,16 @@ def screen_eligible_stocks_vcp():
         if ohlc_data is None or ohlc_data.empty:
             ohlc_data = load_ohlc_data()
 
-        # Use live quotes only during market hours
+        # Use live quotes only during market hours.
         START_TIME = datetime.time(9, 15)
         END_TIME = datetime.time(15, 30, 5)
         now = datetime.datetime.now(TIMEZONE).time()
         live_data = fetch_live_quotes() if (START_TIME <= now <= END_TIME) else {}
 
-        # Exclude IPO stocks for VCP screening
+        # Exclude IPO stocks for VCP screening.
         data_to_screen = ohlc_data[ohlc_data['segment'] != 'IPO']
 
-        # Update only the latest rows if live data is available
+        # Update only the latest rows if live data is available.
         if live_data:
             data_to_screen = update_live_data(data_to_screen, live_data)
 
@@ -187,29 +238,37 @@ def screen_eligible_stocks_vcp():
                 continue
             last_index = len(group) - 1
 
+            last_row = group.iloc[last_index]
+            prev_row = group.iloc[last_index - 1]
+
+            # Safely compute the change
+            prev_close = safe_float(prev_row["close"], 0.0)
+            current_close = safe_float(last_row["close"], 0.0)
+            if prev_close == 0.0:
+                price_change = 0.0
+            else:
+                price_change = ((current_close - prev_close) / prev_close) * 100.0
+
             # Screening criteria
             if (
-                group.iloc[last_index]["close"] > group.iloc[last_index]["sma_50"] and
-                group.iloc[last_index]["sma_50"] > group.iloc[last_index]["sma_150"] > group.iloc[last_index]["sma_200"] and
-                group.iloc[max(0, last_index - 25)]["sma_200"] < group.iloc[last_index]["sma_200"] and
-                group.iloc[last_index]["away_from_high"] < 25 and
-                group.iloc[last_index]["away_from_low"] > 50
+                current_close > safe_float(last_row["sma_50"]) and
+                safe_float(last_row["sma_50"]) > safe_float(last_row["sma_150"]) > safe_float(last_row["sma_200"]) and
+                safe_float(group.iloc[max(0, last_index - 25)]["sma_200"]) < safe_float(last_row["sma_200"]) and
+                safe_float(last_row["away_from_high"]) < 25 and
+                safe_float(last_row["away_from_low"]) > 50
             ):
                 eligible_stocks.append({
-                    "instrument_token": int(group.iloc[last_index]["instrument_token"]),
-                    "symbol": symbol,
-                    "last_price": float(group.iloc[last_index]["close"]),
-                    "change": (
-                        (float(group.iloc[last_index]["close"]) - float(group.iloc[last_index - 1]["close"]))
-                        / float(group.iloc[last_index - 1]["close"])
-                    ) * 100,
-                    "sma_50": float(group.iloc[last_index]["sma_50"]),
-                    "sma_150": float(group.iloc[last_index]["sma_150"]),
-                    "sma_200": float(group.iloc[last_index]["sma_200"]),
-                    "atr": float(group.iloc[last_index]["atr"]),
+                    "instrument_token": int(safe_float(last_row["instrument_token"], 0)),
+                    "symbol": str(last_row["symbol"]),
+                    "last_price": current_close,
+                    "change": price_change,
+                    "sma_50": safe_float(last_row["sma_50"]),
+                    "sma_150": safe_float(last_row["sma_150"]),
+                    "sma_200": safe_float(last_row["sma_200"]),
+                    "atr": safe_float(last_row["atr"]),
                 })
 
-        # Sort by percentage change descending
+        # Sort by percentage change descending.
         eligible_stocks.sort(key=lambda x: x["change"], reverse=True)
         return eligible_stocks
     except Exception as e:
@@ -243,26 +302,34 @@ def screen_eligible_stocks_ipo():
                 continue
             last_index = len(group) - 1
 
+            last_row = group.iloc[last_index]
+            prev_row = group.iloc[last_index - 1]
+
+            # Safely compute the change
+            prev_close = safe_float(prev_row["close"], 0.0)
+            current_close = safe_float(last_row["close"], 0.0)
+            if prev_close == 0.0:
+                price_change = 0.0
+            else:
+                price_change = ((current_close - prev_close) / prev_close) * 100.0
+
             # Simplified IPO screening criteria
             if (
-                group.iloc[last_index]["away_from_high"] < 25 and
-                group.iloc[last_index]["away_from_low"] > 25
+                safe_float(last_row["away_from_high"]) < 25 and
+                safe_float(last_row["away_from_low"]) > 25
             ):
                 eligible_stocks.append({
-                    "instrument_token": int(group.iloc[last_index]["instrument_token"]),
-                    "symbol": symbol,
-                    "last_price": float(group.iloc[last_index]["close"] or 0),
-                    "change": (
-                        (float(group.iloc[last_index]["close"]) - float(group.iloc[last_index - 1]["close"]))
-                        / float(group.iloc[last_index - 1]["close"])
-                    ) * 100,
-                    "sma_50": float(group.iloc[last_index]["sma_50"] or 0),
-                    "sma_150": float(group.iloc[last_index]["sma_150"] or 0),
-                    "sma_200": float(group.iloc[last_index]["sma_200"] or 0),
-                    "atr": float(group.iloc[last_index]["atr"] or 0),
+                    "instrument_token": int(safe_float(last_row["instrument_token"], 0)),
+                    "symbol": str(last_row["symbol"]),
+                    "last_price": current_close,
+                    "change": price_change,
+                    "sma_50": safe_float(last_row["sma_50"]),
+                    "sma_150": safe_float(last_row["sma_150"]),
+                    "sma_200": safe_float(last_row["sma_200"]),
+                    "atr": safe_float(last_row["atr"]),
                 })
 
-        # Sort by percentage change descending
+        # Sort by percentage change descending.
         eligible_stocks.sort(key=lambda x: x["change"], reverse=True)
         return eligible_stocks
     except Exception as e:

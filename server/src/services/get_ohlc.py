@@ -32,7 +32,7 @@ def get_ohlc(instrument_token, interval, symbol, segment):
     
         for _ in range(loop_count):
             time_window_to = to_date.isoformat()[:10]
-            time_window_from = (to_date - datetime.timedelta(days=700)).isoformat()[:10]
+            time_window_from = (to_date - datetime.timedelta(days=2000)).isoformat()[:10]
             logger.info(f"Fetching OHLC data from {time_window_from} to {time_window_to} for instrument {instrument_token}")
             try:
                 data = kite.historical_data(instrument_token, time_window_from, time_window_to, interval)
@@ -41,7 +41,7 @@ def get_ohlc(instrument_token, interval, symbol, segment):
             except Exception as err:
                 logger.error(f"Error fetching OHLC data for instrument {instrument_token}: {err}")
                 return {"error": str(err)}
-            to_date = to_date - datetime.timedelta(days=701)
+            to_date = to_date - datetime.timedelta(days=2001)
             delay(200)
     
         if hist:
@@ -73,7 +73,8 @@ def get_ohlc(instrument_token, interval, symbol, segment):
                 logger.error(f"Error processing OHLC data for instrument {instrument_token}: {e}")
                 return {"error": str(e)}
             finally:
-                close_db_connection()
+                if conn and cur:
+                    close_db_connection()
             return {"data": f"Inserted {len(batch_data)} rows"}
     
         return {"error": "No data found"}
@@ -82,7 +83,8 @@ def get_ohlc(instrument_token, interval, symbol, segment):
         raise e
     finally:
         try:
-            close_db_connection()
+            if conn and cur:
+                close_db_connection()
         except Exception as e:
             logger.error(f"Error closing DB connection: {e}")
 
@@ -99,7 +101,8 @@ def get_equity_ohlc_data_loop(interval):
         logger.error(f"Error in get_equity_ohlc_data_loop: {err}")
         return {"error": str(err)}
     finally:
-        close_db_connection()
+        if conn and cur:
+            close_db_connection()
 
 def get_indices_ohlc_data_loop(interval):
     conn, cur = get_db_connection()  # Get connection and cursor
@@ -114,4 +117,5 @@ def get_indices_ohlc_data_loop(interval):
         logger.error(f"Error in get_indices_ohlc_data_loop: {err}")
         return {"error": str(err)}
     finally:
-        close_db_connection()
+        if conn and cur:
+            close_db_connection()

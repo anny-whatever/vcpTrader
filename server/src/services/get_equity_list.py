@@ -48,7 +48,8 @@ def get_instrument_equity():
             logger.error(f"Error in get_instrument_equity: {err}")
             return {"error": str(err)}
         finally:
-            close_db_connection()  # Close connection in the end
+            if conn and cur:
+                close_db_connection()  # Close connection in the end
         
         return {"data": filtered_response}
     else:

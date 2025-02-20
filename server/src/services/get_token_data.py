@@ -123,7 +123,8 @@ def insert_token_data_all(file_path, segment):
         logger.error(f"An error occurred in insert_token_data_all: {e}")
         conn.rollback()
     finally:
-        close_db_connection()
+        if conn and cur:
+            close_db_connection()
 
 
 def insert_token_data(file_path, segment):
@@ -186,4 +187,5 @@ def insert_token_data(file_path, segment):
         logger.error(f"An error occurred in insert_token_data: {e}")
         conn.rollback()
     finally:
-        close_db_connection()
+        if conn and cur:
+            close_db_connection()

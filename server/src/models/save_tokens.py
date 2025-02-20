@@ -120,39 +120,3 @@ class EquityToken:
             logger.error(f"Error fetching all equity tokens: {e}")
             raise
 
-    @classmethod
-    def get_by_token(cls, cur, instrument_token: int):
-        """
-        Retrieves a single record from equity_instruments by instrument_token.
-        Returns a single row or None if not found.
-        """
-        query = "SELECT * FROM equity_instruments WHERE instrument_token = %s"
-        try:
-            cur.execute(query, (instrument_token,))
-            return cur.fetchone()
-        except Exception as e:
-            logger.error(f"Error in get_by_token: {e}")
-            raise
-
-    @classmethod
-    def search(cls, cur, query_str: str):
-        """
-        Search for tokens matching the query in either 'tradingsymbol' or 'company_name'.
-        Returns up to 10 results.
-        """
-        like_query = f"%{query_str}%"
-        sql = """
-        SELECT * FROM equity_instruments
-        WHERE tradingsymbol ILIKE %s OR name ILIKE %s
-        LIMIT 15;
-        """
-        try:
-            cur.execute(sql, (like_query, like_query))
-            rows = cur.fetchall()
-            col_names = [desc[0] for desc in cur.description]
-            # Convert each row tuple into a dict
-            results = [dict(zip(col_names, row)) for row in rows]
-            return results
-        except Exception as e:
-            logger.error(f"Error searching equity_tokens: {e}")
-            raise

@@ -12,6 +12,7 @@ class WatchlistEntry:
 
     @classmethod
     def create_table(cls, cur):
+        # No ON DELETE CASCADE, so watchlist doesn't get wiped out on reload
         create_table_query = """
         CREATE TABLE IF NOT EXISTS watchlist (
             id SERIAL PRIMARY KEY,
@@ -20,7 +21,6 @@ class WatchlistEntry:
             symbol VARCHAR(50) NOT NULL,
             added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE (watchlist_name, instrument_token),
-            FOREIGN KEY (instrument_token) REFERENCES equity_tokens(instrument_token)
         );
         """
         try:
@@ -50,7 +50,7 @@ class WatchlistEntry:
     @classmethod
     def get_by_instrument(cls, cur, watchlist_name, instrument_token):
         query = """
-        SELECT * FROM watchlist 
+        SELECT * FROM watchlist
         WHERE watchlist_name = %s AND instrument_token = %s;
         """
         try:
@@ -100,6 +100,34 @@ class WatchlistEntry:
             return result is not None
         except Exception as e:
             logger.error(f"Error deleting watchlist entry: {e}")
+            raise
+
+    @classmethod
+    def get_by_token(cls, cur, instrument_token: int):
+        query = "SELECT * FROM equity_instruments WHERE instrument_token = %s"
+        try:
+            cur.execute(query, (instrument_token,))
+            return cur.fetchone()
+        except Exception as e:
+            logger.error(f"Error in get_by_token: {e}")
+            raise
+
+    @classmethod
+    def search(cls, cur, query_str: str):
+        like_query = f"%{query_str}%"
+        sql = """
+        SELECT * FROM equity_instruments
+        WHERE tradingsymbol ILIKE %s OR name ILIKE %s
+        LIMIT 50;
+        """
+        try:
+            cur.execute(sql, (like_query, like_query))
+            rows = cur.fetchall()
+            col_names = [desc[0] for desc in cur.description]
+            results = [dict(zip(col_names, row)) for row in rows]
+            return results
+        except Exception as e:
+            logger.error(f"Error searching equity_instruments: {e}")
             raise
 
 
