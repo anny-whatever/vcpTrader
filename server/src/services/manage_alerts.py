@@ -36,8 +36,7 @@ def add_alert(instrument_token: int, symbol: str, price: float, alert_type: str)
         logger.error(f"Error adding alert: {e}")
         return {"success": False, "message": f"Error adding alert: {e}"}
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
 
 def remove_alert(alert_id: int):
     """
@@ -58,8 +57,7 @@ def remove_alert(alert_id: int):
         logger.error(f"Error removing alert: {e}")
         return {"success": False, "message": f"Error removing alert: {e}"}
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
             
 async def create_and_send_alert_message(
     instrument_token: int,
@@ -101,8 +99,7 @@ async def create_and_send_alert_message(
         logger.error(f"Error processing alert message: {e}")
         return {"success": False, "message": f"Error processing alert message: {e}"}
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
 
 async def process_live_alerts(ticks):
     """

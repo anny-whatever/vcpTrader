@@ -123,10 +123,10 @@ class EquityToken:
     @classmethod
     def get_by_token(cls, cur, instrument_token: int):
         """
-        Retrieves a single record from equity_tokens by instrument_token.
+        Retrieves a single record from equity_instruments by instrument_token.
         Returns a single row or None if not found.
         """
-        query = "SELECT * FROM equity_tokens WHERE instrument_token = %s"
+        query = "SELECT * FROM equity_instruments WHERE instrument_token = %s"
         try:
             cur.execute(query, (instrument_token,))
             return cur.fetchone()
@@ -142,9 +142,9 @@ class EquityToken:
         """
         like_query = f"%{query_str}%"
         sql = """
-        SELECT * FROM equity_tokens
-        WHERE tradingsymbol ILIKE %s OR company_name ILIKE %s
-        LIMIT 10;
+        SELECT * FROM equity_instruments
+        WHERE tradingsymbol ILIKE %s OR name ILIKE %s
+        LIMIT 15;
         """
         try:
             cur.execute(sql, (like_query, like_query))

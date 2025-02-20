@@ -57,7 +57,7 @@ def load_ohlc_data():
         finally:
             close_db_connection()
 
-def fetch_live_quotes(batch_size=250):
+def fetch_live_quotes(batch_size=1000):
     """
     Fetch live quote data for all instrument tokens from the equity_tokens table in batches
     to avoid exceeding the URL length limit.

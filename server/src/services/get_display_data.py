@@ -28,8 +28,7 @@ def fetch_risk_pool_for_display():
         logger.error(f"Error fetching risk pool for display: {e}")
         raise
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
 
 def format_trade_record(trade):
     return {
@@ -70,8 +69,7 @@ def fetch_trade_details_for_display():
         logger.error(f"Error in fetch_trade_details_for_display: {e}")
         raise
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
 
 def format_historical_trade_record(trade):
     return {
@@ -94,8 +92,7 @@ def fetch_historical_trade_details_for_display():
         logger.error(f"Error fetching historical trade details: {e}")
         raise
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
 
 def get_combined_ohlc(instrument_token, symbol):
     
@@ -155,8 +152,7 @@ def get_combined_ohlc(instrument_token, symbol):
         logger.error(f"Error in get_combined_ohlc for instrument {instrument_token}, symbol {symbol}: {e}")
         raise
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
 
 def get_all_alerts():
     
@@ -171,8 +167,7 @@ def get_all_alerts():
         logger.error(f"Error fetching alerts: {e}")
         return []
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
 
 def get_latest_alert_messages():
     
@@ -187,5 +182,4 @@ def get_latest_alert_messages():
         logger.error(f"Error fetching latest alert messages: {e}")
         return []
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
