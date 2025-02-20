@@ -125,7 +125,6 @@ function Watchlist() {
       setWatchlistEntries(response.data);
     } catch (error) {
       console.error("Error fetching watchlist entries:", error);
-      toast.error("Failed to fetch watchlist entries.");
     } finally {
       setIsLoading(false);
     }
