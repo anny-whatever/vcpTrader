@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useContext, lazy } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+} from "react-router-dom";
 import Navbar from "./components/NavbarComponent.jsx";
 import api from "./utils/api";
 import { AuthProvider, AuthContext } from "./utils/AuthContext.jsx";
 import { DataContext } from "./utils/DataContext.jsx";
 import { Toaster, toast } from "sonner";
 import { PlayAlertTriggerSound } from "./utils/PlaySound";
+import { jwtDecode } from "jwt-decode";
 
 // Lazy-loaded pages
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
@@ -17,7 +24,7 @@ const Watchlist = lazy(() => import("./pages/Watchlist.jsx"));
 // Helper function to check if token is expired
 const isTokenExpired = (token) => {
   try {
-    const decoded = jwt_decode(token);
+    const decoded = jwtDecode(token);
     // 'exp' is in seconds, so compare with current time in seconds
     return decoded.exp < Date.now() / 1000;
   } catch (error) {
