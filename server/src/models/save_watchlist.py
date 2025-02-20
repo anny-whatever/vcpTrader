@@ -12,6 +12,7 @@ class WatchlistEntry:
 
     @classmethod
     def create_table(cls, cur):
+        # No ON DELETE CASCADE, so watchlist doesn't get wiped out on reload
         create_table_query = """
         CREATE TABLE IF NOT EXISTS watchlist (
             id SERIAL PRIMARY KEY,
@@ -20,7 +21,6 @@ class WatchlistEntry:
             symbol VARCHAR(50) NOT NULL,
             added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE (watchlist_name, instrument_token),
-            FOREIGN KEY (instrument_token) REFERENCES equity_tokens(instrument_token)
         );
         """
         try:
@@ -50,7 +50,7 @@ class WatchlistEntry:
     @classmethod
     def get_by_instrument(cls, cur, watchlist_name, instrument_token):
         query = """
-        SELECT * FROM watchlist 
+        SELECT * FROM watchlist
         WHERE watchlist_name = %s AND instrument_token = %s;
         """
         try:
@@ -101,13 +101,9 @@ class WatchlistEntry:
         except Exception as e:
             logger.error(f"Error deleting watchlist entry: {e}")
             raise
-    
+
     @classmethod
     def get_by_token(cls, cur, instrument_token: int):
-        """
-        Retrieves a single record from equity_instruments by instrument_token.
-        Returns a single row or None if not found.
-        """
         query = "SELECT * FROM equity_instruments WHERE instrument_token = %s"
         try:
             cur.execute(query, (instrument_token,))
@@ -118,10 +114,6 @@ class WatchlistEntry:
 
     @classmethod
     def search(cls, cur, query_str: str):
-        """
-        Search for tokens matching the query in either 'tradingsymbol' or 'company_name'.
-        Returns up to 10 results.
-        """
         like_query = f"%{query_str}%"
         sql = """
         SELECT * FROM equity_instruments
@@ -132,11 +124,10 @@ class WatchlistEntry:
             cur.execute(sql, (like_query, like_query))
             rows = cur.fetchall()
             col_names = [desc[0] for desc in cur.description]
-            # Convert each row tuple into a dict
             results = [dict(zip(col_names, row)) for row in rows]
             return results
         except Exception as e:
-            logger.error(f"Error searching equity_tokens: {e}")
+            logger.error(f"Error searching equity_instruments: {e}")
             raise
 
 
