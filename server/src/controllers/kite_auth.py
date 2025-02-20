@@ -1,7 +1,7 @@
 # kite_auth.py
 import os
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import RedirectResponse
 from kiteconnect import KiteConnect
 from dotenv import load_dotenv
@@ -30,8 +30,8 @@ async def auth():
         raise HTTPException(status_code=500, detail="Kite authentication initiation failed")
     
 @router.get("/callback")
-async def callback(request_token: str):
-    from services import get_instrument_indices, get_instrument_equity
+async def callback(request_token: str, background_tasks: BackgroundTasks):
+    from services import get_instrument_indices, get_instrument_equity, load_ohlc_data
     # Reinitialize the scheduler if needed (a new one will be created if the previous one was shut down)
     current_scheduler = get_scheduler()
     try:
@@ -39,10 +39,15 @@ async def callback(request_token: str):
         session = kite.generate_session(request_token, os.getenv("API_SECRET"))
         access_token = session["access_token"]
         kite.set_access_token(access_token)
+        
         # Initialize KiteTicker and load required data
         get_instrument_indices()
         get_instrument_equity()
         initialize_kite_ticker(access_token)
+        
+        # Offload the heavy task to a background thread
+        background_tasks.add_task(load_ohlc_data)
+
         logger.info("Kite authentication callback successful.")
         # Redirect to frontend with a success flag
         return RedirectResponse(url="https://devstatz.com?login=true&kiteAuth=success")

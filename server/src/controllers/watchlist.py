@@ -75,8 +75,7 @@ def add_to_watchlist(
         logger.error(f"Error in add_to_watchlist: {e}")
         raise HTTPException(status_code=500, detail="Error adding to watchlist")
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
 
 @router.delete("/remove", response_model=dict)
 def remove_from_watchlist(
@@ -111,8 +110,7 @@ def remove_from_watchlist(
         logger.error(f"Error in remove_from_watchlist: {e}")
         raise HTTPException(status_code=500, detail="Error removing watchlist entry")
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
 
 @router.get("/{watchlist_name}", response_model=List[WatchlistEntryOut])
 def get_watchlist(watchlist_name: str, user: dict = Depends(require_user)):
@@ -129,8 +127,7 @@ def get_watchlist(watchlist_name: str, user: dict = Depends(require_user)):
         logger.error(f"Error in get_watchlist: {e}")
         raise HTTPException(status_code=500, detail="Error fetching watchlist")
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
 
 @router.get("/search/{query}", response_model=List[dict])
 def search_equities(query: str, user: dict = Depends(require_admin)):
@@ -157,8 +154,7 @@ def search_equities(query: str, user: dict = Depends(require_admin)):
         logger.error(f"Error in search_equities: {e}")
         raise HTTPException(status_code=500, detail="Error searching equities")
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
 
 # ---------------------------------------------------
 # Watchlist Name Endpoints (for managing watchlist containers)
@@ -208,8 +204,7 @@ def create_watchlist_name(
         logger.error(f"Error in create_watchlist_name: {e}")
         raise HTTPException(status_code=500, detail="Error creating watchlist")
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
 
 @router.get("/watchlistname/", response_model=List[WatchlistNameOut])
 def list_watchlist_names(user: dict = Depends(require_user)):
@@ -233,8 +228,7 @@ def list_watchlist_names(user: dict = Depends(require_user)):
         logger.error(f"Error in list_watchlist_names: {e}")
         raise HTTPException(status_code=500, detail="Error fetching watchlist names")
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
 
 @router.get("/watchlistname/{watchlist_id}", response_model=WatchlistNameOut)
 def get_watchlist_name(watchlist_id: int, user: dict = Depends(require_user)):
@@ -258,8 +252,7 @@ def get_watchlist_name(watchlist_id: int, user: dict = Depends(require_user)):
         logger.error(f"Error in get_watchlist_name: {e}")
         raise HTTPException(status_code=500, detail="Error fetching watchlist")
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
 
 @router.delete("/watchlistname/remove/{watchlist_id}", response_model=dict)
 def delete_watchlist_name(
@@ -294,5 +287,4 @@ def delete_watchlist_name(
         logger.error(f"Error in delete_watchlist_name: {e}")
         raise HTTPException(status_code=500, detail="Error deleting watchlist")
     finally:
-        if conn and cur:
-            close_db_connection()
+        close_db_connection()
