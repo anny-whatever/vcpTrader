@@ -22,7 +22,7 @@ def load_ohlc_data():
     with ohlc_data_lock:
         conn, cur = get_db_connection()
         try:
-            query = "SELECT * FROM ohlc WHERE segment != 'ALL'"
+            query = "SELECT * FROM ohlc WHERE segment != 'ALL' LIMIT 450"
             cur.execute(query)
             data = cur.fetchall()
             df = pd.DataFrame(

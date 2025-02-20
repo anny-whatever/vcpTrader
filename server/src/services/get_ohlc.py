@@ -32,7 +32,7 @@ def get_ohlc(instrument_token, interval, symbol, segment):
     
         for _ in range(loop_count):
             time_window_to = to_date.isoformat()[:10]
-            time_window_from = (to_date - datetime.timedelta(days=700)).isoformat()[:10]
+            time_window_from = (to_date - datetime.timedelta(days=2000)).isoformat()[:10]
             logger.info(f"Fetching OHLC data from {time_window_from} to {time_window_to} for instrument {instrument_token}")
             try:
                 data = kite.historical_data(instrument_token, time_window_from, time_window_to, interval)
@@ -41,7 +41,7 @@ def get_ohlc(instrument_token, interval, symbol, segment):
             except Exception as err:
                 logger.error(f"Error fetching OHLC data for instrument {instrument_token}: {err}")
                 return {"error": str(err)}
-            to_date = to_date - datetime.timedelta(days=701)
+            to_date = to_date - datetime.timedelta(days=2001)
             delay(200)
     
         if hist:
