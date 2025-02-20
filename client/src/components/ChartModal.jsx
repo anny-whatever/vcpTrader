@@ -337,7 +337,7 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
       >
         {!chartData && (
           <Box sx={{ p: 2 }}>
-            <div className="flex flex-col items-center justify-center w-full h-[55vh]">
+            <div className="flex flex-col items-center justify-center w-full  h-[75vh]">
               <Spinner size="lg" />
               <span className="m-5 text-2xl">Loading Chart Data</span>
             </div>
