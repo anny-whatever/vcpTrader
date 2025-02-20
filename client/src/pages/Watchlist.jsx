@@ -195,7 +195,6 @@ function Watchlist() {
       handleSelectWatchlist(selectedWatchlist);
     } catch (error) {
       console.error("Error deleting stock from watchlist:", error);
-      toast.error("Failed to delete stock.");
     } finally {
       setIsLoading(false);
     }
@@ -369,7 +368,7 @@ function Watchlist() {
       />
 
       {/* LEFT SIDEBAR: Search + Watchlist Entries */}
-      <div className="relative flex flex-col w-full md:w-[420px] h-[calc(100vh-98px)] md:h-full p-4 border-b border-zinc-700 md:border-b-0 md:border-r md:border-zinc-700 bg-[#1a1a1c]">
+      <div className="relative md:pb-[5vh] flex flex-col w-full md:w-[420px] h-[calc(100vh-98px)] md:h-full p-4 border-b border-zinc-700 md:border-b-0 md:border-r md:border-zinc-700 bg-[#1a1a1c]">
         {/* Search Bar */}
         <div
           ref={searchContainerRef}
@@ -399,7 +398,7 @@ function Watchlist() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           {searchResults.length > 0 && (
-            <div className="absolute left-0 z-10 w-full mt-1 border rounded top-12 bg-[#1a1a1c] border-zinc-700">
+            <div className="absolute left-0 z-10 w-full mt-1 border rounded top-12 bg-[#1a1a1c] border-zinc-700 max-h-[60vh] overflow-y-auto custom-scrollbar">
               {searchResults.map((stock) => {
                 const displayName = stock.tradingsymbol || stock.company_name;
                 return (

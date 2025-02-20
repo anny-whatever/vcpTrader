@@ -109,11 +109,15 @@ const LoginPage = () => {
                   id="uid"
                   label="User ID"
                   name="uid"
-                  autoComplete="userid"
+                  autoComplete="username"
                   autoFocus
                   value={email}
                   type="text"
                   onChange={(e) => setEmail(e.target.value)}
+                  inputProps={{
+                    autoCapitalize: "none",
+                    autoCorrect: "off",
+                  }}
                 />
                 <TextField
                   margin="normal"
@@ -126,6 +130,10 @@ const LoginPage = () => {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  inputProps={{
+                    autoCapitalize: "none",
+                    autoCorrect: "off",
+                  }}
                 />
                 <Button
                   type="submit"
