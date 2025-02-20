@@ -22,7 +22,18 @@ def load_ohlc_data():
     with ohlc_data_lock:
         conn, cur = get_db_connection()
         try:
-            query = "SELECT * FROM ohlc WHERE segment != 'ALL' LIMIT 450"
+            # Modified query to select only the required columns.
+            query = """
+            SELECT instrument_token, symbol, interval, date, open, high, low, close, volume, segment
+            FROM (
+                SELECT 
+                    *,
+                    ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY date DESC) AS rn
+                FROM ohlc
+                WHERE segment != 'ALL'
+            ) sub
+            WHERE rn <= 450;
+            """
             cur.execute(query)
             data = cur.fetchall()
             df = pd.DataFrame(
@@ -63,7 +74,7 @@ def fetch_live_quotes(batch_size=1000):
     to avoid exceeding the URL length limit.
     
     Args:
-        batch_size (int): Number of tokens to fetch in a single request. Defaults to 250.
+        batch_size (int): Number of tokens to fetch in a single request.
     
     Returns:
         dict: Mapping from instrument_token to its last_price.
@@ -76,12 +87,12 @@ def fetch_live_quotes(batch_size=1000):
         instrument_tokens = [int(token[0]) for token in tokens]
 
         live_quotes_all = {}
-        # Process tokens in batches
+        # Process tokens in batches.
         for i in range(0, len(instrument_tokens), batch_size):
             batch = instrument_tokens[i:i+batch_size]
-            # Fetch quotes for this batch
+            # Fetch quotes for this batch.
             live_quotes = kite.quote(batch)
-            # Merge batch results into the main dictionary
+            # Merge batch results into the main dictionary.
             live_quotes_all.update({
                 int(token): live_quotes[token]["last_price"] for token in live_quotes
             })
@@ -105,7 +116,7 @@ def update_live_data(existing_data, live_data):
             live_price = live_data[token]
             last_row = group.iloc[-1]
 
-            # Construct new row using the last historical row and the live price
+            # Construct new row using the last historical row and the live price.
             new_row = {
                 "instrument_token": token,
                 "symbol": last_row["symbol"],
@@ -122,13 +133,13 @@ def update_live_data(existing_data, live_data):
             group_updated = pd.concat([group, pd.DataFrame([new_row])], ignore_index=True)
             len_group = len(group_updated)
 
-            # Determine window lengths
+            # Determine window lengths.
             win_50 = min(50, len_group)
             win_150 = min(150, len_group)
             win_200 = min(200, len_group)
             win_252 = min(252, len_group)
 
-            # Compute indicators for the new (last) row
+            # Compute indicators for the new (last) row.
             sma_50 = ta.sma(group_updated["close"].tail(win_50), length=win_50).iloc[-1]
             sma_150 = ta.sma(group_updated["close"].tail(win_150), length=win_150).iloc[-1]
             sma_200 = ta.sma(group_updated["close"].tail(win_200), length=win_200).iloc[-1]
@@ -167,16 +178,16 @@ def screen_eligible_stocks_vcp():
         if ohlc_data is None or ohlc_data.empty:
             ohlc_data = load_ohlc_data()
 
-        # Use live quotes only during market hours
+        # Use live quotes only during market hours.
         START_TIME = datetime.time(9, 15)
         END_TIME = datetime.time(15, 30, 5)
         now = datetime.datetime.now(TIMEZONE).time()
         live_data = fetch_live_quotes() if (START_TIME <= now <= END_TIME) else {}
 
-        # Exclude IPO stocks for VCP screening
+        # Exclude IPO stocks for VCP screening.
         data_to_screen = ohlc_data[ohlc_data['segment'] != 'IPO']
 
-        # Update only the latest rows if live data is available
+        # Update only the latest rows if live data is available.
         if live_data:
             data_to_screen = update_live_data(data_to_screen, live_data)
 
@@ -187,7 +198,7 @@ def screen_eligible_stocks_vcp():
                 continue
             last_index = len(group) - 1
 
-            # Screening criteria
+            # Screening criteria.
             if (
                 group.iloc[last_index]["close"] > group.iloc[last_index]["sma_50"] and
                 group.iloc[last_index]["sma_50"] > group.iloc[last_index]["sma_150"] > group.iloc[last_index]["sma_200"] and
@@ -209,7 +220,7 @@ def screen_eligible_stocks_vcp():
                     "atr": float(group.iloc[last_index]["atr"]),
                 })
 
-        # Sort by percentage change descending
+        # Sort by percentage change descending.
         eligible_stocks.sort(key=lambda x: x["change"], reverse=True)
         return eligible_stocks
     except Exception as e:
@@ -243,7 +254,7 @@ def screen_eligible_stocks_ipo():
                 continue
             last_index = len(group) - 1
 
-            # Simplified IPO screening criteria
+            # Simplified IPO screening criteria.
             if (
                 group.iloc[last_index]["away_from_high"] < 25 and
                 group.iloc[last_index]["away_from_low"] > 25
@@ -262,7 +273,7 @@ def screen_eligible_stocks_ipo():
                     "atr": float(group.iloc[last_index]["atr"] or 0),
                 })
 
-        # Sort by percentage change descending
+        # Sort by percentage change descending.
         eligible_stocks.sort(key=lambda x: x["change"], reverse=True)
         return eligible_stocks
     except Exception as e:
