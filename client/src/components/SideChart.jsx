@@ -49,6 +49,9 @@ function SideChart({ symbol, token }) {
     if (!symbol || !token) return;
     try {
       setChartData(null);
+      setLiveChange(null);
+      setOHLC(null);
+      setLivePrice(null);
       const response = await api.get(
         `/api/data/chartdata?token=${token}&symbol=${symbol}`
       );

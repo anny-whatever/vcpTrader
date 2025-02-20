@@ -14,12 +14,37 @@ const Screener = lazy(() => import("./pages/Screener.jsx"));
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
 const Watchlist = lazy(() => import("./pages/Watchlist.jsx"));
 
+// Helper function to check if token is expired
+const isTokenExpired = (token) => {
+  try {
+    const decoded = jwt_decode(token);
+    // 'exp' is in seconds, so compare with current time in seconds
+    return decoded.exp < Date.now() / 1000;
+  } catch (error) {
+    // If there's an error decoding, consider the token invalid/expired
+    return true;
+  }
+};
+
 // ProtectedRoute component: uses AuthContext to decide if the user is logged in.
 const ProtectedRoute = ({ children }) => {
-  const { token } = useContext(AuthContext);
+  const { token, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (token && isTokenExpired(token)) {
+      // Optionally, clear the token using a logout method
+      logout();
+      // Redirect to login if the token is expired
+      navigate("/login", { replace: true });
+    }
+  }, [token, logout, navigate]);
+
+  // If no token exists, redirect immediately
   if (!token) {
     return <Navigate to="/login" replace />;
   }
+
   return children;
 };
 
