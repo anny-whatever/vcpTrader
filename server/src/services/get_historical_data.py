@@ -58,8 +58,10 @@ def get_historical_data(instrument_token, interval, symbol):
             logger.error(f"Error processing and saving historical data: {e}")
             return {"error": str(e)}
         finally:
-            close_db_connection()
+            if conn and cur:
+                close_db_connection()
         return {"data": hist}
     
-    close_db_connection()
+    if conn and cur:
+            close_db_connection()
     return {"error": "No data found"}

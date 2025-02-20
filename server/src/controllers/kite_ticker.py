@@ -65,6 +65,7 @@ def initialize_kite_ticker(access_token):
                 connect_timeout=600
             )
             Thread(target=start_kite_ticker, daemon=True).start()
+            
             logger.info("KiteTicker initialized successfully.")
         return kite_ticker
     except Exception as e:

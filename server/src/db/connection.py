@@ -36,14 +36,14 @@ def get_db_connection():
 def close_db_connection():
     global conn, cur  # Access globals to close them properly
     try:
-        if cur is not None:
+        if cur:
             cur.close()
             cur = None  # Reset cur after closing
             logger.info("DB cursor closed.")
     except Exception as e:
         logger.error(f"Error closing DB cursor: {e}")
     try:
-        if conn is not None:
+        if conn:
             conn.close()
             conn = None  # Reset conn after closing
             logger.info("DB connection closed.")

@@ -48,7 +48,8 @@ def get_instrument_indices():
             logger.error(f"Error in get_instrument_indices: {err}")
             return {"error": str(err)}
         finally:
-            close_db_connection()
+            if conn and cur:
+                close_db_connection()
         return {"data": filtered_response}
     else:
         return {"error": "Access token not found"}
