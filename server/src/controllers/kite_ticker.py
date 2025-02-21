@@ -109,7 +109,7 @@ def start_kite_ticker():
             current_set = filtered_tokens
 
             filtered = [tk for tk in ticks if tk.get('instrument_token') in current_set]
-            logger.info(f"Filtered {len(filtered)} ticks from {len(ticks)} total.")
+            logger.debug(f"Filtered {len(filtered)} ticks from {len(ticks)} total.")
 
             # Asynchronous execution
             def run_async_in_thread(coro, *args):
