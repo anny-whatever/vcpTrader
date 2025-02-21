@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 # Initialize the connection pool globally
 trade_conn_pool = None
 
-def initialize_pool():
+def initialize_trade_pool():
     global trade_conn_pool
     try:
         if trade_conn_pool is None:
@@ -33,7 +33,7 @@ def get_trade_db_connection():
     global trade_conn_pool
     try:
         if trade_conn_pool is None:
-            initialize_pool()
+            initialize_trade_pool()
         # Get a connection from the pool
         conn = trade_conn_pool.getconn()
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
