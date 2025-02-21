@@ -1,4 +1,4 @@
-# kite_ticker.py
+# controllers/kite_ticker.py
 import os
 import time
 import asyncio
@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
 
-from db import get_db_connection, close_db_connection
+from db import get_trade_db_connection, release_trade_db_connection
+#  ^ same DB pool code. No changes here.
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -25,33 +26,41 @@ def is_within_monitor_live_trade_time_range():
     return MONITOR_LIVE_TRADE_START <= now <= MONITOR_LIVE_TRADE_END
 
 def get_instrument_token():
-    
+    """
+    Example for retrieving tokens from other tables (equity_tokens, watchlist, etc.).
+    This is separate from the dynamic 'filtered_tokens' used for live filtering.
+    """
+    conn, cur = None, None
+    tokens = []
     try:
-        conn, cur = get_db_connection()
-        tokens = []
-        select_query = "SELECT instrument_token FROM equity_tokens WHERE segment != 'ALL';"
-        cur.execute(select_query)
+        conn, cur = get_trade_db_connection()
+
+        cur.execute("SELECT instrument_token FROM equity_tokens WHERE segment != 'ALL';")
         equity_tokens = cur.fetchall()
-        select_query = "SELECT instrument_token FROM watchlist;"
-        cur.execute(select_query)
+
+        cur.execute("SELECT instrument_token FROM watchlist;")
         watchlist_tokens = cur.fetchall()
-        select_query = "SELECT instrument_token FROM indices_instruments;"
-        cur.execute(select_query)
+
+        cur.execute("SELECT instrument_token FROM indices_instruments;")
         indices_tokens = cur.fetchall()
-        tokens.extend(item['instrument_token'] for item in equity_tokens + watchlist_tokens + indices_tokens)
+
+        tokens.extend(item['instrument_token'] for item in (equity_tokens + watchlist_tokens + indices_tokens))
         logger.info(f"Instrument tokens retrieved: {tokens}")
         return tokens
     except Exception as err:
         logger.error(f"Error fetching instrument tokens: {err}")
         return {"error": str(err)}
     finally:
-        try:
-            if conn and cur:
-                close_db_connection()
-        except Exception as close_err:
-            logger.error(f"Error closing DB connection in get_instrument_token: {close_err}")
+        if conn and cur:
+            release_trade_db_connection(conn, cur)
 
 def initialize_kite_ticker(access_token):
+    """
+    Called once at startup to:
+    - Initialize the Kite Ticker
+    - Start the DB listener thread
+    - Start the ticker thread
+    """
     global kite_ticker
     try:
         if kite_ticker is None:
@@ -64,8 +73,16 @@ def initialize_kite_ticker(access_token):
                 reconnect_max_tries=300,
                 connect_timeout=600
             )
+
+            # Import from services to avoid circular deps
+            from services import listen_for_data_changes
+
+            # Start the DB listener thread
+            Thread(target=listen_for_data_changes, daemon=True).start()
+
+            # Start the ticker in a background thread
             Thread(target=start_kite_ticker, daemon=True).start()
-            
+
             logger.info("KiteTicker initialized successfully.")
         return kite_ticker
     except Exception as e:
@@ -74,16 +91,27 @@ def initialize_kite_ticker(access_token):
 
 def start_kite_ticker():
     global kite_ticker
+
+    # Import your other service modules
     from .ws_clients import process_and_send_live_ticks
     from services import process_live_alerts, process_live_auto_exit
 
     tokens = get_instrument_token()
-    if isinstance(tokens, dict):  # Indicates an error
+    if isinstance(tokens, dict):  # Means an error
         logger.error("Failed to retrieve tokens, aborting KiteTicker start.")
         return
 
     def on_ticks(ws, ticks):
         try:
+            # Import the same 'services' references
+            from services import filtered_tokens
+
+            current_set = filtered_tokens
+
+            filtered = [tk for tk in ticks if tk.get('instrument_token') in current_set]
+            logger.debug(f"Filtered {len(filtered)} ticks from {len(ticks)} total.")
+
+            # Asynchronous execution
             def run_async_in_thread(coro, *args):
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
@@ -92,13 +120,16 @@ def start_kite_ticker():
                 finally:
                     loop.run_until_complete(loop.shutdown_asyncgens())
                     loop.close()
-            executor.submit(run_async_in_thread, process_and_send_live_ticks, ticks)
+
+            # Pass only the filtered ticks
+            executor.submit(run_async_in_thread, process_and_send_live_ticks, filtered)
+            # If you want all ticks for alerts, you can pass 'ticks' or 'filtered'
             executor.submit(run_async_in_thread, process_live_alerts, ticks)
             
-            # Only run auto-exit if the time is within the monitored range.
+            # Only run auto-exit if within monitored timeframe
             if is_within_monitor_live_trade_time_range():
                 executor.submit(run_async_in_thread, process_live_auto_exit, ticks)
-            
+
         except Exception as e:
             logger.error(f"Error processing ticks: {e}")
 
@@ -135,6 +166,7 @@ def start_kite_ticker():
                 time.sleep(5)
         logger.error("Max reconnection attempts reached. Could not reconnect to KiteTicker.")
 
+    # Set event handlers
     kite_ticker.on_ticks = on_ticks
     kite_ticker.on_connect = on_connect
     kite_ticker.on_close = on_close

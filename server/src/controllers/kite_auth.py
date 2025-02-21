@@ -11,6 +11,9 @@ from .kite_ticker import initialize_kite_ticker
 from .schedulers import get_scheduler
 from concurrent.futures import ThreadPoolExecutor  # Use ThreadPoolExecutor now
 
+
+# The rest of your initialization, e.g. start the web server, etc.
+
 load_dotenv()
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -41,7 +44,7 @@ async def callback(request_token: str):
     Handles the callback after the user logs in via Kite.
     We offload load_ohlc_data to a separate thread WITHOUT awaiting it (fire-and-forget).
     """
-    from services import get_instrument_indices, get_instrument_equity, load_ohlc_data
+    from services import get_instrument_indices, get_instrument_equity
 
     try:
         # Reinitialize the scheduler if needed (a new one will be created if the previous one was shut down)

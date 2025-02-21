@@ -5,7 +5,7 @@ from datetime import datetime, time
 import pandas as pd
 import pandas_ta as ta
 from db import get_db_connection, close_db_connection
-from models import PriceAlert, AlertMessage, RiskPool, SaveTradeDetails, SaveHistoricalTradeDetails, SaveOHLC
+from models import PriceAlert, AlertMessage, RiskPool, SaveTradeDetails, SaveHistoricalTradeDetails, SaveOHLC, ScreenerResult
 from controllers import kite  # Assumes you have a kite module for live quotes
 
 logger = logging.getLogger(__name__)
@@ -189,3 +189,42 @@ def get_latest_alert_messages():
     finally:
         if conn and cur:
             close_db_connection()
+
+def fetch_screener_data(screener_name: str) -> list:
+    """
+    Fetch screener results from the screener_results table.
+    Returns a list of dicts suitable for JSON response,
+    sorted in descending order by 'change'.
+    """
+    conn, cur = get_db_connection()
+    try:
+        rows = ScreenerResult.fetch_by_screener(cur, screener_name)
+        data = []
+        for row in rows:
+            # row is (screener_name, instrument_token, symbol,
+            #         last_price, change_pct, sma_50, sma_150,
+            #         sma_200, atr, run_time)
+            data.append({
+                "screener_name": row[0],
+                "instrument_token": row[1],
+                "symbol": row[2],
+                "last_price": row[3],
+                "change": row[4],   # rename from 'change_pct' to 'change'
+                "sma_50": row[5],
+                "sma_150": row[6],
+                "sma_200": row[7],
+                "atr": row[8],
+                "run_time": row[9].isoformat() if row[9] else None
+            })
+
+        # Sort the 'data' list in descending order by "change"
+        data.sort(key=lambda x: x["change"], reverse=True)
+
+        return data
+
+    except Exception as e:
+        logger.error(f"Error fetching screener data for {screener_name}: {e}")
+        return []
+    finally:
+        # Release DB connection
+        close_db_connection()
