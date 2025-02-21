@@ -808,7 +808,7 @@ function AllPositions() {
         <ChartModal
           isOpen={isChartModalOpen}
           onClose={handleCloseChartModal}
-          symbol={chartData?.stock_name}
+          symbol={chartData?.symbol}
           token={chartData?.token}
         />
         <AddAlertModal
