@@ -23,7 +23,7 @@ MONITOR_LIVE_TRADE_END = dtime(15, 29)
 
 def is_within_monitor_live_trade_time_range():
     now = datetime.now().time()
-    return MONITOR_LIVE_TRADE_START <= now <= MONITOR_LIVE_TRADE_END
+    return MONITOR_LIVE_TRADE_START <= now <= MONITOR_LIVE_TRADE_END and now.weekday() < 5
 
 def get_instrument_token():
     """

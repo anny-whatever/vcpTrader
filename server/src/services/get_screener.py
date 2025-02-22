@@ -280,7 +280,7 @@ def run_vcp_screener():
     # Check market hours
     now = datetime.datetime.now(TIMEZONE).time()
     logger.debug(f"Current time: {now}. Checking if within market hours (9:15-15:30).")
-    if datetime.time(9,15) <= now <= datetime.time(15,30):
+    if datetime.time(9,15) <= now <= datetime.time(15,30) and now.weekday() < 5:
         live_data = fetch_live_quotes()
         df = update_live_data(df, live_data)
     else:
@@ -343,7 +343,7 @@ def run_ipo_screener():
     # Check market hours
     now = datetime.datetime.now(TIMEZONE).time()
     logger.debug(f"Current time: {now}. Checking if within market hours (9:15-15:30).")
-    if datetime.time(9,15) <= now <= datetime.time(15,30):
+    if datetime.time(9,15) <= now <= datetime.time(15,30) and now.weekday() < 5:
         live_data = fetch_live_quotes()
         df = update_live_data(df, live_data)
     else:
@@ -384,3 +384,6 @@ def run_ipo_screener():
     finally:
         release_trade_db_connection(conn, cur)
     logger.info("----- Finished IPO Screener -----")
+
+run_ipo_screener()
+run_vcp_screener()

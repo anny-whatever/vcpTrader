@@ -122,13 +122,13 @@ class SaveOHLC:
             raise e
 
     @classmethod
-    def fetch_by_instrument(cls, cursor, instrument_token):
+    def fetch_by_instrument(cls, cur, instrument_token):
         """
         Fetches OHLC rows (plus indicator columns) from the 'ohlc' table
         for a given instrument_token (with interval='day' as an example).
         """
         try:
-            cursor.execute("""
+            cur.execute("""
                 SELECT 
                 instrument_token,
                 symbol,
@@ -145,7 +145,7 @@ class SaveOHLC:
                 AND interval = 'day'
                 ORDER BY date ASC
             """, (instrument_token,))
-            results = cursor.fetchall()
+            results = cur.fetchall()
             logger.info(f"Fetched OHLC data for instrument_token: {instrument_token}")
             return results
         except Exception as e:
@@ -155,117 +155,77 @@ class SaveOHLC:
     @classmethod
     def fetch_precomputed_ohlc(cls, cur, limit=200):
         """
-        Fetch the last `limit` rows per symbol from `ohlc`, including
-        precomputed columns (sma_50, sma_150, sma_200, atr, "52_week_high", etc.).
+        Fast retrieval of the last `limit` rows per symbol from the ohlc table,
+        including precomputed columns (sma_50, sma_150, sma_200, atr, "52_week_high", etc.).
         
-        Uses a window function (ROW_NUMBER) over (PARTITION BY symbol ORDER BY date DESC).
-        After computing row_number, we filter rows where rn <= limit.
-        
-        Returns a pandas DataFrame with all those rows combined.
+        Uses a window function to partition by symbol and order by date descending.
+        Returns a pandas DataFrame with the combined results.
         """
         logger.info(f"Fetching up to {limit} rows of precomputed OHLC+Indicators per symbol from DB...")
 
-        query = f"""
+        query = """
             SELECT 
-                instrument_token,
-                symbol,
-                interval,
-                date,
-                open,
-                high,
-                low,
-                close,
-                volume,
-                segment,
-                sma_50,
-                sma_150,
-                sma_200,
-                atr,
-                "52_week_high",
-                "52_week_low",
-                away_from_high,
-                away_from_low
-            FROM (
-                SELECT
-                    *,
-                    ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY date DESC) AS rn
-                FROM ohlc
-                WHERE segment != 'ALL'
-            ) sub
-            WHERE rn <= {limit};
+            instrument_token,
+            symbol,
+            interval,
+            date,
+            open,
+            high,
+            low,
+            close,
+            volume,
+            segment,
+            sma_50,
+            sma_150,
+            sma_200,
+            atr,
+            "52_week_high",
+            "52_week_low",
+            away_from_high,
+            away_from_low
+        FROM ohlc
+        WHERE segment != 'ALL'
+        AND date >= NOW() - INTERVAL '333 days';
         """
 
         try:
-            logger.debug("About to execute window function query for precomputed OHLC...")
-            logger.debug(f"Window function query:\n{query}")
+            # Use parameterized query to safely pass the limit
             cur.execute(query)
-            logger.debug("Query executed successfully; now fetching rows from DB cursor...")
             rows = cur.fetchall()
-            logger.debug(f"Fetched {len(rows)} rows from `ohlc` table (for all symbols).")
-
-            # If no rows, return an empty DataFrame quickly
+            logger.info(f"Fetched processed OHLC+Indicators data for {len(rows)} symbols.")
             if not rows:
                 logger.warning("No rows returned from fetch_precomputed_ohlc. Returning empty DataFrame.")
-                return pd.DataFrame()
+                return pd.DataFrame(columns=[
+                    "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
+                    "volume", "segment", "sma_50", "sma_150", "sma_200", "atr",
+                    "52_week_high", "52_week_low", "away_from_high", "away_from_low"
+                ])
 
-            logger.debug("Constructing DataFrame from fetched rows...")
             columns = [
-                "instrument_token",
-                "symbol",
-                "interval",
-                "date",
-                "open",
-                "high",
-                "low",
-                "close",
-                "volume",
-                "segment",
-                "sma_50",
-                "sma_150",
-                "sma_200",
-                "atr",
-                "52_week_high",
-                "52_week_low",
-                "away_from_high",
-                "away_from_low"
+                "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
+                "volume", "segment", "sma_50", "sma_150", "sma_200", "atr",
+                "52_week_high", "52_week_low", "away_from_high", "away_from_low"
             ]
-            try:
-                df = pd.DataFrame(rows, columns=columns)
-            except Exception as e:
-                logger.error(f"Error constructing DataFrame from DB rows: {e}")
-                return pd.DataFrame()
+            df = pd.DataFrame(rows, columns=columns)
+
+            # Convert all numeric columns in one vectorized step
+            float_cols = [
+                "open", "high", "low", "close", "volume",
+                "sma_50", "sma_150", "sma_200", "atr",
+                "52_week_high", "52_week_low", "away_from_high", "away_from_low"
+            ]
+            df[float_cols] = df[float_cols].apply(pd.to_numeric, errors='coerce').fillna(0.0)
+
+            # Parse the date column with inferred format for speed
+            df["date"] = pd.to_datetime(df["date"], errors='coerce')
+
+            # Replace infinite values in one go
+            df.replace({float('inf'): 0.0, float('-inf'): 0.0}, inplace=True)
 
             logger.info(f"Constructed DataFrame with {len(df)} rows of precomputed OHLC data.")
-            
-            # Convert numeric columns to float, where applicable
-            float_cols = [
-                "open","high","low","close","volume","sma_50","sma_150","sma_200","atr",
-                "52_week_high","52_week_low","away_from_high","away_from_low"
-            ]
-            logger.debug("Attempting to convert numeric columns to float...")
-            for col in float_cols:
-                try:
-                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
-                except Exception as e:
-                    logger.error(f"Error converting column '{col}' to numeric: {e}")
-                    # You can decide whether to keep going or raise; here, we keep going
-
-            logger.debug("Numeric column conversion complete. Attempting to parse 'date' column as datetime...")
-            try:
-                df["date"] = pd.to_datetime(df["date"], errors='coerce')
-            except Exception as e:
-                logger.error(f"Error converting 'date' column to datetime: {e}")
-                # If needed, set df["date"] to pd.NaT or continue
-
-            logger.debug("Replacing infinite values with 0.0 if any exist...")
-            df.replace([float('inf'), float('-inf')], 0.0, inplace=True)
-
-            logger.info(f"Final DataFrame shape after cleanup: {df.shape}")
-            logger.debug(f"DataFrame columns after cleanup: {df.dtypes}")
-
             return df
 
         except Exception as e:
             logger.error(f"Error in fetch_precomputed_ohlc: {e}", exc_info=True)
-            # Return an empty DataFrame if there's a critical error
             return pd.DataFrame()
+
