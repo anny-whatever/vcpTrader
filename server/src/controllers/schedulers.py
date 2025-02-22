@@ -19,12 +19,14 @@ def get_ohlc_on_schedule():
         from services import (
             get_equity_ohlc_data_loop,
             download_nse_csv,
+            load_precomputed_ohlc
         )
         download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv", "500")
         download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_niftymicrocap250_list.csv", "250")
         download_nse_csv("https://www.niftyindices.com/IndexConstituent/ind_niftyIPO_list.csv", "IPO")
         download_nse_csv("https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv", "ALL")
         get_equity_ohlc_data_loop("day")
+        load_precomputed_ohlc()
         run_vcp_screener_on_schedule()
         run_ipo_screener_on_schedule()
         logger.info("OHLC data retrieval job completed.")

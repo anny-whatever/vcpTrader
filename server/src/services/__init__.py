@@ -11,7 +11,7 @@ from .get_ohlc import get_equity_ohlc_data_loop
 from .place_buy import buy_order_execute
 from .place_exit import sell_order_execute
 from .place_adjust import adjust_order_execute
-from .get_screener import run_vcp_screener, run_ipo_screener
+from .get_screener import run_vcp_screener, run_ipo_screener, load_precomputed_ohlc
 from .manage_risk_pool import (
     update_risk_pool_on_increase,
     update_risk_pool_on_decrease,
