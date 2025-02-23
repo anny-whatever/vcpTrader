@@ -4,8 +4,8 @@ import pandas_ta as ta
 import pytz
 import logging
 import math
-
 from controllers import kite
+
 # Use your threaded DB pool
 from db import get_trade_db_connection, release_trade_db_connection
 
@@ -384,6 +384,3 @@ def run_ipo_screener():
     finally:
         release_trade_db_connection(conn, cur)
     logger.info("----- Finished IPO Screener -----")
-
-run_ipo_screener()
-run_vcp_screener()

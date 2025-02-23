@@ -140,10 +140,11 @@ class SaveOHLC:
                 close,
                 volume,
                 segment
-                FROM ohlc
-                WHERE instrument_token = %s
-                AND interval = 'day'
-                ORDER BY date ASC
+            FROM ohlc
+            WHERE instrument_token = %s
+            AND interval = 'day'
+            AND date >= NOW() - INTERVAL '1800 days'
+            ORDER BY date ASC;
             """, (instrument_token,))
             results = cur.fetchall()
             logger.info(f"Fetched OHLC data for instrument_token: {instrument_token}")
