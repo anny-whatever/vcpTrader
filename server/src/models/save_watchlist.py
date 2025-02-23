@@ -104,7 +104,7 @@ class WatchlistEntry:
 
     @classmethod
     def get_by_token(cls, cur, instrument_token: int):
-        query = "SELECT * FROM equity_instruments WHERE instrument_token = %s"
+        query = "SELECT * FROM equity_tokens WHERE instrument_token = %s"
         try:
             cur.execute(query, (instrument_token,))
             return cur.fetchone()
@@ -116,8 +116,8 @@ class WatchlistEntry:
     def search(cls, cur, query_str: str):
         like_query = f"%{query_str}%"
         sql = """
-        SELECT * FROM equity_instruments
-        WHERE tradingsymbol ILIKE %s OR name ILIKE %s
+        SELECT * FROM equity_tokens
+        WHERE tradingsymbol ILIKE %s OR company_name ILIKE %s
         LIMIT 50;
         """
         try:
@@ -127,7 +127,7 @@ class WatchlistEntry:
             results = [dict(zip(col_names, row)) for row in rows]
             return results
         except Exception as e:
-            logger.error(f"Error searching equity_instruments: {e}")
+            logger.error(f"Error searching equity_token: {e}")
             raise
 
 

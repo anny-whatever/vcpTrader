@@ -43,6 +43,7 @@ from .get_watchlist import add_stock_to_watchlist, get_watchlist_entries, search
 # IMPORTANT: import and re-export these so that "from services import filtered_tokens"
 # or "from services import listen_for_data_changes" always references the SAME copy.
 from .get_essential_tokens import listen_for_data_changes, filtered_tokens
+from .process_ticks import save_tradable_ticks, save_nontradable_ticks
 
 __all__ = [
     "get_instrument_indices",
@@ -79,4 +80,6 @@ __all__ = [
     "listen_for_data_changes",
     "tokens_lock",
     "filtered_tokens",
+    "save_tradable_ticks",
+    "save_nontradable_ticks",
 ]

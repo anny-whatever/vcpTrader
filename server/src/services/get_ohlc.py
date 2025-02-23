@@ -193,18 +193,3 @@ def get_equity_ohlc_data_loop(interval):
         if conn and cur:
             close_db_connection()
 
-def get_indices_ohlc_data_loop(interval):
-    conn, cur = get_db_connection()  # Get connection and cursor
-    try:
-        select_query = "SELECT * FROM indices_instruments;"
-        cur.execute(select_query)
-        tokens = cur.fetchall()
-        for token in tokens:
-            get_ohlc(token[0], interval, token[2], token[7])
-        return {"data": "Done"}
-    except Exception as err:
-        logger.error(f"Error in get_indices_ohlc_data_loop: {err}")
-        return {"error": str(err)}
-    finally:
-        if conn and cur:
-            close_db_connection()

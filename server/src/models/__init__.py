@@ -10,4 +10,6 @@ from .save_alerts import PriceAlert, AlertMessage
 from .save_watchlist import WatchlistEntry, WatchlistName
 from .save_tokens import EquityToken
 from .save_screener import ScreenerResult
+from .save_tradable_ticks import TradableTicks
+from .save_nontradable_ticks import NonTradableTicks
 __all__ = ["IndicesInstruments", "EquityInstruments", "saveHistoricalTradeDetails", "EquityHistoricalData", "FetchPosition", "HistoricalTrades", "saveTradeDetails", "SaveOHLC", "RiskPool"]

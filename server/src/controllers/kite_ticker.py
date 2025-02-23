@@ -27,32 +27,36 @@ def is_within_monitor_live_trade_time_range():
 
 def get_instrument_token():
     """
-    Example for retrieving tokens from other tables (equity_tokens, watchlist, etc.).
-    This is separate from the dynamic 'filtered_tokens' used for live filtering.
+    Retrieve tokens for alerts and auto_exit functions.
+    Tokens are fetched from watchlist, trades, screener_results, and price_alerts.
     """
     conn, cur = None, None
     tokens = []
     try:
         conn, cur = get_trade_db_connection()
 
-        cur.execute("SELECT instrument_token FROM equity_tokens WHERE segment != 'ALL';")
-        equity_tokens = cur.fetchall()
-
         cur.execute("SELECT instrument_token FROM watchlist;")
         watchlist_tokens = cur.fetchall()
 
-        cur.execute("SELECT instrument_token FROM indices_instruments;")
-        indices_tokens = cur.fetchall()
+        cur.execute("SELECT token AS instrument_token FROM trades;")
+        trades_tokens = cur.fetchall()
 
-        tokens.extend(item['instrument_token'] for item in (equity_tokens + watchlist_tokens + indices_tokens))
-        logger.info(f"Instrument tokens retrieved: {tokens}")
+        cur.execute("SELECT instrument_token FROM screener_results;")
+        screener_tokens = cur.fetchall()
+
+        cur.execute("SELECT instrument_token FROM price_alerts;")
+        price_alert_tokens = cur.fetchall()
+
+        tokens.extend(item['instrument_token'] for item in (watchlist_tokens + trades_tokens + screener_tokens + price_alert_tokens))
+        logger.info(f"Instrument tokens for alerts retrieved: {tokens}")
         return tokens
     except Exception as err:
-        logger.error(f"Error fetching instrument tokens: {err}")
+        logger.error(f"Error fetching instrument tokens for alerts: {err}")
         return {"error": str(err)}
     finally:
         if conn and cur:
             release_trade_db_connection(conn, cur)
+
 
 def initialize_kite_ticker(access_token):
     """
@@ -103,13 +107,6 @@ def start_kite_ticker():
 
     def on_ticks(ws, ticks):
         try:
-            # Import the same 'services' references
-            from services import filtered_tokens
-
-            current_set = filtered_tokens
-
-            filtered = [tk for tk in ticks if tk.get('instrument_token') in current_set]
-            logger.debug(f"Filtered {len(filtered)} ticks from {len(ticks)} total.")
 
             # Asynchronous execution
             def run_async_in_thread(coro, *args):
@@ -122,10 +119,9 @@ def start_kite_ticker():
                     loop.close()
 
             # Pass only the filtered ticks
-            executor.submit(run_async_in_thread, process_and_send_live_ticks, filtered)
+            executor.submit(run_async_in_thread, process_and_send_live_ticks, ticks)
             # If you want all ticks for alerts, you can pass 'ticks' or 'filtered'
             executor.submit(run_async_in_thread, process_live_alerts, ticks)
-            
             # Only run auto-exit if within monitored timeframe
             if is_within_monitor_live_trade_time_range():
                 executor.submit(run_async_in_thread, process_live_auto_exit, ticks)

@@ -189,3 +189,76 @@ def insert_token_data(file_path, segment):
     finally:
         if conn and cur:
             close_db_connection()
+
+def insert_index_token_data(file_path, segment):
+    """
+    Reads the downloaded CSV file for index tokens and inserts token data into the DB.
+    This function assumes the CSV has headers like:
+      "INDEX", "CURRENT", "%CHNG", "OPEN", "HIGH", "LOW", "INDICATIVE CLOSE",
+      "PREV. CLOSE", "PREV. DAY 20-Feb-2025", "1W AGO 14-Feb-2025", "1M AGO 22-Jan-2025",
+      "1Y AGO 22-Feb-2024", "52W H", "52W L", "365 D % CHNG 22-Feb-2024", "30 D % CHNG 22-Jan-2025"
+      
+    The CSV's "INDEX" column is used to merge with the indices_instruments table,
+    where the corresponding field is stored in 'tradingsymbol'.
+    """
+    conn, cur = get_db_connection()
+    try:
+        # Read CSV file and remove extra whitespace from headers
+        df = pd.read_csv(file_path, skipinitialspace=True)
+        df.columns = df.columns.str.strip()
+        
+        # Rename "INDEX" to "tradingsymbol" to enable merging with indices_instruments
+        df.rename(columns={'INDEX': 'tradingsymbol'}, inplace=True)
+        
+        # Delete existing tokens for this segment
+        EquityToken.delete_by_segment(cur, segment)
+        logger.info(f"Deleted all instruments for segment '{segment}' from equity_tokens.")
+        
+        # Fetch data from indices_instruments to merge
+        select_query = "SELECT * FROM indices_instruments;"
+        cur.execute(select_query)
+        indices_df = pd.DataFrame(
+            cur.fetchall(),
+            columns=[
+                'instrument_token', 'exchange_token', 'tradingsymbol', 'name',
+                'last_price', 'tick_size', 'instrument_type', 'segment', 'exchange'
+            ]
+        )
+        
+        # Merge CSV data with indices_instruments data on 'tradingsymbol'
+        merged_df = pd.merge(df, indices_df, on='tradingsymbol', how='left')
+        
+        # Drop rows missing critical fields (i.e. where no matching token was found)
+        merged_df = merged_df.dropna(subset=['instrument_token', 'exchange'])
+        
+        # Convert columns to proper types
+        merged_df['instrument_token'] = merged_df['instrument_token'].astype(int)
+        merged_df['tradingsymbol'] = merged_df['tradingsymbol'].astype(str)
+        merged_df['name'] = merged_df['name'].astype(str)  # using name from indices_instruments
+        merged_df['exchange'] = merged_df['exchange'].astype(str)
+        
+        # Build a list of EquityToken objects to insert
+        tokens_to_insert = []
+        for _, row in merged_df.iterrows():
+            eq_token = EquityToken(
+                instrument_token=row['instrument_token'],
+                tradingsymbol=row['tradingsymbol'],
+                company_name=row['name'],  # using the name field from indices_instruments
+                exchange=row['exchange'],
+                segment=segment
+            )
+            tokens_to_insert.append(eq_token)
+        
+        # Insert all tokens at once
+        EquityToken.save_many(cur, tokens_to_insert)
+        conn.commit()
+        logger.info(f"Inserted {len(tokens_to_insert)} records into equity_tokens from indices data.")
+        
+    except Exception as e:
+        logger.error(f"An error occurred in insert_index_token_data: {e}")
+        conn.rollback()
+    finally:
+        if conn and cur:
+            close_db_connection()
+
+# insert_index_token_data("data/INDICES.csv", "INDEX")
