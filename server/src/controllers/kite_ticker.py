@@ -1,4 +1,3 @@
-# controllers/kite_ticker.py
 import os
 import time
 import asyncio
@@ -10,7 +9,6 @@ from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
 
 from db import get_trade_db_connection, release_trade_db_connection
-#  ^ same DB pool code. No changes here.
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -57,6 +55,38 @@ def get_instrument_token():
         if conn and cur:
             release_trade_db_connection(conn, cur)
 
+def update_kite_ticker_subscription(new_tokens):
+    """
+    Update the KiteTicker subscriptions with the new tokens.
+    This function compares the currently subscribed tokens with the new list,
+    subscribes to tokens not yet subscribed, and unsubscribes tokens that are no longer needed.
+    """
+    global kite_ticker
+    try:
+        # Ensure the ticker maintains a list of currently subscribed tokens.
+        if not hasattr(kite_ticker, 'subscribed_tokens'):
+            kite_ticker.subscribed_tokens = []
+        
+        current_tokens_set = set(kite_ticker.subscribed_tokens)
+        new_tokens_set = set(new_tokens)
+        
+        tokens_to_add = list(new_tokens_set - current_tokens_set)
+        tokens_to_remove = list(current_tokens_set - new_tokens_set)
+        
+        if tokens_to_remove:
+            kite_ticker.unsubscribe(tokens_to_remove)
+            logger.info(f"Unsubscribed tokens: {tokens_to_remove}")
+        
+        if tokens_to_add:
+            kite_ticker.subscribe(tokens_to_add)
+            # Set mode for the newly added tokens; ensure tokens are provided as a list.
+            kite_ticker.set_mode(kite_ticker.MODE_FULL, tokens_to_add)
+            logger.info(f"Subscribed new tokens: {tokens_to_add}")
+        
+        # Update the record of subscribed tokens
+        kite_ticker.subscribed_tokens = list(new_tokens_set)
+    except Exception as e:
+        logger.error(f"Error updating ticker subscription: {e}")
 
 def initialize_kite_ticker(access_token):
     """
@@ -78,10 +108,10 @@ def initialize_kite_ticker(access_token):
                 connect_timeout=600
             )
 
-            # Import from services to avoid circular deps
+            # Import from services to avoid circular dependencies
             from services import listen_for_data_changes
 
-            # Start the DB listener thread
+            # Start the DB listener thread (which will update subscriptions on data change)
             Thread(target=listen_for_data_changes, daemon=True).start()
 
             # Start the ticker in a background thread
@@ -101,14 +131,13 @@ def start_kite_ticker():
     from services import process_live_alerts, process_live_auto_exit
 
     tokens = get_instrument_token()
-    if isinstance(tokens, dict):  # Means an error
+    if isinstance(tokens, dict):  # Indicates an error occurred
         logger.error("Failed to retrieve tokens, aborting KiteTicker start.")
         return
 
     def on_ticks(ws, ticks):
         try:
-
-            # Asynchronous execution
+            # Asynchronous execution helper
             def run_async_in_thread(coro, *args):
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
@@ -117,15 +146,12 @@ def start_kite_ticker():
                 finally:
                     loop.run_until_complete(loop.shutdown_asyncgens())
                     loop.close()
-
-            # Pass only the filtered ticks
+            print(ticks)
+            # Process ticks for live updates, alerts, and auto-exit actions
             executor.submit(run_async_in_thread, process_and_send_live_ticks, ticks)
-            # If you want all ticks for alerts, you can pass 'ticks' or 'filtered'
             executor.submit(run_async_in_thread, process_live_alerts, ticks)
-            # Only run auto-exit if within monitored timeframe
             if is_within_monitor_live_trade_time_range():
                 executor.submit(run_async_in_thread, process_live_auto_exit, ticks)
-
         except Exception as e:
             logger.error(f"Error processing ticks: {e}")
 
@@ -162,7 +188,7 @@ def start_kite_ticker():
                 time.sleep(5)
         logger.error("Max reconnection attempts reached. Could not reconnect to KiteTicker.")
 
-    # Set event handlers
+    # Set event handlers for KiteTicker
     kite_ticker.on_ticks = on_ticks
     kite_ticker.on_connect = on_connect
     kite_ticker.on_close = on_close
