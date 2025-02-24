@@ -83,22 +83,23 @@ def start_kite_ticker_equity():
                     loop.close()
 
             # Define an async function that calls your tick-saving module.
-            async def async_save_ticks(ticks):
-                from services import save_tradable_ticks, save_nontradable_ticks
-                # Call your save functions (each function will iterate over ticks and decide which ones to save)
-                save_tradable_ticks(ticks)
-                save_nontradable_ticks(ticks)
+            # async def async_save_ticks(ticks):
+            #     from services import save_tradable_ticks, save_nontradable_ticks
+            #     # Call your save functions (each function will iterate over ticks and decide which ones to save)
+            #     save_tradable_ticks(ticks)
+            #     save_nontradable_ticks(ticks)
 
-            # Submit the async_save_ticks coroutine to the executor.
-            executor.submit(run_async_in_thread, async_save_ticks, ticks)
+            # # Submit the async_save_ticks coroutine to the executor.
+            # executor.submit(run_async_in_thread, async_save_ticks, ticks)
         except Exception as e:
             logger.error(f"Error processing equity ticks: {e}")
 
     def on_connect(ws, response):
         logger.info("Connected to KiteTickerEquity WebSocket.")
         try:
-            ws.subscribe(tokens)
-            ws.set_mode(ws.MODE_FULL, tokens)
+            # ws.subscribe(tokens)
+            # ws.set_mode(ws.MODE_FULL, tokens)
+            print(tokens)
         except Exception as e:
             logger.error(f"Error in on_connect (equity): {e}")
 

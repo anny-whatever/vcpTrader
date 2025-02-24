@@ -1,4 +1,3 @@
-# get_display_data.py
 import logging
 import pytz
 from datetime import datetime, time
@@ -13,15 +12,23 @@ TIMEZONE = pytz.timezone("Asia/Kolkata")
 MARKET_OPEN = time(9, 15)
 MARKET_CLOSE = time(15, 35)
 
+def safe_float(value, default=0.0):
+    """
+    Safely converts a value to float, returning a default if conversion fails.
+    """
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
 def fetch_risk_pool_for_display():
-    
     try:
         conn, cur = get_db_connection()
         risk_pool = RiskPool.fetch_risk_pool(cur)
         if risk_pool:
             return {
-                "used_risk": float(risk_pool['used_risk']),
-                "available_risk": float(risk_pool['available_risk'])
+                "used_risk": safe_float(risk_pool.get('used_risk')),
+                "available_risk": safe_float(risk_pool.get('available_risk'))
             }
         return None
     except Exception as e:
@@ -33,21 +40,20 @@ def fetch_risk_pool_for_display():
 
 def format_trade_record(trade):
     return {
-        "trade_id" : trade['trade_id'],
+        "trade_id": trade['trade_id'],
         "stock_name": trade['stock_name'],
         "token": trade['token'],
         "entry_time": trade['entry_time'].isoformat() if trade['entry_time'] else None,
-        "entry_price": float(trade['entry_price']),
-        "stop_loss": float(trade['stop_loss']),
-        "target": float(trade['target']),
-        "initial_qty": float(trade['initial_qty']),
-        "current_qty": float(trade['current_qty']),
-        "booked_pnl": float(trade['booked_pnl']),
+        "entry_price": safe_float(trade.get('entry_price')),
+        "stop_loss": safe_float(trade.get('stop_loss')),
+        "target": safe_float(trade.get('target')),
+        "initial_qty": safe_float(trade.get('initial_qty')),
+        "current_qty": safe_float(trade.get('current_qty')),
+        "booked_pnl": safe_float(trade.get('booked_pnl')),
         "auto_exit": trade['auto_exit']
     }
 
 def fetch_trade_details_for_display():
-    
     try:
         conn, cur = get_db_connection()
         trade_details = SaveTradeDetails.fetch_all_trades(cur)
@@ -55,6 +61,7 @@ def fetch_trade_details_for_display():
             return []
         unique_tokens = list({trade['token'] for trade in trade_details})
         try:
+
             live_quotes = kite.quote(unique_tokens)
         except Exception as e:
             logger.error(f"Error fetching live quotes: {e}")
@@ -63,7 +70,7 @@ def fetch_trade_details_for_display():
         for trade in trade_details:
             formatted = format_trade_record(trade)
             token_str = str(trade['token'])
-            formatted['last_price'] = float(live_quotes.get(token_str, {}).get('last_price', 0))
+            formatted['last_price'] = safe_float(live_quotes.get(token_str, {}).get('last_price', 0))
             formatted_trades.append(formatted)
         return formatted_trades
     except Exception as e:
@@ -77,15 +84,14 @@ def format_historical_trade_record(trade):
     return {
         "stock_name": trade['stock_name'],
         "entry_time": trade['entry_time'].isoformat() if trade['entry_time'] else None,
-        "entry_price": float(trade['entry_price']),
+        "entry_price": safe_float(trade.get('entry_price')),
         "exit_time": trade['exit_time'].isoformat() if trade['exit_time'] else None,
-        "exit_price": float(trade['exit_price']),
-        "final_pnl": float(trade['final_pnl']),
-        "highest_qty": float(trade['highest_qty'])
+        "exit_price": safe_float(trade.get('exit_price')),
+        "final_pnl": safe_float(trade.get('final_pnl')),
+        "highest_qty": safe_float(trade.get('highest_qty'))
     }
 
 def fetch_historical_trade_details_for_display():
-    
     try:
         conn, cur = get_db_connection()
         trade_details = SaveHistoricalTradeDetails.fetch_all_historical_trades(cur)
@@ -98,7 +104,6 @@ def fetch_historical_trade_details_for_display():
             close_db_connection()
 
 def get_combined_ohlc(instrument_token, symbol):
-    
     try:
         conn, cur = get_db_connection()
         historical_data = SaveOHLC.fetch_by_instrument(cur, instrument_token)
@@ -118,9 +123,9 @@ def get_combined_ohlc(instrument_token, symbol):
                             'symbol': symbol,
                             'interval': 'day',
                             'date': TIMEZONE.localize(datetime.combine(today_date, time(15, 30))),
-                            'open': ohlc['open'],
-                            'high': ohlc['high'],
-                            'low': ohlc['low'],
+                            'open': ohlc.get('open', 0),
+                            'high': ohlc.get('high', 0),
+                            'low': ohlc.get('low', 0),
                             'close': quote.get('last_price', 0),
                             'volume': quote.get('volume_today', 0)
                         }
@@ -132,7 +137,7 @@ def get_combined_ohlc(instrument_token, symbol):
             formatted = record.copy()
             formatted['date'] = pd.to_datetime(formatted['date']).isoformat()
             for key in ['open', 'high', 'low', 'close', 'volume']:
-                formatted[key] = float(formatted[key])
+                formatted[key] = safe_float(formatted.get(key))
             formatted_data.append(formatted)
         
         df = pd.DataFrame(formatted_data)
@@ -159,7 +164,6 @@ def get_combined_ohlc(instrument_token, symbol):
             close_db_connection()
 
 def get_all_alerts():
-    
     try:
         conn, cur = get_db_connection()
         alerts = PriceAlert.fetch_all_alerts(cur)
@@ -175,7 +179,6 @@ def get_all_alerts():
             close_db_connection()
 
 def get_latest_alert_messages():
-    
     try:
         conn, cur = get_db_connection()
         messages = AlertMessage.fetch_latest_messages(cur)
@@ -226,5 +229,4 @@ def fetch_screener_data(screener_name: str) -> list:
         logger.error(f"Error fetching screener data for {screener_name}: {e}")
         return []
     finally:
-        # Release DB connection
         close_db_connection()

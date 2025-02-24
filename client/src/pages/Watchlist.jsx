@@ -121,7 +121,6 @@ function Watchlist() {
     setIsLoading(true);
     try {
       const response = await api.get(`/api/watchlist/${wl.name}`);
-      console.log(response.data);
       setWatchlistEntries(response.data);
     } catch (error) {
       console.error("Error fetching watchlist entries:", error);

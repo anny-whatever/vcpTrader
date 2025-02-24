@@ -146,7 +146,6 @@ def start_kite_ticker():
                 finally:
                     loop.run_until_complete(loop.shutdown_asyncgens())
                     loop.close()
-            print(ticks)
             # Process ticks for live updates, alerts, and auto-exit actions
             executor.submit(run_async_in_thread, process_and_send_live_ticks, ticks)
             executor.submit(run_async_in_thread, process_live_alerts, ticks)
