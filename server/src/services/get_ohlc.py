@@ -158,13 +158,8 @@ def get_ohlc(instrument_token, interval, symbol, segment):
             except Exception as e:
                 logger.error(f"Error processing OHLC data for instrument {instrument_token}: {e}")
                 return {"error": str(e)}
-            finally:
-                if conn and cur:
-                    close_db_connection()
-
         else:
             return {"error": "No data found"}
-
     except Exception as e:
         logger.error(f"Unexpected error in get_ohlc: {e}")
         raise e

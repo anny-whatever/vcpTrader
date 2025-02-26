@@ -112,7 +112,7 @@ def get_combined_ohlc(instrument_token, symbol):
         today_date = now.date()
         if combined_data:
             last_historical_date = pd.to_datetime(combined_data[-1]['date']).astimezone(TIMEZONE).date()
-            if last_historical_date < today_date and MARKET_OPEN <= now.time() <= MARKET_CLOSE and now.weekday() < 5:
+            if last_historical_date < today_date and MARKET_OPEN <= now.time() <= MARKET_CLOSE:
                 try:
                     quote = kite.quote(instrument_token)[str(instrument_token)]
                     logger.info(f'quote: {quote}')

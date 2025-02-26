@@ -1,10 +1,14 @@
-from db import get_trade_db_connection, release_trade_db_connection
-from .manage_risk_pool import update_risk_pool_on_increase, update_risk_pool_on_decrease
+import logging
 import datetime
 import threading
 import queue
 import time
+from db import get_trade_db_connection, release_trade_db_connection
+from .manage_risk_pool import update_risk_pool_on_increase, update_risk_pool_on_decrease
 from controllers import kite
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 adjustment_lock = threading.Lock()
 adjustment_running = False
@@ -18,7 +22,7 @@ def adjust_order_execute(symbol, qty, adjustment_type):
     conn, cur = get_trade_db_connection()
     with adjustment_lock:
         if adjustment_running:
-            print(f"Adjustment: {adjustment_type.capitalize()} already running for {symbol}")
+            logger.warning(f"Adjustment: {adjustment_type.capitalize()} already running for {symbol}")
             release_trade_db_connection(conn, cur)
             return {
                 "status": "error",
@@ -36,7 +40,7 @@ def adjust_order_execute(symbol, qty, adjustment_type):
         trade = cur.fetchone()
 
         if not trade:
-            print(f"No position found for {symbol}")
+            logger.info(f"No position found for {symbol}")
             return {
                 "status": "error",
                 "message": f"No active position found for {symbol}. Cannot perform a {adjustment_type} adjustment."
@@ -48,8 +52,8 @@ def adjust_order_execute(symbol, qty, adjustment_type):
         current_qty = float(trade['current_qty'])
         qty = float(qty)
 
-        if adjustment_type == 'decrease' and qty > current_qty:
-            raise ValueError(f"Cannot decrease by {qty}, only {current_qty} available.")
+        if adjustment_type == 'decrease' and qty >= current_qty:
+            raise ValueError(f"Cannot decrease by {qty}, only {current_qty} available. Please perform a full exit if you want to sell.")
 
         transaction_type = 'BUY' if adjustment_type == 'increase' else 'SELL'
         response_adjust = kite.place_order(
@@ -61,7 +65,7 @@ def adjust_order_execute(symbol, qty, adjustment_type):
             product='CNC',
             order_type='MARKET'
         )
-        print(f"Order placed: {response_adjust}")
+        logger.info(f"Order placed: {response_adjust}")
 
         # Start status monitoring. Pass symbol via kwargs so messages can include it.
         threading.Thread(
@@ -71,11 +75,11 @@ def adjust_order_execute(symbol, qty, adjustment_type):
         ).start()
 
         status = adjustment_status_queue.get(timeout=305)
-        print(f"Final Adjustment Status: {status}")
+        logger.info(f"Final Adjustment Status: {status}")
         return status
 
     except Exception as e:
-        print(f"Adjustment Error ({adjustment_type.capitalize()}): {e}")
+        logger.exception(f"Adjustment Error ({adjustment_type.capitalize()}) for {symbol}: {e}")
         return {
             "status": "error",
             "message": f"Adjustment error for {symbol} ({adjustment_type}): {str(e)}"
@@ -100,7 +104,7 @@ def monitor_adjustment_status(order_id, trade_id, qty, adjustment_type, entry_pr
             adjust_order = kite.order_history(order_id)
             adjust_status = adjust_order[-1]['status']
             adjust_status_message = adjust_order[-1]['status_message']
-            print(f"Adjustment Order Status: {adjust_status}")
+            logger.info(f"Adjustment Order Status for {symbol}: {adjust_status}")
 
             if adjust_status == 'COMPLETE':
                 actual_price = float(adjust_order[-1].get('average_price', 0))
@@ -120,25 +124,25 @@ def monitor_adjustment_status(order_id, trade_id, qty, adjustment_type, entry_pr
                     f"(Entry: {entry_price:.2f}, Stop-loss: {stop_loss:.2f})."
                 )
                 adjustment_status_queue.put({"status": "success", "message": message})
-                print(message)
+                logger.info(message)
                 return
 
             if adjust_status == 'REJECTED':
                 message = f"Adjustment ({adjustment_type.capitalize()}) for {symbol} was rejected. Reason: {adjust_status_message}."
                 adjustment_status_queue.put({"status": "error", "message": message})
-                print(message)
+                logger.error(message)
                 return
 
             time.sleep(0.2)
 
         timeout_message = f"Adjustment ({adjustment_type.capitalize()}) monitoring for {symbol} timed out after {timeout} seconds."
         adjustment_status_queue.put({"status": "error", "message": timeout_message})
-        print(timeout_message)
+        logger.error(timeout_message)
 
     except Exception as e:
         error_message = f"Adjustment monitoring error for {symbol} ({adjustment_type}): {str(e)}"
         adjustment_status_queue.put({"status": "error", "message": error_message})
-        print(f"Error during adjustment status monitoring: {e}")
+        logger.exception(f"Error during adjustment status monitoring for {symbol}: {e}")
     finally:
         release_trade_db_connection(conn, cur)
 
@@ -192,11 +196,11 @@ def update_trade_record(cur, conn, trade_id, qty, actual_price, adjustment_type)
             adjustment_type, abs(qty), actual_price, trade_id
         ))
         conn.commit()
-        print(f"Updated trade record for trade ID {trade_id}")
+        logger.info(f"Updated trade record for trade ID {trade_id}")
 
     except Exception as e:
         conn.rollback()
-        print(f"Error updating trade ID {trade_id}: {e}")
+        logger.exception(f"Error updating trade ID {trade_id}: {e}")
 
 def get_trade_id_by_symbol(cur, symbol):
     """
@@ -208,5 +212,5 @@ def get_trade_id_by_symbol(cur, symbol):
         result = cur.fetchone()
         return result['trade_id'] if result else None
     except Exception as e:
-        print(f"Error retrieving trade ID: {e}")
+        logger.error(f"Error retrieving trade ID for symbol {symbol}: {e}")
         return None
