@@ -1,4 +1,3 @@
-import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -54,8 +53,7 @@ class NonTradableTicks:
         insert_query = """
         INSERT INTO nontradable_ticks (
             instrument_token, last_price, change, exchange_timestamp
-        )
-        VALUES (%s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s)
         """
         values = (
             self.instrument_token,
@@ -85,7 +83,11 @@ class NonTradableTicks:
         data_to_insert = []
         for tick in ticks:
             if not tick.get('tradable'):
-                exchange_timestamp = tick['exchange_timestamp'].isoformat() if hasattr(tick['exchange_timestamp'], 'isoformat') else tick['exchange_timestamp']
+                exchange_timestamp = (
+                    tick['exchange_timestamp'].isoformat()
+                    if hasattr(tick['exchange_timestamp'], 'isoformat')
+                    else tick['exchange_timestamp']
+                )
                 data_to_insert.append((
                     tick['instrument_token'],
                     tick['last_price'],
