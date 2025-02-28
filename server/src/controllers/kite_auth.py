@@ -1,5 +1,7 @@
 import os
 import logging
+import asyncio
+import atexit
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import RedirectResponse
 from kiteconnect import KiteConnect
@@ -16,11 +18,17 @@ router = APIRouter()
 
 kite = KiteConnect(api_key=os.getenv("API_KEY"))
 
-# Global ThreadPoolExecutor (for other tasks)
+# Global ThreadPoolExecutor
 thread_pool = ThreadPoolExecutor(max_workers=5)
 
-# Global variable to hold our ticker equity process.
+# Global variable to hold our ticker equity process
 equity_process = None
+
+async def generate_session_async(request_token):
+    """Run kite.generate_session in a separate thread to prevent blocking."""
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor() as pool:
+        return await loop.run_in_executor(pool, lambda: kite.generate_session(request_token, os.getenv("API_SECRET")))
 
 @router.get("/auth")
 async def auth():
@@ -38,28 +46,34 @@ async def auth():
 
 @router.get("/callback")
 async def callback(request_token: str):
-    """
-    Handles the callback after the user logs in via Kite.
-    """
-    from services import get_instrument_indices, get_instrument_equity
+    """Handles the callback after the user logs in via Kite."""
+    from services import get_instrument_indices, get_instrument_equity, get_instrument_fno, generate_option_chain_nifty, generate_option_chain_fin_nifty, generate_option_chain_bank_nifty, filter_expiry_dates
     global equity_process
     try:
         current_scheduler = get_scheduler()
-
-        session = kite.generate_session(request_token, os.getenv("API_SECRET"))
+        
+        # Generate session asynchronously
+        session = await generate_session_async(request_token)
         access_token = session["access_token"]
         kite.set_access_token(access_token)
-
+        
+        get_instrument_fno()
         get_instrument_indices()
         get_instrument_equity()
+        filter_expiry_dates() 
+        generate_option_chain_nifty()
+        generate_option_chain_bank_nifty()
+        generate_option_chain_fin_nifty()
         initialize_kite_ticker(access_token)
 
         # Start the equity ticker in a separate process if not already running.
-        if equity_process is None or not equity_process.is_alive():
-            from .run_kite_ticker_equity import main as run_equity_ticker
-            equity_process = Process(target=run_equity_ticker, args=(access_token,))
-            equity_process.start()
-            logger.info("Started KiteTickerEquity process.")
+        # from .run_kite_ticker_equity import main as run_equity_ticker
+        # if equity_process and equity_process.is_alive():
+        #     logger.info("KiteTickerEquity process already running. Not starting a new one.")
+        # else:
+        #     equity_process = Process(target=run_equity_ticker, args=(access_token,), daemon=True)
+        #     equity_process.start()
+        #     logger.info("Started KiteTickerEquity process.")
 
         logger.info("Kite authentication callback successful.")
         return RedirectResponse(url="https://devstatz.com?login=true&kiteAuth=success")
@@ -67,3 +81,12 @@ async def callback(request_token: str):
     except Exception as e:
         logger.error(f"Error in /callback endpoint: {e}")
         raise HTTPException(status_code=400, detail="Kite callback failed")
+
+# @atexit.register
+# def cleanup():
+#     """Terminate process on FastAPI shutdown."""
+#     global equity_process
+#     if equity_process and equity_process.is_alive():
+#         equity_process.terminate()
+#         equity_process.join()
+#         logger.info("KiteTickerEquity process terminated on FastAPI shutdown.")

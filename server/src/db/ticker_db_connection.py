@@ -37,7 +37,7 @@ def get_ticker_db_connection():
         # Get a connection from the pool
         conn = ticker_conn_pool.getconn()
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        logger.info("Ticker DB connection retrieved from pool.")
+        # logger.info("Ticker DB connection retrieved from pool.")
         return conn, cur
     except Exception as e:
         logger.error(f"Error getting ticker DB connection: {e}")
@@ -48,13 +48,12 @@ def release_ticker_db_connection(conn, cur):
     try:
         if cur:
             cur.close()  # Close the cursor
-            logger.info("Ticker DB cursor closed.")
     except Exception as e:
         logger.error(f"Error closing ticker DB cursor: {e}")
     try:
         if conn:
             ticker_conn_pool.putconn(conn)
-            logger.info("Ticker DB connection released back to pool.")
+            # logger.info("Ticker DB connection released back to pool.")
     except Exception as e:
         logger.error(f"Error releasing ticker DB connection: {e}")
 
@@ -64,6 +63,6 @@ def close_ticker_pool():
         if ticker_conn_pool:
             ticker_conn_pool.closeall()
             ticker_conn_pool = None
-            logger.info("Ticker DB connection pool closed.")
+            # logger.info("Ticker DB connection pool closed.")
     except Exception as e:
         logger.error(f"Error closing ticker DB connection pool: {e}")
