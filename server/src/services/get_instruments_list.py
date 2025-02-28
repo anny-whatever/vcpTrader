@@ -4,7 +4,7 @@ import logging
 from requests import get
 from controllers import kite 
 from db import get_db_connection, close_db_connection
-from models import IndicesInstruments, EquityInstruments
+from models import IndicesInstruments
 
 logger = logging.getLogger(__name__)
 
@@ -53,3 +53,5 @@ def get_instrument_indices():
         return {"data": filtered_response}
     else:
         return {"error": "Access token not found"}
+
+
