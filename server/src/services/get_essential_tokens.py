@@ -39,6 +39,10 @@ def refresh_tokens():
         cur.execute("SELECT instrument_token FROM price_alerts;")
         for row in cur.fetchall():
             new_set.add(row['instrument_token'])
+        
+        cur.execute("SELECT instrument_token FROM indices_instruments;")
+        for row in cur.fetchall():
+            new_set.add(row['instrument_token'])
             
         # Replace the existing tokens list with the new set of tokens
         filtered_tokens = list(new_set)
