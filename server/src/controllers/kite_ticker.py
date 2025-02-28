@@ -19,6 +19,13 @@ executor = ThreadPoolExecutor(max_workers=20)
 MONITOR_LIVE_TRADE_START = dtime(9, 20)
 MONITOR_LIVE_TRADE_END = dtime(15, 29)
 
+TICKER_LIVE_TRADE_START = dtime(9, 15)
+TICKER_LIVE_TRADE_END = dtime(15, 30)
+
+def is_within_trade_time_range():
+    now = datetime.now().time()
+    return TICKER_LIVE_TRADE_START <= now <= TICKER_LIVE_TRADE_END
+
 def is_within_monitor_live_trade_time_range():
     now = datetime.now().time()
     return MONITOR_LIVE_TRADE_START <= now <= MONITOR_LIVE_TRADE_END
@@ -29,7 +36,7 @@ def get_instrument_token():
     Tokens are fetched from watchlist, trades, screener_results, and price_alerts.
     """
     conn, cur = None, None
-    tokens = []
+    tokens = []  # Example tokens
     try:
         conn, cur = get_trade_db_connection()
 
@@ -44,8 +51,11 @@ def get_instrument_token():
 
         cur.execute("SELECT instrument_token FROM price_alerts;")
         price_alert_tokens = cur.fetchall()
+        
+        cur.execute("SELECT instrument_token FROM indices_instruments;")
+        indices_tokens = cur.fetchall()
 
-        tokens.extend(item['instrument_token'] for item in (watchlist_tokens + trades_tokens + screener_tokens + price_alert_tokens))
+        tokens.extend(item['instrument_token'] for item in (watchlist_tokens + trades_tokens + screener_tokens + price_alert_tokens + indices_tokens))
         logger.info(f"Instrument tokens for alerts retrieved: {tokens}")
         return tokens
     except Exception as err:
@@ -147,6 +157,14 @@ def start_kite_ticker():
                     loop.run_until_complete(loop.shutdown_asyncgens())
                     loop.close()
             # Process ticks for live updates, alerts, and auto-exit actions
+            async def async_save_ticks(ticks):
+                from services import save_nontradable_ticks
+                # Call your save functions (each function will iterate over ticks and decide which ones to save)
+                if is_within_trade_time_range():
+                    save_nontradable_ticks(ticks)
+
+            # Submit the async_save_ticks coroutine to the executor.
+            executor.submit(run_async_in_thread, async_save_ticks, ticks)
             executor.submit(run_async_in_thread, process_and_send_live_ticks, ticks)
             executor.submit(run_async_in_thread, process_live_alerts, ticks)
             if is_within_monitor_live_trade_time_range():

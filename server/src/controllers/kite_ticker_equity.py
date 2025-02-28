@@ -4,6 +4,7 @@ import time
 import asyncio
 import logging
 from kiteconnect import KiteTicker
+from datetime import datetime, time as dtime
 from dotenv import load_dotenv
 from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
@@ -16,6 +17,13 @@ logger = logging.getLogger(__name__)
 # Global ticker instance and executor for async tasks.
 kite_ticker_equity = None
 executor = ThreadPoolExecutor(max_workers=20)
+
+MONITOR_LIVE_TRADE_START = dtime(9, 15)
+MONITOR_LIVE_TRADE_END = dtime(15, 30)
+
+def is_within_trade_time_range():
+    now = datetime.now().time()
+    return MONITOR_LIVE_TRADE_START <= now <= MONITOR_LIVE_TRADE_END
 
 def get_equity_tokens():
     """
@@ -86,8 +94,9 @@ def start_kite_ticker_equity():
             # async def async_save_ticks(ticks):
             #     from services import save_tradable_ticks, save_nontradable_ticks
             #     # Call your save functions (each function will iterate over ticks and decide which ones to save)
-            #     save_tradable_ticks(ticks)
-            #     save_nontradable_ticks(ticks)
+            #     if is_within_trade_time_range():
+            #         save_tradable_ticks(ticks)
+            #         save_nontradable_ticks(ticks)
 
             # # Submit the async_save_ticks coroutine to the executor.
             # executor.submit(run_async_in_thread, async_save_ticks, ticks)
