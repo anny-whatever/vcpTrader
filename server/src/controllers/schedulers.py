@@ -1,10 +1,12 @@
 import logging
 from datetime import datetime, time as dtime, timedelta
 
+from concurrent.futures import ThreadPoolExecutor
+from time import sleep
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.schedulers.base import STATE_RUNNING
-
+from signals import fema_runner_five_minute_short, fema_runner_fifteen_minute_long
 logger = logging.getLogger(__name__)
 scheduler = None
 
@@ -87,43 +89,64 @@ def resample_job_one_minute():
     except Exception as e:
         logger.error(f"Error in resample_job_one_minute: {e}")
 
+def is_within_strategy_time_range():
+    now = datetime.now().time()
+    STRATEGY_START_TIME = dtime(9, 20)
+    STRATEGY_END_TIME = dtime(15, 25)
+    return STRATEGY_START_TIME <= now <= STRATEGY_END_TIME
+
 def resample_job_five_minute():
     """
-    Grabs the last 5 minutes of 1-min data or raw ticks, resamples to 5-min candles,
-    stores in 'ohlc_resampled'.
+    Resamples 1-min data into 5-min candles and, if within trading and strategy times,
+    launches the 5EMA short strategy runner on separate threads.
     """
     try:
         from services import calculate_ohlcv_5min
         end_time = datetime.now().replace(second=0, microsecond=0)
         start_time_five_min = end_time - timedelta(minutes=5)
-        instrument_tokens = [256265, 260105, 257801]
+        sleep(1.15)  # Small delay if needed
 
         if is_within_resample_time_range():
             logger.info("Running 5-minute resample job...")
-            calculate_ohlcv_5min(instrument_tokens, start_time_five_min, end_time)
+            calculate_ohlcv_5min([256265, 260105, 257801], start_time_five_min, end_time)
         else:
             logger.info("Outside trading hours, skipping 5-min resample job.")
 
+        if is_within_strategy_time_range():
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                # Launch the short strategy runner for each index
+                executor.submit(fema_runner_five_minute_short, 'nifty', 'fema_five_short')
+                executor.submit(fema_runner_five_minute_short, 'banknifty', 'fema_five_short')
+                executor.submit(fema_runner_five_minute_short, 'finnifty', 'fema_five_short')
+        else:
+            logger.info("Outside strategy time range, not launching short strategy runner.")
     except Exception as e:
         logger.error(f"Error in resample_job_five_minute: {e}")
 
 def resample_job_fifteen_minute():
     """
-    Grabs the last 15 minutes of 1-min data, resamples to 15-min candles, 
-    stores in 'ohlc_resampled'.
+    Resamples 1-min data into 15-min candles and, if within trading and strategy times,
+    launches the 5EMA long strategy runner on separate threads.
     """
     try:
         from services import calculate_ohlcv_15min
         end_time = datetime.now().replace(second=0, microsecond=0)
         start_time_fifteen_min = end_time - timedelta(minutes=15)
-        instrument_tokens = [256265, 260105, 257801]
 
         if is_within_resample_time_range():
             logger.info("Running 15-minute resample job...")
-            calculate_ohlcv_15min(instrument_tokens, start_time_fifteen_min, end_time)
+            calculate_ohlcv_15min([256265, 260105, 257801], start_time_fifteen_min, end_time)
         else:
             logger.info("Outside trading hours, skipping 15-min resample job.")
 
+        if is_within_strategy_time_range():
+            with ThreadPoolExecutor(max_workers=3) as executor:
+                # Launch the long strategy runner for each index
+                executor.submit(fema_runner_fifteen_minute_long, 'nifty', 'fema_fifteen_long')
+                executor.submit(fema_runner_fifteen_minute_long, 'banknifty', 'fema_fifteen_long')
+                executor.submit(fema_runner_fifteen_minute_long, 'finnifty', 'fema_fifteen_long')
+        else:
+            logger.info("Outside strategy time range, not launching long strategy runner.")
     except Exception as e:
         logger.error(f"Error in resample_job_fifteen_minute: {e}")
 

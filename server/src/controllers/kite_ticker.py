@@ -12,13 +12,15 @@ from db import get_trade_db_connection, release_trade_db_connection
 
 load_dotenv()
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
+# Global KiteTicker and executor for asynchronous tasks
 kite_ticker = None
 executor = ThreadPoolExecutor(max_workers=20)
 
-MONITOR_LIVE_TRADE_START = dtime(9, 20)
+# Time constants for trade and ticker windows
+MONITOR_LIVE_TRADE_START = dtime(9, 18)
 MONITOR_LIVE_TRADE_END = dtime(15, 29)
-
 TICKER_LIVE_TRADE_START = dtime(9, 15)
 TICKER_LIVE_TRADE_END = dtime(15, 30)
 
@@ -33,7 +35,8 @@ def is_within_monitor_live_trade_time_range():
 def get_instrument_token():
     """
     Retrieve tokens for alerts and auto_exit functions.
-    Tokens are fetched from watchlist, trades, screener_results, and price_alerts.
+    Tokens are fetched from watchlist, trades, screener_results, price_alerts,
+    and indices_instruments tables.
     """
     conn, cur = None, None
     tokens = []  # Example tokens
@@ -101,9 +104,9 @@ def update_kite_ticker_subscription(new_tokens):
 def initialize_kite_ticker(access_token):
     """
     Called once at startup to:
-    - Initialize the Kite Ticker
-    - Start the DB listener thread
-    - Start the ticker thread
+      - Initialize the KiteTicker
+      - Start the DB listener thread
+      - Start the ticker thread
     """
     global kite_ticker
     try:
@@ -136,9 +139,10 @@ def initialize_kite_ticker(access_token):
 def start_kite_ticker():
     global kite_ticker
 
-    # Import your other service modules
+    # Import additional service modules
     from .ws_clients import process_and_send_live_ticks
     from services import process_live_alerts, process_live_auto_exit
+    from signals import monitor_live_position_fema_short, monitor_live_position_fema_long
 
     tokens = get_instrument_token()
     if isinstance(tokens, dict):  # Indicates an error occurred
@@ -157,18 +161,20 @@ def start_kite_ticker():
                     loop.run_until_complete(loop.shutdown_asyncgens())
                     loop.close()
             # Process ticks for live updates, alerts, and auto-exit actions
+
             async def async_save_ticks(ticks):
                 from services import save_nontradable_ticks
-                # Call your save functions (each function will iterate over ticks and decide which ones to save)
                 if is_within_trade_time_range():
                     save_nontradable_ticks(ticks)
 
-            # Submit the async_save_ticks coroutine to the executor.
             executor.submit(run_async_in_thread, async_save_ticks, ticks)
             executor.submit(run_async_in_thread, process_and_send_live_ticks, ticks)
             executor.submit(run_async_in_thread, process_live_alerts, ticks)
             if is_within_monitor_live_trade_time_range():
                 executor.submit(run_async_in_thread, process_live_auto_exit, ticks)
+            if is_within_monitor_live_trade_time_range():
+                executor.submit(monitor_live_position_fema_short, ticks, "fema_five_short")
+                executor.submit(monitor_live_position_fema_long, ticks, "fema_fifteen_long")
         except Exception as e:
             logger.error(f"Error processing ticks: {e}")
 
@@ -217,3 +223,4 @@ def start_kite_ticker():
         logger.info("KiteTicker connection initiated.")
     except Exception as e:
         logger.error(f"Error starting KiteTicker connection: {e}")
+
