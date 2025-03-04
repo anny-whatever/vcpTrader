@@ -5,8 +5,8 @@ import asyncio
 
 logger = logging.getLogger(__name__)
 
-TELEGRAM_BOT_TOKEN_FIVE_EMA = os.getenv("TELEGRAM_KEY")
-CHAT_ID_FIVE_EMA = os.getenv("TELEGRAM_CHAT_ID")
+TELEGRAM_BOT_TOKEN_FIVE_EMA = os.getenv("TELEGRAM_BOT_TOKEN_FIVE_EMA")
+CHAT_ID_FIVE_EMA = os.getenv("TELEGRAM_CHAT_ID_FIVE_EMA")
 
 async def send_telegram_message_five_ema(text: str):
     """
