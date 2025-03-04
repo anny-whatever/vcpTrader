@@ -154,7 +154,7 @@ def fema_monitor_signal_candle_long(index, strategy_type):
                     f"Entry Trigger      : {state['signal_candle_high']}\n"
                     f"Stoploss           : {state['signal_candle_low']}\n"
                     f"Time               : {last_candle['time_stamp']}\n"
-                    "Action             : Buy Call, Sell Put\n"
+                    "Action              : Algo is Waiting for entry trigger\n"
                     "------------------------------"
                 )
                 _send_telegram_signal(msg)
@@ -208,18 +208,6 @@ def monitor_live_entry_fema_long(ticks, strategy_type, index):
                     'strategy_type': strategy_type,
                     'index': index
                 }
-                msg = (
-                    f"5EMA Long {index}:\n"
-                    "------------------------------\n"
-                    "Trade Entry Triggered\n"
-                    f"Entry Price        : {entry_price}\n"
-                    f"Stoploss           : {stop_loss}\n"
-                    f"Target             : {profit_target}\n"
-                    f"Time               : {trade['entry_time']}\n"
-                    "------------------------------"
-                )
-                _send_telegram_signal(msg)
-                logger.info(msg)
                 fema_buy_entry_long(trade, index)
                 break
 
@@ -311,7 +299,8 @@ def fema_buy_entry_long(trade, index):
             f"Stoploss         : {trade['stop_loss']}\n"
             f"Target           : {trade['profit_target']}\n"
             f"Entry Time       : {trade['entry_time']}\n"
-            "Note             : Trade for educational purposes only\n"
+            f"Action           : Algo is Buying ATM Call, Selling ATM Put\n"
+            f"Note             : Trade for educational purposes only\n"
             "------------------------------"
         )
         _send_telegram_signal(msg)
@@ -414,7 +403,8 @@ def fema_buy_exit_long(trade, index, exit_reason):
             f"Put Exit Price       : {put_exit_price}\n"
             f"PnL                  : {pnl}\n"
             f"Exit Time            : {datetime.datetime.now()}\n"
-            "Note                 : Trade for educational purposes only\n"
+            f"Action               : Algo has now exited the trade\n"
+            "Note                  : Trade for educational purposes only\n"
             "------------------------------"
         )
         _send_telegram_signal(final_msg)
