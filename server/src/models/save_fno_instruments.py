@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 class FnoInstruments:
     def __init__(self, instrument_token, exchange_token, tradingsymbol, name, last_price, expiry, strike, tick_size, lot_size, instrument_type, segment, exchange):
         self.instrument_token = instrument_token
@@ -31,20 +35,34 @@ class FnoInstruments:
             exchange VARCHAR(255)
         );
         """
-        cur.execute(create_table_query)
-        
+        try:
+            cur.execute(create_table_query)
+            logger.info("Table fno_instruments created successfully (or already exists).")
+        except Exception as e:
+            logger.error(f"Error creating table fno_instruments: {e}")
+            raise e
         
     @classmethod
     def select_all(cls, cur):
-        select_query = """SELECT * FROM fno_instruments;"""
-        cur.execute(select_query)
-        return cur.fetchall()
-        
+        select_query = "SELECT * FROM fno_instruments;"
+        try:
+            cur.execute(select_query)
+            results = cur.fetchall()
+            logger.info("Retrieved all records from fno_instruments successfully.")
+            return results
+        except Exception as e:
+            logger.error(f"Error selecting all records from fno_instruments: {e}")
+            raise e
 
     @classmethod
     def delete_all(cls, cur):
-        delete_query = """DELETE FROM fno_instruments;"""
-        cur.execute(delete_query)
+        delete_query = "DELETE FROM fno_instruments;"
+        try:
+            cur.execute(delete_query)
+            logger.info("Deleted all records from fno_instruments successfully.")
+        except Exception as e:
+            logger.error(f"Error deleting records from fno_instruments: {e}")
+            raise e
 
     def save(self, cur):
         insert_query = """
@@ -52,7 +70,13 @@ class FnoInstruments:
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (instrument_token) DO NOTHING;
         """
-        cur.execute(insert_query, (
-            self.instrument_token, self.exchange_token, self.tradingsymbol, self.name, self.last_price, self.expiry, self.strike,
-            self.tick_size, self.lot_size, self.instrument_type, self.segment, self.exchange
-        ))
+        try:
+            cur.execute(insert_query, (
+                self.instrument_token, self.exchange_token, self.tradingsymbol, self.name,
+                self.last_price, self.expiry, self.strike, self.tick_size, self.lot_size,
+                self.instrument_type, self.segment, self.exchange
+            ))
+
+        except Exception as e:
+            logger.error(f"Error saving FnoInstruments record with instrument_token {self.instrument_token}: {e}")
+            raise e

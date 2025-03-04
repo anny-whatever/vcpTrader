@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 class FemaModel:
     
     def __init__(self, type, index, sell_strike_order_id, buy_strike_order_id, sell_strike_entry_price,
@@ -44,7 +48,12 @@ class FemaModel:
             target_level DECIMAL
         );
         """
-        cur.execute(create_table_query)
+        try:
+            cur.execute(create_table_query)
+            logger.info("Table fema_positions created successfully (or already exists).")
+        except Exception as e:
+            logger.error(f"Error creating table fema_positions: {e}")
+            raise e
 
     @classmethod
     def create_table_flags(cls, cur):
@@ -59,7 +68,12 @@ class FemaModel:
             trail_flag BOOLEAN
         );
         """
-        cur.execute(create_table_query)
+        try:
+            cur.execute(create_table_query)
+            logger.info("Table fema_flags created successfully (or already exists).")
+        except Exception as e:
+            logger.error(f"Error creating table fema_flags: {e}")
+            raise e
 
     def insert_trade_data(self, cur):
         try:
@@ -76,8 +90,10 @@ class FemaModel:
                 self.buy_strike_instrument_token, self.sell_strike_trading_symbol, self.buy_strike_trading_symbol,
                 self.expiry, self.qty, self.entry_time, self.entry_price, self.stop_loss_level, self.target_level
             ))
+            logger.info(f"Inserted trade data for type {self.type} successfully.")
         except Exception as e:
-            print(f"Error inserting trade data: {e}")
+            logger.error(f"Error inserting trade data for type {self.type}: {e}")
+            raise e
 
     @classmethod
     def get_trade_data_by_type(cls, cur, type):
@@ -88,8 +104,14 @@ class FemaModel:
         FROM fema_positions
         WHERE type = %s
         """
-        cur.execute(select_query, (type,))
-        return cur.fetchall()
+        try:
+            cur.execute(select_query, (type,))
+            results = cur.fetchall()
+            logger.info(f"Retrieved trade data for type {type}.")
+            return results
+        except Exception as e:
+            logger.error(f"Error retrieving trade data for type {type}: {e}")
+            raise e
 
     @classmethod
     def delete_trade_data_by_type(cls, cur, type):
@@ -97,16 +119,26 @@ class FemaModel:
         DELETE FROM fema_positions
         WHERE type = %s
         """
-        cur.execute(delete_query, (type,))
+        try:
+            cur.execute(delete_query, (type,))
+            logger.info(f"Deleted trade data for type {type} successfully.")
+        except Exception as e:
+            logger.error(f"Error deleting trade data for type {type}: {e}")
+            raise e
 
     @classmethod
-    def set_flags(cls, cur, type, signal_candle_flag, open_trade_flag, signal_candle_low, signal_candle_high):
+    def set_flags(cls, cur, type, index, signal_candle_flag, open_trade_flag, signal_candle_low, signal_candle_high):
         update_query = """
         UPDATE fema_flags
         SET signal_candle_flag = %s, open_trade_flag = %s, signal_candle_low = %s, signal_candle_high = %s
-        WHERE type = %s
+        WHERE type = %s AND index = %s
         """
-        cur.execute(update_query, (signal_candle_flag, open_trade_flag, signal_candle_low, signal_candle_high, type))
+        try:
+            cur.execute(update_query, (signal_candle_flag, open_trade_flag, signal_candle_low, signal_candle_high, type, index))
+            logger.info(f"Updated flags for type {type} and index {index} successfully.")
+        except Exception as e:
+            logger.error(f"Error updating flags for type {type} and index {index}: {e}")
+        raise e
 
     @classmethod
     def get_flags_by_type(cls, cur, type):
@@ -115,8 +147,14 @@ class FemaModel:
         FROM fema_flags
         WHERE type = %s
         """
-        cur.execute(select_query, (type,))
-        return cur.fetchall()
+        try:
+            cur.execute(select_query, (type,))
+            results = cur.fetchall()
+            logger.info(f"Retrieved flags for type {type} successfully.")
+            return results
+        except Exception as e:
+            logger.error(f"Error retrieving flags for type {type}: {e}")
+            raise e
 
     @classmethod
     def set_trail_flag(cls, cur, type, trail_flag):
@@ -125,7 +163,12 @@ class FemaModel:
         SET trail_flag = %s
         WHERE type = %s
         """
-        cur.execute(update_query, (trail_flag, type))
+        try:
+            cur.execute(update_query, (trail_flag, type))
+            logger.info(f"Updated trail flag for type {type} successfully.")
+        except Exception as e:
+            logger.error(f"Error updating trail flag for type {type}: {e}")
+            raise e
 
     @classmethod
     def set_trailing_sl(cls, cur, type, trailing_sl):
@@ -134,4 +177,9 @@ class FemaModel:
         SET stop_loss_level = %s
         WHERE type = %s
         """
-        cur.execute(update_query, (trailing_sl, type))
+        try:
+            cur.execute(update_query, (trailing_sl, type))
+            logger.info(f"Updated trailing stop loss for type {type} successfully.")
+        except Exception as e:
+            logger.error(f"Error updating trailing stop loss for type {type}: {e}")
+            raise e

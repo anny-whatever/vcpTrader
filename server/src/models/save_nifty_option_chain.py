@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 class NiftyOptionChain:
     def __init__(self, instrument_token, exchange_token, tradingsymbol, name, last_price, expiry, strike, tick_size, lot_size, instrument_type, segment, exchange):
         self.instrument_token = instrument_token
@@ -31,45 +35,82 @@ class NiftyOptionChain:
             exchange VARCHAR(255)
         );
         """
-        cur.execute(create_table_query)
-        
+        try:
+            cur.execute(create_table_query)
+            logger.info("Table nifty_option_chain created successfully (or already exists).")
+        except Exception as e:
+            logger.error(f"Error creating table nifty_option_chain: {e}")
+            raise e
         
     @classmethod
     def select_all(cls, cur):
-        select_query = """SELECT * FROM nifty_option_chain ORDER BY expiry ASC;"""
-        cur.execute(select_query)
-        return cur.fetchall()
+        select_query = "SELECT * FROM nifty_option_chain ORDER BY expiry ASC;"
+        try:
+            cur.execute(select_query)
+            results = cur.fetchall()
+            logger.info("Retrieved all records from nifty_option_chain successfully.")
+            return results
+        except Exception as e:
+            logger.error(f"Error selecting all records from nifty_option_chain: {e}")
+            raise e
 
     @classmethod
     def select_by_expiry(cls, cur, instrument_token):
-        select_query = """SELECT * FROM nifty_option_chain WHERE expiry = %s ORDER BY strike ASC;"""
-        cur.execute(select_query, (instrument_token,))
-        return cur.fetchall()
+        select_query = "SELECT * FROM nifty_option_chain WHERE expiry = %s ORDER BY strike ASC;"
+        try:
+            cur.execute(select_query, (instrument_token,))
+            results = cur.fetchall()
+            logger.info(f"Retrieved records from nifty_option_chain for expiry {instrument_token} successfully.")
+            return results
+        except Exception as e:
+            logger.error(f"Error selecting records by expiry {instrument_token} from nifty_option_chain: {e}")
+            raise e
     
     @classmethod
     def select_by_strike_and_expiry(cls, cur, expiry, strike):
-        select_query = """SELECT * FROM nifty_option_chain WHERE strike = %s AND expiry = %s ORDER BY strike ASC;"""
-        cur.execute(select_query, (strike, expiry))
-        return cur.fetchall()
-    
+        select_query = "SELECT * FROM nifty_option_chain WHERE strike = %s AND expiry = %s ORDER BY strike ASC;"
+        try:
+            cur.execute(select_query, (strike, expiry))
+            results = cur.fetchall()
+            logger.info(f"Retrieved records from nifty_option_chain for strike {strike} and expiry {expiry} successfully.")
+            return results
+        except Exception as e:
+            logger.error(f"Error selecting records by strike {strike} and expiry {expiry} from nifty_option_chain: {e}")
+            raise e
+
     @classmethod
     def select_by_expiry_and_type(cls, cur, expiry, instrument_type):
-        select_query = """SELECT * FROM nifty_option_chain WHERE expiry = %s AND instrument_type = %s ORDER BY strike ASC;"""
-        cur.execute(select_query, (expiry, instrument_type))
-        return cur.fetchall()
-    
+        select_query = "SELECT * FROM nifty_option_chain WHERE expiry = %s AND instrument_type = %s ORDER BY strike ASC;"
+        try:
+            cur.execute(select_query, (expiry, instrument_type))
+            results = cur.fetchall()
+            logger.info(f"Retrieved records from nifty_option_chain for expiry {expiry} and instrument_type {instrument_type} successfully.")
+            return results
+        except Exception as e:
+            logger.error(f"Error selecting records by expiry {expiry} and instrument_type {instrument_type} from nifty_option_chain: {e}")
+            raise e
+
     @classmethod
     def select_by_strike_and_expiry_and_type(cls, cur, expiry, strike, instrument_type):
-        select_query = """SELECT * FROM nifty_option_chain WHERE strike = %s AND expiry = %s AND instrument_type = %s;"""
-        cur.execute(select_query, (strike, expiry, instrument_type))
-        return cur.fetchall()
-    
-    
+        select_query = "SELECT * FROM nifty_option_chain WHERE strike = %s AND expiry = %s AND instrument_type = %s;"
+        try:
+            cur.execute(select_query, (strike, expiry, instrument_type))
+            results = cur.fetchall()
+            logger.info(f"Retrieved records from nifty_option_chain for strike {strike}, expiry {expiry} and instrument_type {instrument_type} successfully.")
+            return results
+        except Exception as e:
+            logger.error(f"Error selecting records by strike {strike}, expiry {expiry} and instrument_type {instrument_type} from nifty_option_chain: {e}")
+            raise e
 
     @classmethod
     def delete_all(cls, cur):
-        delete_query = """DELETE FROM nifty_option_chain;"""
-        cur.execute(delete_query)
+        delete_query = "DELETE FROM nifty_option_chain;"
+        try:
+            cur.execute(delete_query)
+            logger.info("Deleted all records from nifty_option_chain successfully.")
+        except Exception as e:
+            logger.error(f"Error deleting records from nifty_option_chain: {e}")
+            raise e
 
     def save(self, cur):
         insert_query = """
@@ -77,4 +118,13 @@ class NiftyOptionChain:
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (instrument_token) DO NOTHING;
         """
-        cur.execute(insert_query, (self.instrument_token, self.exchange_token, self.tradingsymbol, self.name, self.last_price, self.expiry, self.strike, self.tick_size, self.lot_size, self.instrument_type, self.segment, self.exchange))
+        try:
+            cur.execute(insert_query, (
+                self.instrument_token, self.exchange_token, self.tradingsymbol, self.name,
+                self.last_price, self.expiry, self.strike, self.tick_size, self.lot_size,
+                self.instrument_type, self.segment, self.exchange
+            ))
+
+        except Exception as e:
+            logger.error(f"Error saving NiftyOptionChain record with instrument_token {self.instrument_token}: {e}")
+            raise e

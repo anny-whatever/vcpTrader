@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 class BankNiftyOptionChain:
     def __init__(self, instrument_token, exchange_token, tradingsymbol, name, last_price, expiry, strike, tick_size, lot_size, instrument_type, segment, exchange):
         self.instrument_token = instrument_token
@@ -31,32 +35,72 @@ class BankNiftyOptionChain:
             exchange VARCHAR(255)
         );
         """
-        cur.execute(create_table_query)
-        
-        
+        try:
+            cur.execute(create_table_query)
+            logger.info("Table bank_nifty_option_chain created successfully (or already exists).")
+        except Exception as e:
+            logger.error(f"Error creating table bank_nifty_option_chain: {e}")
+            raise e
+
     @classmethod
     def select_all(cls, cur):
-        select_query = """SELECT * FROM bank_nifty_option_chain;"""
-        cur.execute(select_query)
-        return cur.fetchall()
-    
+        select_query = "SELECT * FROM bank_nifty_option_chain;"
+        try:
+            cur.execute(select_query)
+            results = cur.fetchall()
+            logger.info("Retrieved all records from bank_nifty_option_chain successfully.")
+            return results
+        except Exception as e:
+            logger.error(f"Error selecting all records from bank_nifty_option_chain: {e}")
+            raise e
+
     @classmethod
-    def select_by_expiry(cls, cur, instrument_token):
-        select_query = """SELECT * FROM bank_nifty_option_chain WHERE expiry = %s;"""
-        cur.execute(select_query, (instrument_token,))
-        return cur.fetchall()
-    
+    def select_by_expiry(cls, cur, expiry):
+        select_query = "SELECT * FROM bank_nifty_option_chain WHERE expiry = %s;"
+        try:
+            cur.execute(select_query, (expiry,))
+            results = cur.fetchall()
+            logger.info(f"Retrieved records for expiry {expiry} successfully.")
+            return results
+        except Exception as e:
+            logger.error(f"Error selecting records by expiry {expiry}: {e}")
+            raise e
+
     @classmethod
-    def select_by_strike_and_expiry(cls, cur, instrument_token, strike):
-        select_query = """SELECT * FROM bank_nifty_option_chain WHERE strike = %s AND expiry = %s;"""
-        cur.execute(select_query, (strike, instrument_token))
-        return cur.fetchall()
+    def select_by_strike_and_expiry(cls, cur, expiry, strike):
+        select_query = "SELECT * FROM bank_nifty_option_chain WHERE strike = %s AND expiry = %s;"
+        try:
+            cur.execute(select_query, (strike, expiry))
+            results = cur.fetchall()
+            logger.info(f"Retrieved records for strike {strike} and expiry {expiry} successfully.")
+            return results
+        except Exception as e:
+            logger.error(f"Error selecting records for strike {strike} and expiry {expiry}: {e}")
+            raise e
 
     @classmethod
     def delete_all(cls, cur):
-        delete_query = """DELETE FROM bank_nifty_option_chain;"""
-        cur.execute(delete_query)
+        delete_query = "DELETE FROM bank_nifty_option_chain;"
+        try:
+            cur.execute(delete_query)
+            logger.info("Deleted all records from bank_nifty_option_chain successfully.")
+        except Exception as e:
+            logger.error(f"Error deleting records from bank_nifty_option_chain: {e}")
+            raise e
 
     def save(self, cur):
-        insert_query = """INSERT INTO bank_nifty_option_chain (instrument_token, exchange_token, tradingsymbol, name, last_price, expiry, strike, tick_size, lot_size, instrument_type, segment, exchange) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ON CONFLICT (instrument_token) DO NOTHING;"""
-        cur.execute(insert_query, (self.instrument_token, self.exchange_token, self.tradingsymbol, self.name, self.last_price, self.expiry, self.strike, self.tick_size, self.lot_size, self.instrument_type, self.segment, self.exchange))
+        insert_query = """
+        INSERT INTO bank_nifty_option_chain (instrument_token, exchange_token, tradingsymbol, name, last_price, expiry, strike, tick_size, lot_size, instrument_type, segment, exchange)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (instrument_token) DO NOTHING;
+        """
+        try:
+            cur.execute(insert_query, (
+                self.instrument_token, self.exchange_token, self.tradingsymbol, self.name, self.last_price,
+                self.expiry, self.strike, self.tick_size, self.lot_size, self.instrument_type,
+                self.segment, self.exchange
+            ))
+
+        except Exception as e:
+            logger.error(f"Error saving BankNiftyOptionChain record with instrument_token {self.instrument_token}: {e}")
+            raise e
