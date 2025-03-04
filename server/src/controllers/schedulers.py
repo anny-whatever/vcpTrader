@@ -1,12 +1,11 @@
 import logging
 from datetime import datetime, time as dtime, timedelta
-
 from concurrent.futures import ThreadPoolExecutor
 from time import sleep
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.schedulers.base import STATE_RUNNING
-from signals import fema_runner_five_minute_short, fema_runner_fifteen_minute_long
+
 logger = logging.getLogger(__name__)
 scheduler = None
 
@@ -101,10 +100,11 @@ def resample_job_five_minute():
     launches the 5EMA short strategy runner on separate threads.
     """
     try:
+        from signals import fema_runner_five_minute_short, fema_runner_fifteen_minute_long
         from services import calculate_ohlcv_5min
         end_time = datetime.now().replace(second=0, microsecond=0)
         start_time_five_min = end_time - timedelta(minutes=5)
-        sleep(1.15)  # Small delay if needed
+        sleep(0.5)  # Small delay if needed
 
         if is_within_resample_time_range():
             logger.info("Running 5-minute resample job...")
@@ -129,10 +129,11 @@ def resample_job_fifteen_minute():
     launches the 5EMA long strategy runner on separate threads.
     """
     try:
+        from signals import fema_runner_five_minute_short, fema_runner_fifteen_minute_long
         from services import calculate_ohlcv_15min
         end_time = datetime.now().replace(second=0, microsecond=0)
         start_time_fifteen_min = end_time - timedelta(minutes=15)
-
+        sleep(0.5)  # Small delay if needed
         if is_within_resample_time_range():
             logger.info("Running 15-minute resample job...")
             calculate_ohlcv_15min([256265, 260105, 257801], start_time_fifteen_min, end_time)
