@@ -107,7 +107,6 @@ async def process_live_auto_exit(ticks):
                 continue
 
             current_price = float(matching_tick.get("last_price"))
-            logger.info(f"Auto-exit check for {symbol}: Current Price = {current_price}, Stop Loss = {stop_loss}")
 
             if current_price <= stop_loss:
                 logger.info(f"Auto exit triggered for {symbol}: current price {current_price} reached stop loss {stop_loss}")
