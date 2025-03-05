@@ -48,6 +48,7 @@ async def auth():
 async def callback(request_token: str):
     """Handles the callback after the user logs in via Kite."""
     from services import get_instrument_indices, get_instrument_equity, get_instrument_fno, generate_option_chain_nifty, generate_option_chain_fin_nifty, generate_option_chain_bank_nifty, filter_expiry_dates
+    from signals import initialize_long_strategy_state, initialize_short_strategy_state
     global equity_process
     try:
         current_scheduler = get_scheduler()
@@ -64,6 +65,8 @@ async def callback(request_token: str):
         generate_option_chain_nifty()
         generate_option_chain_bank_nifty()
         generate_option_chain_fin_nifty()
+        initialize_long_strategy_state('fema_five_long')
+        initialize_short_strategy_state('fema_five_short')
         initialize_kite_ticker(access_token)
 
         # Start the equity ticker in a separate process if not already running.
