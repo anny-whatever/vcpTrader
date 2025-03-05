@@ -1,3 +1,4 @@
+// App.jsx
 import React, { useState, useEffect, useContext, lazy } from "react";
 import {
   BrowserRouter,
@@ -5,6 +6,7 @@ import {
   Route,
   Navigate,
   useNavigate,
+  useLocation,
 } from "react-router-dom";
 import Navbar from "./components/NavbarComponent.jsx";
 import api from "./utils/api";
@@ -13,6 +15,7 @@ import { DataContext } from "./utils/DataContext.jsx";
 import { Toaster, toast } from "sonner";
 import { PlayAlertTriggerSound } from "./utils/PlaySound";
 import { jwtDecode } from "jwt-decode";
+import PnlDrawer from "./components/PnlDrawer"; // Floating P&L Drawer
 
 // Lazy-loaded pages
 const Dashboard = lazy(() => import("./pages/Dashboard.jsx"));
@@ -25,10 +28,8 @@ const Watchlist = lazy(() => import("./pages/Watchlist.jsx"));
 const isTokenExpired = (token) => {
   try {
     const decoded = jwtDecode(token);
-    // 'exp' is in seconds, so compare with current time in seconds
     return decoded.exp < Date.now() / 1000;
   } catch (error) {
-    // If there's an error decoding, consider the token invalid/expired
     return true;
   }
 };
@@ -40,19 +41,63 @@ const ProtectedRoute = ({ children }) => {
 
   useEffect(() => {
     if (token && isTokenExpired(token)) {
-      // Optionally, clear the token using a logout method
       logout();
-      // Redirect to login if the token is expired
       navigate("/login", { replace: true });
     }
   }, [token, logout, navigate]);
 
-  // If no token exists, redirect immediately
   if (!token) {
     return <Navigate to="/login" replace />;
   }
-
   return children;
+};
+
+// A component that wraps the routes and conditionally renders the PnlDrawer
+const AppRoutes = () => {
+  const location = useLocation();
+
+  return (
+    <>
+      <Navbar />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/allpositions"
+          element={
+            <ProtectedRoute>
+              <AllPositions />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/screener"
+          element={
+            <ProtectedRoute>
+              <Screener />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/watchlist"
+          element={
+            <ProtectedRoute>
+              <Watchlist />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/login" element={<LoginPage />} />
+      </Routes>
+      {/* Render the PnL drawer on all pages except "/allpositions" */}
+      {location.pathname !== "/allpositions" && <PnlDrawer />}
+    </>
+  );
 };
 
 function App() {
@@ -105,9 +150,7 @@ function App() {
             PlayAlertTriggerSound();
             toast.success(
               parsedData?.message || "Alert triggered successfully",
-              {
-                duration: 15000,
-              }
+              { duration: 15000 }
             );
           }
           if (parsedData?.event === "watchlist_updated") {
@@ -136,7 +179,6 @@ function App() {
 
     connect();
 
-    // Clean up on component unmount
     return () => {
       if (socket) {
         socket.close();
@@ -200,7 +242,7 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-[100vh] bg-zinc-900">
+    <div className="min-h-[100vh] bg-zinc-900 pb-12">
       <Toaster position="bottom-right" />
       <AuthProvider>
         <DataContext.Provider
@@ -215,42 +257,7 @@ function App() {
           }}
         >
           <BrowserRouter>
-            <Navbar />
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/allpositions"
-                element={
-                  <ProtectedRoute>
-                    <AllPositions />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/screener"
-                element={
-                  <ProtectedRoute>
-                    <Screener />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/watchlist"
-                element={
-                  <ProtectedRoute>
-                    <Watchlist />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/login" element={<LoginPage />} />
-            </Routes>
+            <AppRoutes />
           </BrowserRouter>
         </DataContext.Provider>
       </AuthProvider>
