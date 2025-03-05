@@ -8,7 +8,6 @@ class FemaModel:
                  buy_strike_entry_price, sell_strike_instrument_token, buy_strike_instrument_token,
                  sell_strike_trading_symbol, buy_strike_trading_symbol, expiry, qty, entry_time,
                  entry_price, stop_loss_level, target_level):
-        
         self.type = type
         self.index = index
         self.sell_strike_order_id = sell_strike_order_id
@@ -30,7 +29,7 @@ class FemaModel:
     def create_table_positions(cls, cur):
         create_table_query = """
         CREATE TABLE IF NOT EXISTS fema_positions ( 
-            type VARCHAR(255) PRIMARY KEY,
+            type VARCHAR(255),
             index VARCHAR(255),
             sell_strike_order_id VARCHAR(255),
             buy_strike_order_id VARCHAR(255),
@@ -45,7 +44,8 @@ class FemaModel:
             entry_time TIMESTAMPTZ,
             entry_price DECIMAL,
             stop_loss_level DECIMAL,
-            target_level DECIMAL
+            target_level DECIMAL,
+            PRIMARY KEY (type, index)
         );
         """
         try:
@@ -59,13 +59,14 @@ class FemaModel:
     def create_table_flags(cls, cur):
         create_table_query = """
         CREATE TABLE IF NOT EXISTS fema_flags (
-            type VARCHAR(255) PRIMARY KEY,
+            type VARCHAR(255),
             index VARCHAR(255),
             signal_candle_flag BOOLEAN,
             signal_candle_low DECIMAL,
             signal_candle_high DECIMAL,
             open_trade_flag BOOLEAN,
-            trail_flag BOOLEAN
+            trail_flag BOOLEAN,
+            PRIMARY KEY (type, index)
         );
         """
         try:
@@ -83,6 +84,22 @@ class FemaModel:
                 buy_strike_instrument_token, sell_strike_trading_symbol, buy_strike_trading_symbol, 
                 expiry, qty, entry_time, entry_price, stop_loss_level, target_level)    
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT ON CONSTRAINT fema_positions_pkey
+            DO UPDATE SET
+                sell_strike_order_id = EXCLUDED.sell_strike_order_id,
+                buy_strike_order_id = EXCLUDED.buy_strike_order_id,
+                sell_strike_entry_price = EXCLUDED.sell_strike_entry_price,
+                buy_strike_entry_price = EXCLUDED.buy_strike_entry_price,
+                sell_strike_instrument_token = EXCLUDED.sell_strike_instrument_token,
+                buy_strike_instrument_token = EXCLUDED.buy_strike_instrument_token,
+                sell_strike_trading_symbol = EXCLUDED.sell_strike_trading_symbol,
+                buy_strike_trading_symbol = EXCLUDED.buy_strike_trading_symbol,
+                expiry = EXCLUDED.expiry,
+                qty = EXCLUDED.qty,
+                entry_time = EXCLUDED.entry_time,
+                entry_price = EXCLUDED.entry_price,
+                stop_loss_level = EXCLUDED.stop_loss_level,
+                target_level = EXCLUDED.target_level;
             """
             cur.execute(insert_query, (
                 self.type, self.index, self.sell_strike_order_id, self.buy_strike_order_id,
@@ -90,7 +107,7 @@ class FemaModel:
                 self.buy_strike_instrument_token, self.sell_strike_trading_symbol, self.buy_strike_trading_symbol,
                 self.expiry, self.qty, self.entry_time, self.entry_price, self.stop_loss_level, self.target_level
             ))
-            logger.info(f"Inserted trade data for type {self.type} successfully.")
+            logger.info(f"Inserted/Updated trade data for type {self.type} successfully.")
         except Exception as e:
             logger.error(f"Error inserting trade data for type {self.type}: {e}")
             raise e
@@ -98,20 +115,16 @@ class FemaModel:
     @classmethod
     def get_trade_data_by_type(cls, cur, type):
         select_query = """
-        SELECT sell_strike_order_id, buy_strike_order_id, sell_strike_entry_price, buy_strike_entry_price, 
-               sell_strike_instrument_token, buy_strike_instrument_token, sell_strike_trading_symbol, 
-               buy_strike_trading_symbol, expiry, qty, entry_time, entry_price, stop_loss_level, target_level 
+        SELECT index, sell_strike_order_id, buy_strike_order_id, sell_strike_entry_price, buy_strike_entry_price, 
+            sell_strike_instrument_token, buy_strike_instrument_token, sell_strike_trading_symbol, 
+            buy_strike_trading_symbol, expiry, qty, entry_time, entry_price, stop_loss_level, target_level 
         FROM fema_positions
         WHERE type = %s
         """
-        try:
-            cur.execute(select_query, (type,))
-            results = cur.fetchall()
-            logger.info(f"Retrieved trade data for type {type}.")
-            return results
-        except Exception as e:
-            logger.error(f"Error retrieving trade data for type {type}: {e}")
-            raise e
+        cur.execute(select_query, (type,))
+        results = cur.fetchall()
+        logger.info(f"Retrieved trade data for type {type}.")
+        return results
 
     @classmethod
     def delete_trade_data_by_type(cls, cur, type):
@@ -138,36 +151,36 @@ class FemaModel:
             logger.info(f"Updated flags for type {type} and index {index} successfully.")
         except Exception as e:
             logger.error(f"Error updating flags for type {type} and index {index}: {e}")
-        raise e
-
-    @classmethod
-    def get_flags_by_type(cls, cur, type):
-        select_query = """
-        SELECT signal_candle_flag, signal_candle_low, signal_candle_high, open_trade_flag, trail_flag 
-        FROM fema_flags
-        WHERE type = %s
-        """
-        try:
-            cur.execute(select_query, (type,))
-            results = cur.fetchall()
-            logger.info(f"Retrieved flags for type {type} successfully.")
-            return results
-        except Exception as e:
-            logger.error(f"Error retrieving flags for type {type}: {e}")
             raise e
 
     @classmethod
-    def set_trail_flag(cls, cur, type, trail_flag):
+    def get_flags_by_type_and_index(cls, cur, type, index):
+        select_query = """
+        SELECT signal_candle_flag, signal_candle_low, signal_candle_high, open_trade_flag, trail_flag 
+        FROM fema_flags
+        WHERE type = %s AND index = %s
+        """
+        try:
+            cur.execute(select_query, (type, index))
+            results = cur.fetchall()
+            logger.info(f"Retrieved flags for type {type} and index {index} successfully.")
+            return results
+        except Exception as e:
+            logger.error(f"Error retrieving flags for type {type} and index {index}: {e}")
+            raise e
+
+    @classmethod
+    def set_trail_flag(cls, cur, type, index, trail_flag):
         update_query = """
         UPDATE fema_flags
         SET trail_flag = %s
-        WHERE type = %s
+        WHERE type = %s AND index = %s
         """
         try:
-            cur.execute(update_query, (trail_flag, type))
-            logger.info(f"Updated trail flag for type {type} successfully.")
+            cur.execute(update_query, (trail_flag, type, index))
+            logger.info(f"Updated trail flag for type {type} and index {index} successfully.")
         except Exception as e:
-            logger.error(f"Error updating trail flag for type {type}: {e}")
+            logger.error(f"Error updating trail flag for type {type} and index {index}: {e}")
             raise e
 
     @classmethod
