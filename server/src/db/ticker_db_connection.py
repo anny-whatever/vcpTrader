@@ -24,7 +24,7 @@ def initialize_pool():
                 password=os.getenv("DB_PASSWORD"),
                 database=os.getenv("DB_NAME"),
             )
-            logger.info("Ticker DB connection pool initialized.")
+
     except Exception as e:
         logger.error(f"Error initializing ticker DB connection pool: {e}")
         raise e
@@ -37,7 +37,7 @@ def get_ticker_db_connection():
         # Get a connection from the pool
         conn = ticker_conn_pool.getconn()
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        # logger.info("Ticker DB connection retrieved from pool.")
+
         return conn, cur
     except Exception as e:
         logger.error(f"Error getting ticker DB connection: {e}")
@@ -53,7 +53,7 @@ def release_ticker_db_connection(conn, cur):
     try:
         if conn:
             ticker_conn_pool.putconn(conn)
-            # logger.info("Ticker DB connection released back to pool.")
+
     except Exception as e:
         logger.error(f"Error releasing ticker DB connection: {e}")
 
@@ -63,6 +63,6 @@ def close_ticker_pool():
         if ticker_conn_pool:
             ticker_conn_pool.closeall()
             ticker_conn_pool = None
-            # logger.info("Ticker DB connection pool closed.")
+
     except Exception as e:
         logger.error(f"Error closing ticker DB connection pool: {e}")

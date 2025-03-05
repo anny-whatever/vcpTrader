@@ -22,11 +22,11 @@ def get_db_connection():
                 password=os.getenv("DB_PASSWORD"),
                 database=os.getenv("DB_NAME"),
             )
-            logger.info("DB connection established.")
+
         
         if cur is None:
             cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-            logger.info("DB cursor created.")
+
         
         return conn, cur
     except Exception as e:
@@ -39,13 +39,13 @@ def close_db_connection():
         if cur:
             cur.close()
             cur = None  # Reset cur after closing
-            logger.info("DB cursor closed.")
+
     except Exception as e:
         logger.error(f"Error closing DB cursor: {e}")
     try:
         if conn:
             conn.close()
             conn = None  # Reset conn after closing
-            logger.info("DB connection closed.")
+
     except Exception as e:
         logger.error(f"Error closing DB connection: {e}")
