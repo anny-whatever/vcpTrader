@@ -4,16 +4,17 @@ import datetime
 import pandas as pd
 from decimal import Decimal
 import logging
-
+from decimal import Decimal
 from db import get_trade_db_connection, release_trade_db_connection
 from models import FemaModel, HistoricalVirtualTrades
 from utils import get_indicators_5ema
 from controllers import kite
-from .send_telegram_signals import _send_telegram_in_thread_five_ema as _send_telegram_signal  # renamed for consistency
+from .send_telegram_signals import _send_telegram_in_thread_five_ema as _send_telegram_signal
+from datetime import time as dtime
 
 logger = logging.getLogger(__name__)
 
-# Global instrument details (mapping index to instrument token)
+# Global instrument details
 INSTRUMENT_DETAILS = {
     'nifty': {'instrument_token': 256265, 'ltp_symbol': 'NSE:NIFTY 50'},
     'banknifty': {'instrument_token': 260105, 'ltp_symbol': 'NSE:NIFTY BANK'},
@@ -31,7 +32,8 @@ SHORT_STRATEGY_STATE = {
         'position_info': None,
         'runner_running': False,
         'buy_entry_running': False,
-        'buy_exit_running': False
+        'buy_exit_running': False,
+        'initialized': False,
     },
     'banknifty': {
         'instrument_token': INSTRUMENT_DETAILS['banknifty']['instrument_token'],
@@ -42,7 +44,8 @@ SHORT_STRATEGY_STATE = {
         'position_info': None,
         'runner_running': False,
         'buy_entry_running': False,
-        'buy_exit_running': False
+        'buy_exit_running': False,
+        'initialized': False,
     },
     'finnifty': {
         'instrument_token': INSTRUMENT_DETAILS['finnifty']['instrument_token'],
@@ -53,7 +56,8 @@ SHORT_STRATEGY_STATE = {
         'position_info': None,
         'runner_running': False,
         'buy_entry_running': False,
-        'buy_exit_running': False
+        'buy_exit_running': False,
+        'initialized': False,
     },
 }
 
@@ -63,9 +67,63 @@ monitor_signal_candle_lock_short = threading.Lock()
 buy_entry_lock_short = threading.Lock()
 buy_exit_lock_short = threading.Lock()
 
-# ----------------------------------
-# Runner Function for Short Strategy (5min TF)
-# ----------------------------------
+def initialize_short_strategy_state(strategy_type):
+    """
+    Initializes the SHORT_STRATEGY_STATE for each index based on the DB flags 
+    and loads any open positions from the fema_positions table.
+    """
+    trade_conn, trade_cur = get_trade_db_connection()
+    try:
+        # Initialize flag values from fema_flags table.
+        for index, state in SHORT_STRATEGY_STATE.items():
+            flags = FemaModel.get_flags_by_type_and_index(trade_cur, strategy_type, index)
+            if flags:
+                last_flag = flags[-1]
+                state['signal_candle_flag'] = last_flag[0]
+                state['signal_candle_low'] = last_flag[1]
+                state['signal_candle_high'] = last_flag[2]
+                state['open_trade_flag'] = last_flag[3]
+            else:
+                state['signal_candle_flag'] = False
+                state['signal_candle_low'] = None
+                state['signal_candle_high'] = None
+                state['open_trade_flag'] = False
+            state['initialized'] = True
+            logger.info(f"Initialized short strategy state for {index}: {state}")
+
+        # --- New Code: Load any open positions from fema_positions table ---
+        # Ensure that FemaModel.get_trade_data_by_type returns the 'index' as the first column.
+        positions = FemaModel.get_trade_data_by_type(trade_cur, strategy_type)
+        for pos in positions:
+            pos_index = pos[0]  # Assuming the first column is the index.
+            if pos_index in SHORT_STRATEGY_STATE:
+                fema_trade = FemaModel(
+                    type=strategy_type,
+                    index=pos[0],
+                    sell_strike_order_id=pos[1],
+                    buy_strike_order_id=pos[2],
+                    sell_strike_entry_price=pos[3],
+                    buy_strike_entry_price=pos[4],
+                    sell_strike_instrument_token=pos[5],
+                    buy_strike_instrument_token=pos[6],
+                    sell_strike_trading_symbol=pos[7],
+                    buy_strike_trading_symbol=pos[8],
+                    expiry=pos[9],
+                    qty=pos[10],
+                    entry_time=pos[11],
+                    entry_price=pos[12],
+                    stop_loss_level=pos[13],
+                    target_level=pos[14]
+                )
+                SHORT_STRATEGY_STATE[pos_index]['position_info'] = fema_trade
+                SHORT_STRATEGY_STATE[pos_index]['open_trade_flag'] = True
+                logger.info(f"Loaded open position for {pos_index}: {fema_trade}")
+    except Exception as e:
+        logger.error(f"Error initializing short strategy state: {e}")
+    finally:
+        release_trade_db_connection(trade_conn, trade_cur)
+
+
 def fema_runner_five_minute_short(index, strategy_type):
     """
     Runner function for the 5EMA short strategy on 5min TF.
@@ -80,9 +138,9 @@ def fema_runner_five_minute_short(index, strategy_type):
         state['runner_running'] = True
 
     try:
-        flags = FemaModel.get_flags_by_type(trade_cur, strategy_type)
+        flags = FemaModel.get_flags_by_type_and_index(trade_cur, strategy_type, index)
         if flags:
-            last_flag = flags[-1]  # (signal_candle_flag, signal_candle_low, signal_candle_high, open_trade_flag, trail_flag)
+            last_flag = flags[-1]
             state['signal_candle_flag'] = last_flag[0]
             state['open_trade_flag'] = last_flag[3]
         else:
@@ -93,21 +151,17 @@ def fema_runner_five_minute_short(index, strategy_type):
             logger.info(f"5EMA Short {index}: Checking for Signal Candle.")
             fema_monitor_signal_candle_short(index, strategy_type)
         elif state['signal_candle_flag'] and not state['open_trade_flag']:
-            logger.info(f"5EMA Short {index}: Monitoring for entry trigger via live ticks.")
-            # Live ticks will trigger monitor_live_entry_fema_short
+            fema_monitor_signal_candle_short(index, strategy_type)
+            logger.info(f"5EMA Short {index}: Monitoring for entry trigger via live ticks and signal candle.")
         elif state['open_trade_flag']:
             logger.info(f"5EMA Short {index}: Monitoring for exit trigger via live ticks.")
-            # Live ticks will trigger monitor_live_exit_fema_short
-    except Exception as e:
-        logger.error(f"5EMA Short {index}: Error in runner: {e}")
+    except Exception as error:
+        logger.error(f"5EMA Short {index}: Error in runner: {error}")
     finally:
         release_trade_db_connection(trade_conn, trade_cur)
         with runner_lock_short:
             state['runner_running'] = False
 
-# ----------------------------------
-# Signal Candle Monitoring for Short
-# ----------------------------------
 def fema_monitor_signal_candle_short(index, strategy_type):
     """
     Checks the last 10 5-minute candles for a short signal candle.
@@ -139,26 +193,12 @@ def fema_monitor_signal_candle_short(index, strategy_type):
                 logger.info(f"5EMA Short {index}: Insufficient data for indicators.")
                 return
 
+            prev_candle = df.iloc[-2]
             last_candle = df.iloc[-1]
-            if last_candle['open'] > last_candle['EMA5'] and last_candle['low'] > last_candle['EMA5']:
-                FemaModel.set_flags(trade_cur, strategy_type, index, True, False, last_candle['low'], last_candle['high'])
-                trade_conn.commit()
-                state['signal_candle_flag'] = True
-                state['signal_candle_low'] = last_candle['low']
-                state['signal_candle_high'] = last_candle['high']
-                msg = (
-                    f"5EMA Short {index}:\n"
-                    "------------------------------\n"
-                    "Signal Found\n"
-                    f"Entry Trigger      : {state['signal_candle_low']}\n"
-                    f"Stoploss           : {state['signal_candle_high']}\n"
-                    f"Time               : {last_candle['time_stamp']}\n"
-                    "Action              : Algo is Waiting for entry trigger\n"
-                    "------------------------------"
-                )
-                _send_telegram_signal(msg)
-                logger.info(msg)
-            else:
+            
+            now = datetime.datetime.now().time()
+            END_TIME   = dtime(15, 25)
+            if now >= END_TIME:
                 FemaModel.set_flags(trade_cur, strategy_type, index, False, False, None, None)
                 trade_conn.commit()
                 if state['signal_candle_flag']:
@@ -172,33 +212,64 @@ def fema_monitor_signal_candle_short(index, strategy_type):
                     _send_telegram_signal(msg)
                     logger.info(msg)
                 state['signal_candle_flag'] = False
-        except Exception as e:
-            logger.error(f"5EMA Short {index}: Error in signal candle monitoring: {e}")
+            
+            if last_candle['open'] > last_candle['EMA5'] and last_candle['low'] > last_candle['EMA5']:
+                FemaModel.set_flags(trade_cur, strategy_type, index, True, False, last_candle['low'], last_candle['high'])
+                trade_conn.commit()
+                state['signal_candle_flag'] = True
+                state['signal_candle_low'] = last_candle['low']
+                state['signal_candle_high'] = last_candle['high']
+                msg = (
+                    f"5EMA Short {index}:\n"
+                    "------------------------------\n"
+                    "Signal Found\n"
+                    f"Entry Trigger      : {state['signal_candle_low']}\n"
+                    f"Stoploss           : {state['signal_candle_high']}\n"
+                    f"Time               : {last_candle['time_stamp']}\n"
+                    "Action             : Algo is Waiting for entry trigger\n"
+                    "------------------------------"
+                )
+                _send_telegram_signal(msg)
+                logger.info(msg)
+            elif last_candle['low'] <= last_candle['EMA5']:
+                FemaModel.set_flags(trade_cur, strategy_type, index, False, False, None, None)
+                trade_conn.commit()
+                if state['signal_candle_flag']:
+                    msg = (
+                        f"5EMA Short {index}:\n"
+                        "------------------------------\n"
+                        "Signal Cancelled\n"
+                        "Reason             : Entry rules not met\n"
+                        "------------------------------"
+                    )
+                    _send_telegram_signal(msg)
+                    logger.info(msg)
+                state['signal_candle_flag'] = False
+        except Exception as error:
+            logger.error(f"5EMA Short {index}: Error in signal candle monitoring: {error}")
             trade_conn.rollback()
         finally:
             release_trade_db_connection(trade_conn, trade_cur)
 
-# ----------------------------------
-# Live Tick Entry Monitoring for Short
-# ----------------------------------
 def monitor_live_entry_fema_short(ticks, strategy_type, index):
     """
     Processes live ticks to look for a short entry trigger.
-    For a short trade, entry is triggered when tick price falls to or below the signal_candle_low.
+    Entry is triggered when tick price falls to or below signal_candle_low.
     """
     state = SHORT_STRATEGY_STATE[index]
     if not state['signal_candle_flag'] or state['open_trade_flag']:
         return
 
     for tick in ticks:
+        logger.debug(f"Processing tick for {index}: {tick}")
         if tick['instrument_token'] == INSTRUMENT_DETAILS[index]['instrument_token']:
             price = tick['last_price']
-            if price <= state['signal_candle_low']:
+            if Decimal(str(price)) <= state['signal_candle_low']:
                 entry_price = state['signal_candle_low']
                 risk = state['signal_candle_high'] - entry_price
-                profit_points = max(3 * risk, entry_price * 0.003)
-                profit_target = entry_price - profit_points
-                stop_loss = state['signal_candle_high']
+                profit_points = max(3 * float(risk), float(entry_price) * 0.003)
+                profit_target = float(entry_price) - float(profit_points)
+                stop_loss = float(state['signal_candle_high'])
                 trade = {
                     'entry_time': datetime.datetime.now(),
                     'entry_price': entry_price,
@@ -208,16 +279,11 @@ def monitor_live_entry_fema_short(ticks, strategy_type, index):
                     'index': index
                 }
                 fema_buy_entry_short(trade, index)
-                break
 
-# ----------------------------------
-# Virtual Order Entry (Simulated for Short Trades)
-# ----------------------------------
 def fema_buy_entry_short(trade, index):
     """
     Simulated entry for a short synthetic futures trade.
-    Fetches the underlying's current price, retrieves ATM call and put option details,
-    and stores trade details in the positions table.
+    Fetches underlying price, retrieves ATM option details, and stores trade details.
     """
     state = SHORT_STRATEGY_STATE[index]
     with buy_entry_lock_short:
@@ -231,20 +297,22 @@ def fema_buy_entry_short(trade, index):
         underlying_quote = kite.quote(INSTRUMENT_DETAILS[index]['ltp_symbol'])
         underlying_price = underlying_quote[INSTRUMENT_DETAILS[index]['ltp_symbol']]['last_price']
         
-        from signals import get_strike_option
+        from utils import get_strike_option
         call_option_details = get_strike_option(index, 'call', 0)
         if "error" in call_option_details:
             logger.error(f"5EMA Short {index}: Error fetching call strike details: {call_option_details['error']}")
             return
-        call_option_quote = kite.quote(call_option_details['tradingsymbol'])
-        call_option_price = call_option_quote[call_option_details['tradingsymbol']]['last_price']
+        call_option_key = "NFO:" + call_option_details['tradingsymbol']
+        call_option_quote = kite.quote(call_option_key)
+        call_option_price = call_option_quote[call_option_key]['last_price']
         
         put_option_details = get_strike_option(index, 'put', 0)
         if "error" in put_option_details:
             logger.error(f"5EMA Short {index}: Error fetching put strike details: {put_option_details['error']}")
             return
-        put_option_quote = kite.quote(put_option_details['tradingsymbol'])
-        put_option_price = put_option_quote[put_option_details['tradingsymbol']]['last_price']
+        put_option_key = "NFO:" + put_option_details['tradingsymbol']
+        put_option_quote = kite.quote(put_option_key)
+        put_option_price = put_option_quote[put_option_key]['last_price']
         
         simulated_call_order = {
             'order_id': f"SIM-CALL-{int(time.time())}",
@@ -261,17 +329,18 @@ def fema_buy_entry_short(trade, index):
             'quantity': 1
         }
         
+        # For a short trade, typically the roles of call and put are reversed.
         fema_trade = FemaModel(
             type=trade['strategy_type'],
             index=trade['index'],
             sell_strike_order_id=simulated_call_order['order_id'],
             buy_strike_order_id=simulated_put_order['order_id'],
-            sell_strike_entry_price=simulated_call_order['average_price'],
-            buy_strike_entry_price=simulated_put_order['average_price'],
-            sell_strike_instrument_token=simulated_call_order['instrument_token'],
-            buy_strike_instrument_token=simulated_put_order['instrument_token'],
-            sell_strike_trading_symbol=simulated_call_order['tradingsymbol'],
-            buy_strike_trading_symbol=simulated_put_order['tradingsymbol'],
+            sell_strike_entry_price=simulated_put_order['average_price'],
+            buy_strike_entry_price=simulated_call_order['average_price'],
+            sell_strike_instrument_token=simulated_put_order['instrument_token'],
+            buy_strike_instrument_token=simulated_call_order['instrument_token'],
+            sell_strike_trading_symbol=simulated_put_order['tradingsymbol'],
+            buy_strike_trading_symbol=simulated_call_order['tradingsymbol'],
             expiry=call_option_details.get('expiry'),
             qty=simulated_call_order['quantity'],
             entry_time=trade['entry_time'],
@@ -280,8 +349,6 @@ def fema_buy_entry_short(trade, index):
             target_level=trade['profit_target']
         )
         trade_conn, trade_cur = get_trade_db_connection()
-        FemaModel.create_table_positions(trade_cur)
-        FemaModel.create_table_flags(trade_cur)
         fema_trade.insert_trade_data(trade_cur)
         trade_conn.commit()
         state['position_info'] = fema_trade
@@ -299,26 +366,23 @@ def fema_buy_entry_short(trade, index):
             f"Target                   : {trade['profit_target']}\n"
             f"Entry Time               : {trade['entry_time']}\n"
             f"Action                   : Algo is Buying ATM Put, Selling ATM Call\n"
-            "Note                      : Trade for educational purposes only\n"
+            "Note                     : Trade for educational purposes only\n"
             "------------------------------"
         )
         _send_telegram_signal(msg)
         logger.info(msg)
-    except Exception as e:
-        logger.error(f"5EMA Short {index}: Error executing simulated entry: {e}")
+    except Exception as error:
+        logger.error(f"5EMA Short {index}: Error executing simulated entry: {error}")
     finally:
         with buy_entry_lock_short:
             state['buy_entry_running'] = False
         end_time = datetime.datetime.now()
         logger.info(f"5EMA Short {index}: Entry execution time: {end_time - start_time}")
 
-# ----------------------------------
-# Live Tick Exit Monitoring for Short
-# ----------------------------------
 def monitor_live_exit_fema_short(ticks, index):
     """
     Processes live ticks for an active short trade.
-    If an exit condition is met, captures the exit reason and calls the exit function.
+    Checks for exit conditions and calls the exit function if met.
     """
     state = SHORT_STRATEGY_STATE[index]
     if state['position_info'] is None:
@@ -342,15 +406,11 @@ def monitor_live_exit_fema_short(ticks, index):
     if exit_reason:
         fema_buy_exit_short(state['position_info'], index, exit_reason)
 
-# ----------------------------------
-# Virtual Order Exit (Simulated for Short Trades)
-# ----------------------------------
 def fema_buy_exit_short(trade, index, exit_reason):
     """
     Simulated exit for a short synthetic futures trade.
     Fetches current option prices, calculates synthetic PnL,
-    records the trade in the historical_virtual_trades table,
-    and sends a unified exit message that includes the exit reason.
+    records the trade in the historical table, and sends an exit message.
     """
     state = SHORT_STRATEGY_STATE[index]
     with buy_exit_lock_short:
@@ -361,17 +421,24 @@ def fema_buy_exit_short(trade, index, exit_reason):
 
     try:
         start_time = datetime.datetime.now()
+        underlying_quote_exit = kite.quote(INSTRUMENT_DETAILS[index]['ltp_symbol'])
+        underlying_price_exit = underlying_quote_exit[INSTRUMENT_DETAILS[index]['ltp_symbol']]['last_price']
+        
         call_tradingsymbol = trade.sell_strike_trading_symbol
         put_tradingsymbol = trade.buy_strike_trading_symbol
-        
-        call_quote = kite.quote(call_tradingsymbol)
-        put_quote = kite.quote(put_tradingsymbol)
-        call_exit_price = call_quote[call_tradingsymbol]['last_price']
-        put_exit_price = put_quote[put_tradingsymbol]['last_price']
+
+        call_key = "NFO:" + call_tradingsymbol
+        put_key = "NFO:" + put_tradingsymbol
+
+        call_quote = kite.quote(call_key)
+        put_quote = kite.quote(put_key)
+        call_exit_price = call_quote[call_key]['last_price']
+        put_exit_price = put_quote[put_key]['last_price']
+
         
         call_entry_price = trade.sell_strike_entry_price
         put_entry_price = trade.buy_strike_entry_price
-        pnl = (call_entry_price - call_exit_price) + (put_exit_price - put_entry_price)
+        pnl = (float(call_entry_price) - call_exit_price) + (put_exit_price - float(put_entry_price))
         
         trade_conn, trade_cur = get_trade_db_connection()
         hv_trade = HistoricalVirtualTrades(
@@ -386,7 +453,8 @@ def fema_buy_exit_short(trade, index, exit_reason):
         )
         hv_trade.insert_virtual_trade(trade_cur)
         trade_conn.commit()
-        FemaModel.delete_trade_data_by_type(trade_cur, trade.type)
+        FemaModel.delete_trade_data_by_type_and_index(trade_cur, trade.type, trade.index)
+        FemaModel.set_flags(trade_cur, trade.type, trade.type, False, False, None, None)
         trade_conn.commit()
         release_trade_db_connection(trade_conn, trade_cur)
         final_msg = (
@@ -394,6 +462,7 @@ def fema_buy_exit_short(trade, index, exit_reason):
             "------------------------------\n"
             "Trade Exited\n"
             f"Exit Reason          : {exit_reason}\n"
+            f"Underlying Exit Price: {underlying_price_exit}\n"
             f"Call Option Exit Price : {call_exit_price}\n"
             f"Put Option Exit Price  : {put_exit_price}\n"
             f"PnL                    : {pnl}\n"
@@ -405,22 +474,19 @@ def fema_buy_exit_short(trade, index, exit_reason):
         _send_telegram_signal(final_msg)
         logger.info(final_msg)
         state['position_info'] = None
-    except Exception as e:
-        logger.error(f"5EMA Short {index}: Error executing simulated exit: {e}")
+    except Exception as error:
+        logger.error(f"5EMA Short {index}: Error executing simulated exit: {error}")
     finally:
         with buy_exit_lock_short:
             state['buy_exit_running'] = False
         end_time = datetime.datetime.now()
         logger.info(f"5EMA Short {index}: Exit execution time: {end_time - start_time}")
 
-# ----------------------------------
-# Live Position Monitoring for Short (Entry & Exit)
-# ----------------------------------
 def monitor_live_position_fema_short(ticks, strategy_type):
     """
-    Processes live tick data.
-    For each index, if no trade is active, checks for a short entry trigger.
-    If a trade is active, monitors for exit conditions.
+    Processes live tick data for short trades.
+    For each index, if no trade is active, checks for an entry trigger;
+    if a trade is active, monitors for exit conditions.
     """
     for index, state in SHORT_STRATEGY_STATE.items():
         token = INSTRUMENT_DETAILS[index]['instrument_token']
