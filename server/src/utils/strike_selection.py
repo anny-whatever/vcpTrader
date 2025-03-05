@@ -10,13 +10,13 @@ INSTRUMENT_DETAILS = {
         'ltp_symbol': 'NSE:NIFTY BANK',
         'rounding': 100,    # Round to nearest 100
         'increment': 100,   # Strike steps in multiples of 100
-        'table': 'banknifty_option_chain'
+        'table': 'bank_nifty_option_chain'
     },
     'finnifty': {
         'ltp_symbol': 'NSE:NIFTY FIN SERVICE',
         'rounding': 50,     # Round to nearest 50
         'increment': 50,    # Strike steps in multiples of 50
-        'table': 'finnifty_option_chain'
+        'table': 'fin_nifty_option_chain'
     },
     'nifty': {
         'ltp_symbol': 'NSE:NIFTY 50',
@@ -94,8 +94,8 @@ def get_strike_option(index, option, strike_step, expiry_step=0):
             'strike': row['strike'],
             'expiry': row['expiry']
         }
-    except Exception as e:
-        logger.error(f"Error in get_strike_option: {e}", exc_info=True)
-        return {"error": str(e)}
+    except Exception as error:
+        logger.error(f"Error in get_strike_option: {error}", exc_info=True)
+        return {"error": str(error)}
     finally:
         release_trade_db_connection(conn, cur)

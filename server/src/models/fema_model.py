@@ -107,17 +107,22 @@ class FemaModel:
                 self.buy_strike_instrument_token, self.sell_strike_trading_symbol, self.buy_strike_trading_symbol,
                 self.expiry, self.qty, self.entry_time, self.entry_price, self.stop_loss_level, self.target_level
             ))
-            logger.info(f"Inserted/Updated trade data for type {self.type} successfully.")
+            logger.info(f"Inserted/Updated trade data for type {self.type} and index {self.index} successfully.")
         except Exception as e:
-            logger.error(f"Error inserting trade data for type {self.type}: {e}")
+            logger.error(f"Error inserting trade data for type {self.type} and index {self.index}: {e}")
             raise e
 
     @classmethod
     def get_trade_data_by_type(cls, cur, type):
+        """
+        Retrieves all trade records for a given type.
+        Since the type is not unique (primary key is (type, index)),
+        this method might return multiple rows.
+        """
         select_query = """
         SELECT index, sell_strike_order_id, buy_strike_order_id, sell_strike_entry_price, buy_strike_entry_price, 
-            sell_strike_instrument_token, buy_strike_instrument_token, sell_strike_trading_symbol, 
-            buy_strike_trading_symbol, expiry, qty, entry_time, entry_price, stop_loss_level, target_level 
+               sell_strike_instrument_token, buy_strike_instrument_token, sell_strike_trading_symbol, 
+               buy_strike_trading_symbol, expiry, qty, entry_time, entry_price, stop_loss_level, target_level 
         FROM fema_positions
         WHERE type = %s
         """
@@ -127,16 +132,36 @@ class FemaModel:
         return results
 
     @classmethod
-    def delete_trade_data_by_type(cls, cur, type):
+    def get_trade_data_by_type_and_index(cls, cur, type, index):
+        """
+        Retrieves a single trade record using both type and index.
+        """
+        select_query = """
+        SELECT index, sell_strike_order_id, buy_strike_order_id, sell_strike_entry_price, buy_strike_entry_price, 
+               sell_strike_instrument_token, buy_strike_instrument_token, sell_strike_trading_symbol, 
+               buy_strike_trading_symbol, expiry, qty, entry_time, entry_price, stop_loss_level, target_level 
+        FROM fema_positions
+        WHERE type = %s AND index = %s
+        """
+        cur.execute(select_query, (type, index))
+        results = cur.fetchall()
+        logger.info(f"Retrieved trade data for type {type} and index {index}.")
+        return results
+
+    @classmethod
+    def delete_trade_data_by_type_and_index(cls, cur, type, index):
+        """
+        Deletes a specific trade record using both type and index.
+        """
         delete_query = """
         DELETE FROM fema_positions
-        WHERE type = %s
+        WHERE type = %s AND index = %s
         """
         try:
-            cur.execute(delete_query, (type,))
-            logger.info(f"Deleted trade data for type {type} successfully.")
+            cur.execute(delete_query, (type, index))
+            logger.info(f"Deleted trade data for type {type} and index {index} successfully.")
         except Exception as e:
-            logger.error(f"Error deleting trade data for type {type}: {e}")
+            logger.error(f"Error deleting trade data for type {type} and index {index}: {e}")
             raise e
 
     @classmethod
@@ -184,15 +209,18 @@ class FemaModel:
             raise e
 
     @classmethod
-    def set_trailing_sl(cls, cur, type, trailing_sl):
+    def set_trailing_sl(cls, cur, type, index, trailing_sl):
+        """
+        Updates the trailing stop loss for a specific record identified by type and index.
+        """
         update_query = """
         UPDATE fema_positions
         SET stop_loss_level = %s
-        WHERE type = %s
+        WHERE type = %s AND index = %s
         """
         try:
-            cur.execute(update_query, (trailing_sl, type))
-            logger.info(f"Updated trailing stop loss for type {type} successfully.")
+            cur.execute(update_query, (trailing_sl, type, index))
+            logger.info(f"Updated trailing stop loss for type {type} and index {index} successfully.")
         except Exception as e:
-            logger.error(f"Error updating trailing stop loss for type {type}: {e}")
+            logger.error(f"Error updating trailing stop loss for type {type} and index {index}: {e}")
             raise e
