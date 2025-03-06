@@ -117,7 +117,6 @@ def resample_job_five_minute():
                 # Launch the short strategy runner for each index
                 executor.submit(fema_runner_five_minute_short, 'nifty', 'fema_five_short')
                 executor.submit(fema_runner_five_minute_short, 'banknifty', 'fema_five_short')
-                executor.submit(fema_runner_five_minute_short, 'finnifty', 'fema_five_short')
         else:
             logger.info("Outside strategy time range, not launching short strategy runner.")
     except Exception as e:
@@ -145,7 +144,6 @@ def resample_job_fifteen_minute():
                 # Launch the long strategy runner for each index
                 executor.submit(fema_runner_fifteen_minute_long, 'nifty', 'fema_fifteen_long')
                 executor.submit(fema_runner_fifteen_minute_long, 'banknifty', 'fema_fifteen_long')
-                executor.submit(fema_runner_fifteen_minute_long, 'finnifty', 'fema_fifteen_long')
         else:
             logger.info("Outside strategy time range, not launching long strategy runner.")
     except Exception as e:
