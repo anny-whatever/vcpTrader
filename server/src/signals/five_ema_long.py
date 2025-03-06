@@ -33,6 +33,7 @@ LONG_STRATEGY_STATE = {
         'buy_entry_running': False,
         'buy_exit_running': False,
         'initialized': False,
+        'lot_size': 75,
     },
     'banknifty': {
         'instrument_token': INSTRUMENT_DETAILS['banknifty']['instrument_token'],
@@ -45,6 +46,7 @@ LONG_STRATEGY_STATE = {
         'buy_entry_running': False,
         'buy_exit_running': False,
         'initialized': False,
+        'lot_size': 30,
     },
     'finnifty': {
         'instrument_token': INSTRUMENT_DETAILS['finnifty']['instrument_token'],
@@ -210,7 +212,7 @@ def fema_monitor_signal_candle_long(index, strategy_type):
                     logger.info(msg)
                 state['signal_candle_flag'] = False
                 
-            if last_candle['open'] < last_candle['EMA5'] and last_candle['high'] < last_candle['EMA5']:
+            if last_candle['open'] < last_candle['EMA5'] and float(last_candle['high']) + float(float(last_candle['high']) * 0.0003) < float(last_candle['EMA5']):
                 FemaModel.set_flags(trade_cur, strategy_type, index, True, False, last_candle['low'], last_candle['high'])
                 trade_conn.commit()
                 state['signal_candle_flag'] = True
@@ -220,8 +222,8 @@ def fema_monitor_signal_candle_long(index, strategy_type):
                     f"5EMA Long {index}:\n"
                     "------------------------------\n"
                     "Signal Found\n"
-                    f"Entry Trigger      : {state['signal_candle_high']}\n"
-                    f"Stoploss           : {state['signal_candle_low']}\n"
+                    f"Entry Trigger      : {round(state['signal_candle_high'], 2)}\n"
+                    f"Stoploss           : {round(state['signal_candle_low'], 2)}\n"
                     f"Time               : {last_candle['time_stamp']}\n"
                     "Action             : Algo is Waiting for entry trigger\n"
                     "------------------------------"
@@ -355,12 +357,12 @@ def fema_buy_entry_long(trade, index):
             f"5EMA Long {index}:\n"
             "------------------------------\n"
             "Trade Entered\n"
-            f"Underlying Price : {underlying_price}\n"
-            f"Call Price       : {simulated_call_order['average_price']}\n"
-            f"Put Price        : {simulated_put_order['average_price']}\n"
-            f"Stoploss         : {trade['stop_loss']}\n"
-            f"Target           : {trade['profit_target']}\n"
-            f"Entry Time       : {trade['entry_time']}\n"
+            f"Underlying Price : {round(underlying_price, 2)}\n"
+            f"Call Price       : {round(simulated_call_order['average_price'], 2)}\n"
+            f"Put Price        : {round(simulated_put_order['average_price'], 2)}\n"
+            f"Stoploss         : {round(trade['stop_loss'], 2)}\n"
+            f"Target           : {round(trade['profit_target'], 2)}\n"
+            f"Entry Time       : {trade['entry_time'].strftime('%Y-%m-%d %H:%M:%S')}\n"
             f"Action           : Algo is Buying ATM Call, Selling ATM Put\n"
             "Note             : Trade for educational purposes only\n"
             "------------------------------"
@@ -432,7 +434,7 @@ def fema_buy_exit_long(trade, index, exit_reason):
 
         call_entry_price = trade.buy_strike_entry_price
         put_entry_price = trade.sell_strike_entry_price
-        pnl = (call_exit_price - call_entry_price) + (put_entry_price - put_exit_price)
+        pnl = (float(call_exit_price) - float(call_entry_price)) + (float(put_entry_price) - float(put_exit_price))
         
         trade_conn, trade_cur = get_trade_db_connection()
         hv_trade = HistoricalVirtualTrades(
@@ -441,14 +443,18 @@ def fema_buy_exit_long(trade, index, exit_reason):
             entry_time=trade.entry_time,
             entry_price=trade.entry_price,
             exit_time=datetime.datetime.now(),
-            exit_price=(call_exit_price + put_exit_price) / 2,
-            qty=trade.qty,
-            pnl=pnl
+            exit_price=underlying_price_exit,
+            qty=state['lot_size'] * 5,
+            pnl=pnl * state['lot_size'] * 5
         )
         hv_trade.insert_virtual_trade(trade_cur)
         trade_conn.commit()
+        state['signal_candle_flag'] = False
+        state['open_trade_flag'] = False
+        state['signal_candle_low'] = None
+        state['signal_candle_high'] = None
         FemaModel.delete_trade_data_by_type_and_index(trade_cur, trade.type, trade.index)
-        FemaModel.set_flags(trade_cur, trade.type, trade.type, False, False, None, None)
+        FemaModel.set_flags(trade_cur, trade.type, trade.index, False, False, None, None)
         trade_conn.commit()
         release_trade_db_connection(trade_conn, trade_cur)
         final_msg = (
@@ -456,11 +462,10 @@ def fema_buy_exit_long(trade, index, exit_reason):
             "------------------------------\n"
             "Trade Exited\n"
             f"Exit Reason          : {exit_reason}\n"
-            f"Underlying Exit Price: {underlying_price_exit}\n"
-            f"Call Exit Price      : {call_exit_price}\n"
-            f"Put Exit Price       : {put_exit_price}\n"
-            f"PnL                  : {pnl}\n"
-            f"Exit Time            : {datetime.datetime.now()}\n"
+            f"Call Exit Price      : {round(call_exit_price, 2)}\n"
+            f"Put Exit Price       : {round(put_exit_price, 2)}\n"
+            f"PnL                  : {round(pnl * state['lot_size'] * 5, 2)}\n"
+            f"Exit Time            : {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
             f"Action               : Algo has now exited the trade\n"
             "Note                 : Trade for educational purposes only\n"
             "------------------------------"
