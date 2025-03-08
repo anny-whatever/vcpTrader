@@ -215,7 +215,7 @@ def fema_monitor_signal_candle_short(index, strategy_type):
                     logger.info(msg)
                 state['signal_candle_flag'] = False
             
-            if last_candle['open'] > last_candle['EMA5'] and float(last_candle['low']) - float(float(last_candle['low']) * 0.0003) > float(last_candle['EMA5']):
+            if last_candle['open'] > last_candle['EMA5'] and float(last_candle['low']) - float(float(last_candle['low']) * 0.0001) > float(last_candle['EMA5']):
                 FemaModel.set_flags(trade_cur, strategy_type, index, True, False, last_candle['low'], last_candle['high'])
                 trade_conn.commit()
                 state['signal_candle_flag'] = True
@@ -337,12 +337,12 @@ def fema_buy_entry_short(trade, index):
             index=trade['index'],
             sell_strike_order_id=simulated_call_order['order_id'],
             buy_strike_order_id=simulated_put_order['order_id'],
-            sell_strike_entry_price=simulated_put_order['average_price'],
-            buy_strike_entry_price=simulated_call_order['average_price'],
-            sell_strike_instrument_token=simulated_put_order['instrument_token'],
-            buy_strike_instrument_token=simulated_call_order['instrument_token'],
-            sell_strike_trading_symbol=simulated_put_order['tradingsymbol'],
-            buy_strike_trading_symbol=simulated_call_order['tradingsymbol'],
+            sell_strike_entry_price=simulated_call_order['average_price'],
+            buy_strike_entry_price=simulated_put_order['average_price'],
+            sell_strike_instrument_token=simulated_call_order['instrument_token'],
+            buy_strike_instrument_token=simulated_put_order['instrument_token'],
+            sell_strike_trading_symbol=simulated_call_order['tradingsymbol'],
+            buy_strike_trading_symbol=simulated_put_order['tradingsymbol'],
             expiry=call_option_details.get('expiry'),
             qty=simulated_call_order['quantity'],
             entry_time=trade['entry_time'],
@@ -401,7 +401,7 @@ def monitor_live_exit_fema_short(ticks, index):
                 exit_reason = f"Stoploss Triggered\nPrice            : {price}"
                 break
             now = datetime.datetime.now()
-            if now.hour == 15 and now.minute == 20 and price > state['position_info'].entry_price:
+            if now.hour == 15 and now.minute == 20:
                 exit_reason = f"Time-based Exit\nPrice            : {price}"
                 break
 

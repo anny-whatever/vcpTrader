@@ -212,7 +212,7 @@ def fema_monitor_signal_candle_long(index, strategy_type):
                     logger.info(msg)
                 state['signal_candle_flag'] = False
                 
-            if last_candle['open'] < last_candle['EMA5'] and float(last_candle['high']) + float(float(last_candle['high']) * 0.0003) < float(last_candle['EMA5']):
+            if last_candle['open'] < last_candle['EMA5'] and float(last_candle['high']) + float(float(last_candle['high']) * 0.0001) < float(last_candle['EMA5']):
                 FemaModel.set_flags(trade_cur, strategy_type, index, True, False, last_candle['low'], last_candle['high'])
                 trade_conn.commit()
                 state['signal_candle_flag'] = True
@@ -357,14 +357,14 @@ def fema_buy_entry_long(trade, index):
             f"5EMA Long {index}:\n"
             "------------------------------\n"
             "Trade Entered\n"
-            f"Underlying Price : {round(underlying_price, 2)}\n"
-            f"Call Price       : {round(simulated_call_order['average_price'], 2)}\n"
-            f"Put Price        : {round(simulated_put_order['average_price'], 2)}\n"
-            f"Stoploss         : {round(trade['stop_loss'], 2)}\n"
-            f"Target           : {round(trade['profit_target'], 2)}\n"
-            f"Entry Time       : {trade['entry_time'].strftime('%Y-%m-%d %H:%M:%S')}\n"
-            f"Action           : Algo is Buying ATM Call, Selling ATM Put\n"
-            "Note             : Trade for educational purposes only\n"
+            f"Underlying Price         : {round(underlying_price, 2)}\n"
+            f"Call Option Price (Sell) : {round(simulated_call_order['average_price'], 2)}\n"
+            f"Put Option Price (Buy)   : {round(simulated_put_order['average_price'], 2)}\n"
+            f"Stoploss                 : {round(trade['stop_loss'], 2)}\n"
+            f"Target                   : {round(trade['profit_target'], 2)}\n"
+            f"Entry Time               : {trade['entry_time'].strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"Action                   : Algo is Buying ATM Call, Selling ATM Put\n"
+            "Note                     : Trade for educational purposes only\n"
             "------------------------------"
         )
         _send_telegram_signal(msg)
@@ -397,7 +397,7 @@ def monitor_live_exit_fema_long(ticks, index):
                 exit_reason = f"Target Achieved\nPrice              : {price}"
                 break
             now = datetime.datetime.now()
-            if now.hour == 15 and now.minute == 20 and price > state['position_info'].entry_price:
+            if now.hour == 15 and now.minute == 20:
                 exit_reason = f"Time-based Exit\nPrice              : {price}"
                 break
 
