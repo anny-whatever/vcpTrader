@@ -95,7 +95,8 @@ const AppRoutes = () => {
         <Route path="/login" element={<LoginPage />} />
       </Routes>
       {/* Render the PnL drawer on all pages except "/allpositions" */}
-      {location.pathname !== "/allpositions" && <PnlDrawer />}
+      {location.pathname !== "/allpositions" &&
+        location.pathname !== "/login" && <PnlDrawer />}
     </>
   );
 };

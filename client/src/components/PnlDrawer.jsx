@@ -26,22 +26,28 @@ const PnlDrawer = () => {
     }
   }, [token]);
 
-  // Compute total P&L and capital used in real time using liveData
+  // Merge liveData into positions just like in AllPositions
   useEffect(() => {
-    if (positions && positions.length) {
+    if (positions && liveData) {
+      positions.forEach((pos) => {
+        const liveItem = liveData.find(
+          (item) => item.instrument_token === pos.token
+        );
+        if (liveItem) {
+          pos.last_price = liveItem.last_price;
+        }
+      });
+    }
+  }, [positions, liveData]);
+
+  // Compute total P&L and capital used based on updated positions
+  useEffect(() => {
+    if (positions) {
       let runningPnl = 0;
       let runningCap = 0;
       positions.forEach((pos) => {
-        // Find matching live data item using the instrument token
-        const liveItem = liveData
-          ? liveData.find((item) => item.instrument_token === pos.token)
-          : null;
-        // Use live price if available, otherwise fallback to pos.last_price
-        const effectivePrice = liveItem ? liveItem.last_price : pos.last_price;
-        // Calculate P&L for the position
-        const pnl =
-          (effectivePrice - pos.entry_price) * pos.current_qty + pos.booked_pnl;
-        runningPnl += pnl;
+        runningPnl +=
+          (pos.last_price - pos.entry_price) * pos.current_qty + pos.booked_pnl;
         runningCap += pos.entry_price * pos.current_qty;
       });
       setTotalPnl(runningPnl);
