@@ -208,7 +208,7 @@ def fema_monitor_signal_candle_short(index, strategy_type):
                         f"5EMA Short {index}:\n"
                         "------------------------------\n"
                         "Signal Cancelled\n"
-                        "Reason             : Entry rules not met\n"
+                        "Reason: Entry rules not met\n"
                         "------------------------------"
                     )
                     _send_telegram_signal(msg)
@@ -225,10 +225,10 @@ def fema_monitor_signal_candle_short(index, strategy_type):
                     f"5EMA Short {index}:\n"
                     "------------------------------\n"
                     "Signal Found\n"
-                    f"Entry Trigger      : {round(state['signal_candle_low'], 2)}\n"
-                    f"Stoploss           : {round(state['signal_candle_high'], 2)}\n"
-                    f"Time               : {last_candle['time_stamp']}\n"
-                    "Action             : Algo is Waiting for entry trigger\n"
+                    f"Entry Trigger: {round(state['signal_candle_low'], 2)}\n"
+                    f"Stoploss: {round(state['signal_candle_high'], 2)}\n"
+                    f"Time: {last_candle['time_stamp']}\n"
+                    "Action: Algo is Waiting for entry trigger\n"
                     "------------------------------"
                 )
                 _send_telegram_signal(msg)
@@ -241,7 +241,7 @@ def fema_monitor_signal_candle_short(index, strategy_type):
                         f"5EMA Short {index}:\n"
                         "------------------------------\n"
                         "Signal Cancelled\n"
-                        "Reason             : Entry rules not met\n"
+                        "Reason: Entry rules not met\n"
                         "------------------------------"
                     )
                     _send_telegram_signal(msg)
@@ -361,14 +361,14 @@ def fema_buy_entry_short(trade, index):
             f"5EMA Short {index}:\n"
             "------------------------------\n"
             "Trade Entered\n"
-            f"Underlying Price         : {round(underlying_price, 2)}\n"
-            f"Call Option Price (Sell) : {round(simulated_call_order['average_price'], 2)}\n"
-            f"Put Option Price (Buy)   : {round(simulated_put_order['average_price'], 2)}\n"
-            f"Stoploss                 : {round(trade['stop_loss'], 2)}\n"
-            f"Target                   : {round(trade['profit_target'], 2)}\n"
-            f"Entry Time               : {trade['entry_time'].strftime('%Y-%m-%d %H:%M:%S')}\n"
-            f"Action                   : Algo is Buying ATM Put, Selling ATM Call\n"
-            "Note                     : Trade for educational purposes only\n"
+            f"Underlying Price: {round(underlying_price, 2)}\n"
+            f"Call Option Price (Sell): {round(simulated_call_order['average_price'], 2)}\n"
+            f"Put Option Price (Buy): {round(simulated_put_order['average_price'], 2)}\n"
+            f"Stoploss: {round(trade['stop_loss'], 2)}\n"
+            f"Target: {round(trade['profit_target'], 2)}\n"
+            f"Entry Time: {trade['entry_time'].strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"Action: Algo is Buying ATM Put, Selling ATM Call\n"
+            "Note: Trade for educational purposes only\n"
             "------------------------------"
         )
         _send_telegram_signal(msg)
@@ -395,14 +395,14 @@ def monitor_live_exit_fema_short(ticks, index):
         if tick['instrument_token'] == INSTRUMENT_DETAILS[index]['instrument_token']:
             price = tick['last_price']
             if price <= state['position_info'].target_level:
-                exit_reason = f"Target Achieved\nPrice            : {price}"
+                exit_reason = f"Target Achieved\nExit Price            : {price}"
                 break
             if price >= state['position_info'].stop_loss_level:
-                exit_reason = f"Stoploss Triggered\nPrice            : {price}"
+                exit_reason = f"Stoploss Triggered\nExit Price            : {price}"
                 break
             now = datetime.datetime.now()
             if now.hour == 15 and now.minute == 20:
-                exit_reason = f"Time-based Exit\nPrice            : {price}"
+                exit_reason = f"Time-based Exit\nExit Price            : {price}"
                 break
 
     if exit_reason:
@@ -467,13 +467,14 @@ def fema_buy_exit_short(trade, index, exit_reason):
             f"5EMA Short {index}:\n"
             "------------------------------\n"
             "Trade Exited\n"
-            f"Exit Reason          : {exit_reason}\n"
-            f"Call Option Exit Price : {round(call_exit_price, 2)}\n"
-            f"Put Option Exit Price  : {round(put_exit_price, 2)}\n"
-            f"PnL                    : {round(pnl * state['lot_size'] * 5, 2)}\n"
-            f"Exit Time              : {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-            f"Action                 : Algo has now exited the trade\n"
-            f"Note                   : Trade for educational purposes only\n"
+            f"Exit Reason: {exit_reason}\n"
+            f"Entry Price: {trade.entry_price}\n"
+            f"Call Option Exit Price: {round(call_exit_price, 2)}\n"
+            f"Put Option Exit Price: {round(put_exit_price, 2)}\n"
+            f"PnL: {round(pnl * state['lot_size'] * 5, 2)}\n"
+            f"Exit Time: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"Action: Algo has now exited the trade\n"
+            f"Note: Trade for educational purposes only\n"
             "------------------------------"
         )
         _send_telegram_signal(final_msg)
