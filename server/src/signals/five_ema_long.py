@@ -391,14 +391,14 @@ def monitor_live_exit_fema_long(ticks, index):
         if tick['instrument_token'] == INSTRUMENT_DETAILS[index]['instrument_token']:
             price = tick['last_price']
             if price <= state['position_info'].stop_loss_level:
-                exit_reason = f"Stoploss Triggered\nExit Price              : {price}"
+                exit_reason = f"Stoploss Triggered\nExit Price: {price}"
                 break
             if price >= state['position_info'].target_level:
-                exit_reason = f"Target Achieved\nExit Price              : {price}"
+                exit_reason = f"Target Achieved\nExit Price: {price}"
                 break
             now = datetime.datetime.now()
             if now.hour == 15 and now.minute == 20:
-                exit_reason = f"Time-based Exit\nExit Price              : {price}"
+                exit_reason = f"Time-based Exit\nExit Price: {price}"
                 break
 
     if exit_reason:
