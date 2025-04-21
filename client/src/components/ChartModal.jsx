@@ -21,7 +21,7 @@ import {
   HistogramSeries,
 } from "lightweight-charts";
 import { DataContext } from "../utils/DataContext";
-import { Spinner } from "@heroui/react";
+import { Spinner } from "@nextui-org/react";
 
 function ChartModal({ isOpen, onClose, symbol, token }) {
   const { liveData } = useContext(DataContext);

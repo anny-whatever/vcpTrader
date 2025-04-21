@@ -11,7 +11,7 @@ import {
   Button,
   ButtonGroup,
   Spinner,
-} from "@heroui/react";
+} from "@nextui-org/react";
 import BuyModal from "../components/BuyModal";
 import SellModal from "../components/SellModal";
 import ChartModal from "../components/ChartModal";

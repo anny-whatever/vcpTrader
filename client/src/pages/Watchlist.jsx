@@ -11,7 +11,7 @@ import {
   TableBody,
   TableRow,
   TableCell,
-} from "@heroui/react";
+} from "@nextui-org/react";
 
 import { DataContext } from "../utils/DataContext";
 import { AuthContext } from "../utils/AuthContext";

@@ -14,7 +14,7 @@ import {
   DropdownTrigger,
   DropdownMenu,
   DropdownItem,
-} from "@heroui/react";
+} from "@nextui-org/react";
 
 import SellModal from "../components/SellModal";
 import IncreaseModal from "../components/IncreaseModal";

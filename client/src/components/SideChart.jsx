@@ -9,7 +9,7 @@ import {
   HistogramSeries,
 } from "lightweight-charts";
 import { Box, Typography } from "@mui/material";
-import { Spinner } from "@heroui/react";
+import { Spinner } from "@nextui-org/react";
 
 function SideChart({ symbol, token }) {
   const { liveData } = useContext(DataContext);
