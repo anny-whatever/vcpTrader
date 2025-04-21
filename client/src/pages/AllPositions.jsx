@@ -167,7 +167,7 @@ function AllPositions() {
       <div className="w-full px-6">
         {/* TOP STATS */}
         <div className="flex flex-wrap gap-4 my-4">
-          <div className="flex flex-col bg-zinc-900 rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
+          <div className="flex flex-col bg-zinc-900/50 backdrop-blur-sm rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
             <span className="text-sm text-zinc-400 font-medium">Total P&L</span>
             <span
               className={`text-xl mt-1 font-semibold ${
@@ -184,7 +184,7 @@ function AllPositions() {
               </span>
             </span>
           </div>
-          <div className="flex flex-col bg-zinc-900 rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
+          <div className="flex flex-col bg-zinc-900/50 backdrop-blur-sm rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
             <span className="text-sm text-zinc-400 font-medium">
               Capital Used
             </span>
@@ -192,13 +192,13 @@ function AllPositions() {
               {(capitalUsed * multiplier).toFixed(2)}
             </span>
           </div>
-          <div className="flex flex-col bg-zinc-900 rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
+          <div className="flex flex-col bg-zinc-900/50 backdrop-blur-sm rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
             <span className="text-sm text-zinc-400 font-medium">Used Risk</span>
             <span className="mt-1 text-xl text-zinc-200 font-semibold">
               {(riskpool?.used_risk * multiplier || 0).toFixed(2)}
             </span>
           </div>
-          <div className="flex flex-col bg-zinc-900 rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
+          <div className="flex flex-col bg-zinc-900/50 backdrop-blur-sm rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
             <span className="text-sm text-zinc-400 font-medium">
               Available Risk
             </span>
@@ -206,7 +206,7 @@ function AllPositions() {
               {(riskpool?.available_risk * multiplier || 0).toFixed(2)}
             </span>
           </div>
-          <div className="flex flex-col bg-zinc-900 rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
+          <div className="flex flex-col bg-zinc-900/50 backdrop-blur-sm rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
             <span className="text-sm text-zinc-400 font-medium">
               Total Risk
             </span>
@@ -270,20 +270,20 @@ function AllPositions() {
                       {(currentPnl * multiplier).toFixed(2)} ({pnlPercent}%)
                     </TableCell>
                     <TableCell>
-                      <ButtonGroup className="shadow-sm">
+                      <ButtonGroup className="shadow-lg w-full">
                         {userRole === "admin" && (
                           <>
                             <Button
                               size="sm"
                               color="success"
                               variant="flat"
-                              className="min-w-[40px] h-9 px-3 bg-green-500/20 hover:bg-green-500/30 text-green-500"
+                              className="flex-1 h-9 bg-green-500/20 hover:bg-green-500/30 text-green-500"
                               onPress={() => {
                                 populatePositionData(row);
                                 handleOpenIncreaseModal();
                               }}
                             >
-                              En
+                              Add
                             </Button>
                             <Button
                               size="sm"
@@ -409,7 +409,7 @@ function AllPositions() {
             return (
               <div
                 key={`mobile-position-${index}-${row.stock_name}`}
-                className="flex flex-col gap-3 p-4 bg-zinc-900 rounded-xl border border-zinc-800 shadow-md"
+                className="flex flex-col gap-3 p-4 bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-zinc-800 shadow-md"
               >
                 {/* Title row with Instrument name and Actions */}
                 <div className="flex items-center justify-between">
@@ -519,7 +519,7 @@ function AllPositions() {
                               className="p-0 hover:bg-zinc-900"
                               textValue="Stats"
                             >
-                              <div className="flex flex-col justify-between gap-1 p-3 text-left text-white rounded-lg w-72 bg-zinc-900">
+                              <div className="flex flex-col justify-between gap-1 p-3 text-left text-white rounded-lg w-72 bg-zinc-900/80 backdrop-blur-md border border-zinc-800">
                                 <div className="text-xl">Stats</div>
                                 <div className="py-1 text-md">
                                   Stop-Loss: {row.stop_loss?.toFixed(2)} (
