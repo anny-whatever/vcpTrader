@@ -29,7 +29,7 @@ function SideChart({ symbol, token }) {
   const ma150SeriesRef = useRef(null);
   const ma200SeriesRef = useRef(null);
 
-  // Reference to track the last candle we’re updating
+  // Reference to track the last candle we're updating
   const lastCandleRef = useRef(null);
 
   // --------------------------------------------
@@ -98,14 +98,14 @@ function SideChart({ symbol, token }) {
 
     const chart = createChart(container, {
       layout: {
-        background: { type: ColorType.Solid, color: "#181818" },
-        textColor: "#d1d4dc",
+        background: { type: ColorType.Solid, color: "#18181b" }, // zinc-900
+        textColor: "#e4e4e7", // zinc-200
       },
       width,
       height,
       grid: {
-        vertLines: { color: "#363c4e" },
-        horzLines: { color: "#363c4e" },
+        vertLines: { color: "#27272a" }, // zinc-800
+        horzLines: { color: "#27272a" }, // zinc-800
       },
       crosshair: { mode: 0 },
     });
@@ -115,8 +115,8 @@ function SideChart({ symbol, token }) {
 
     // Main Bar Series (candlestick-like)
     const barSeries = chart.addSeries(BarSeries, {
-      upColor: "#26a69a",
-      downColor: "#ef5350",
+      upColor: "#10b981", // emerald-500
+      downColor: "#ef4444", // red-500
       borderVisible: false,
       thinBars: false,
     });
@@ -140,7 +140,7 @@ function SideChart({ symbol, token }) {
       value: item.volume,
     }));
     const volumeSeries = chart.addSeries(HistogramSeries, {
-      color: "#ffffff4b",
+      color: "#a1a1aa80", // zinc-400 with transparency
       priceFormat: { type: "volume" },
       priceScaleId: "",
       scaleMargins: { top: 0.9, bottom: 0 },
@@ -166,21 +166,21 @@ function SideChart({ symbol, token }) {
     }));
 
     const ma50Series = chart.addSeries(LineSeries, {
-      color: "#2962ff62",
+      color: "#3b82f680", // blue-500 with transparency
       lineWidth: 2,
     });
     ma50Series.setData(sma50Data);
     ma50SeriesRef.current = ma50Series;
 
     const ma150Series = chart.addSeries(LineSeries, {
-      color: "#3bfa2d4b",
+      color: "#10b98180", // emerald-500 with transparency
       lineWidth: 2,
     });
     ma150Series.setData(sma150Data);
     ma150SeriesRef.current = ma150Series;
 
     const ma200Series = chart.addSeries(LineSeries, {
-      color: "#fa642d4b",
+      color: "#f59e0b80", // amber-500 with transparency
       lineWidth: 2,
     });
     ma200Series.setData(sma200Data);
@@ -291,6 +291,7 @@ function SideChart({ symbol, token }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          backgroundColor: "#18181b", // zinc-900
         }}
       >
         <Typography variant="h6">Select the stock to open the chart</Typography>
@@ -309,6 +310,7 @@ function SideChart({ symbol, token }) {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
+          backgroundColor: "#18181b", // zinc-900
         }}
       >
         <Spinner size="lg" />
@@ -325,44 +327,55 @@ function SideChart({ symbol, token }) {
         width: "100%",
         height: { xs: "100%", md: "95%" },
         position: "relative",
+        backgroundColor: "#18181b", // zinc-900
       }}
     >
       {/* Chart Container */}
       <div ref={chartContainerRef} style={{ width: "100%", height: "100%" }} />
 
-      {/* Full Chart Button (top-right corner) */}
+      {/* Stock Info Overlay (top-left corner) */}
       <div
         style={{
           position: "absolute",
           top: "8px",
           left: "8px",
           zIndex: 10,
-          backgroundColor: "#2c2c2e4D",
+          backgroundColor: "rgba(39, 39, 42, 0.8)", // zinc-800 with transparency
           color: "#fff",
-          padding: "6px 10px",
-          borderRadius: "4px",
-          border: "none",
-          cursor: "pointer",
+          padding: "8px 12px",
+          borderRadius: "6px",
+          border: "1px solid #3f3f46", // zinc-700
           fontSize: "0.9rem",
-          marginRight: "60px",
         }}
         className="flex flex-col justify-center items-left"
       >
-        <span>Symbol: {symbol}</span>
+        <span className="text-lg font-medium">{symbol}</span>
 
         <div>
           Change:{" "}
-          <span className={liveChange > 0 ? "text-green-500" : "text-red-500"}>
+          <span
+            className={liveChange > 0 ? "text-emerald-500" : "text-red-500"}
+          >
             {liveChange?.toFixed(2)}%
           </span>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <span>O: {OHLC?.open?.toFixed(2)}</span>
-          <span>H: {OHLC?.high?.toFixed(2)}</span>
-          <span>L: {OHLC?.low?.toFixed(2)}</span>
-          <span>C: {livePrice?.toFixed(2)}</span>
+        <div className="flex flex-wrap gap-2 text-zinc-300">
+          <span>
+            O: <span className="text-zinc-200">{OHLC?.open?.toFixed(2)}</span>
+          </span>
+          <span>
+            H: <span className="text-zinc-200">{OHLC?.high?.toFixed(2)}</span>
+          </span>
+          <span>
+            L: <span className="text-zinc-200">{OHLC?.low?.toFixed(2)}</span>
+          </span>
+          <span>
+            C: <span className="text-zinc-200">{livePrice?.toFixed(2)}</span>
+          </span>
         </div>
       </div>
+
+      {/* Full Chart Button (top-right corner) */}
       <button
         onClick={() => openChart(symbol)}
         style={{
@@ -370,23 +383,25 @@ function SideChart({ symbol, token }) {
           top: "8px",
           right: "8px",
           zIndex: 10,
-          backgroundColor: "#2c2c2e4D",
+          backgroundColor: "rgba(39, 39, 42, 0.8)", // zinc-800 with transparency
           color: "#fff",
-          padding: "6px 10px",
-          borderRadius: "4px",
-          border: "none",
+          padding: "8px 12px",
+          borderRadius: "6px",
+          border: "1px solid #3f3f46", // zinc-700
           cursor: "pointer",
-          fontSize: "0.9rem",
-          marginRight: "60px",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
         }}
       >
+        <span>Open in TradingView</span>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
           strokeWidth={1.5}
           stroke="currentColor"
-          className="size-6"
+          className="size-5"
         >
           <path
             strokeLinecap="round"

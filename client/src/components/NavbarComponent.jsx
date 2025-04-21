@@ -41,6 +41,11 @@ export default function NavbarComponent() {
   // For the dropdown notifications (alert messages) and for the alert modal (priceAlerts)
   const { alertMessages, priceAlerts } = useContext(DataContext);
 
+  // Add debug log
+  useEffect(() => {
+    console.log("NavbarComponent alertMessages:", alertMessages);
+  }, [alertMessages]);
+
   let userRole = "";
   if (token) {
     try {
@@ -70,6 +75,25 @@ export default function NavbarComponent() {
 
   const handleNotificationClose = () => {
     setNotificationAnchorEl(null);
+  };
+
+  // Add function to clear all notifications
+  const handleClearAllNotifications = async () => {
+    try {
+      await api.delete("/api/alerts/messages/clear");
+      PlayToastSound();
+      toast.success("All notifications cleared", {
+        duration: 5000,
+      });
+      // Close the menu
+      handleNotificationClose();
+    } catch (error) {
+      PlayErrorSound();
+      toast.error("Failed to clear notifications", {
+        duration: 5000,
+      });
+      console.error("Error clearing notifications:", error);
+    }
   };
 
   // Alert modal handlers
@@ -375,17 +399,80 @@ export default function NavbarComponent() {
               sx: {
                 bgcolor: "#27272a", // zinc-800
                 color: "white",
+                maxHeight: 400,
+                minWidth: 250,
               },
             }}
           >
             {alertMessages && alertMessages.length > 0 ? (
-              alertMessages.map((alert) => (
-                <MenuItem key={alert.id} onClick={handleNotificationClose}>
-                  <Typography variant="body2" noWrap>
-                    {alert.message}
-                  </Typography>
-                </MenuItem>
-              ))
+              <>
+                {alertMessages.map((alert) => (
+                  <MenuItem
+                    key={alert.id}
+                    onClick={handleNotificationClose}
+                    sx={{ py: 1 }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        width: "100%",
+                      }}
+                    >
+                      <Typography variant="subtitle2" fontWeight="bold">
+                        {alert.symbol}
+                      </Typography>
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", mt: 0.5 }}
+                      >
+                        <Chip
+                          label={
+                            alert.alert_type === "sl" ? "Stop Loss" : "Target"
+                          }
+                          size="small"
+                          sx={{
+                            mr: 1,
+                            bgcolor:
+                              alert.alert_type === "sl" ? "#ef4444" : "#22c55e",
+                            color: "white",
+                          }}
+                        />
+                        <Chip
+                          label={alert.triggered_price}
+                          size="small"
+                          sx={{
+                            bgcolor: "#4b5563",
+                            color: "white",
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                  </MenuItem>
+                ))}
+                <Box
+                  sx={{
+                    borderTop: "1px solid rgba(255,255,255,0.1)",
+                    p: 1,
+                    textAlign: "center",
+                  }}
+                >
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleClearAllNotifications}
+                    sx={{
+                      color: "white",
+                      borderColor: "rgba(255,255,255,0.3)",
+                      "&:hover": {
+                        borderColor: "white",
+                        bgcolor: "rgba(255,255,255,0.1)",
+                      },
+                    }}
+                  >
+                    Clear All
+                  </Button>
+                </Box>
+              </>
             ) : (
               <MenuItem onClick={handleNotificationClose}>
                 <Typography variant="body2">No notifications</Typography>

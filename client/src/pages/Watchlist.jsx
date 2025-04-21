@@ -1,7 +1,17 @@
 import React, { useEffect, useState, useRef, useContext } from "react";
 import { toast } from "sonner";
 import api from "../utils/api"; // Adjust as necessary
-import { Button, ButtonGroup, Spinner } from "@heroui/react";
+import {
+  Button,
+  ButtonGroup,
+  Spinner,
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+} from "@heroui/react";
 
 import { DataContext } from "../utils/DataContext";
 import { AuthContext } from "../utils/AuthContext";
@@ -80,50 +90,80 @@ function Watchlist() {
     setIsLoading(true);
     try {
       const response = await api.get("/api/watchlist/watchlistname/");
-      let wls = response.data;
+      let wls = response.data || [];
 
       if (wls.length === 0) {
-        await createDefaultWatchlist();
-        wls = (await api.get("/api/watchlist/watchlistname/")).data;
+        try {
+          await createDefaultWatchlist();
+          const newResponse = await api.get("/api/watchlist/watchlistname/");
+          wls = newResponse.data || [];
+        } catch (createError) {
+          console.error("Error creating default watchlist:", createError);
+          toast.error("Failed to create default watchlist.");
+        }
       }
 
       const defaultWl = wls.find((wl) => wl.name === "Default");
-      if (!defaultWl) {
-        await createDefaultWatchlist();
-        wls = (await api.get("/api/watchlist/watchlistname/")).data;
+      if (!defaultWl && wls.length > 0) {
+        try {
+          await createDefaultWatchlist();
+          const newResponse = await api.get("/api/watchlist/watchlistname/");
+          wls = newResponse.data || [];
+        } catch (createError) {
+          console.error("Error creating default watchlist:", createError);
+          toast.error("Failed to create default watchlist.");
+        }
       }
 
       setWatchlists(wls);
 
-      if (!selectedWatchlist) {
-        const finalDefault = wls.find((wl) => wl.name === "Default");
+      if (!selectedWatchlist && wls.length > 0) {
+        const finalDefault = wls.find((wl) => wl.name === "Default") || wls[0];
         if (finalDefault) {
           handleSelectWatchlist(finalDefault);
         }
       }
     } catch (error) {
       console.error("Error fetching watchlists:", error);
-      toast.error("Failed to fetch watchlists.");
+      toast.error("Failed to fetch watchlists. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
   const createDefaultWatchlist = async () => {
-    await api.post("/api/watchlist/watchlistname/add", { name: "Default" });
+    try {
+      await api.post("/api/watchlist/watchlistname/add", { name: "Default" });
+      return true;
+    } catch (error) {
+      console.error("Error creating default watchlist:", error);
+      return false;
+    }
   };
 
   // -------------------------------------------------------
   // FETCH ENTRIES WHEN WATCHLIST IS SELECTED
   // -------------------------------------------------------
   const handleSelectWatchlist = async (wl) => {
+    if (!wl || !wl.name) {
+      toast.error("Invalid watchlist selected");
+      return;
+    }
+
     setSelectedWatchlist(wl);
     setIsLoading(true);
     try {
       const response = await api.get(`/api/watchlist/${wl.name}`);
-      setWatchlistEntries(response.data);
+      if (response && response.data) {
+        setWatchlistEntries(response.data);
+      } else {
+        setWatchlistEntries([]);
+        toast.warning(`No entries found in ${wl.name} watchlist`);
+      }
     } catch (error) {
-      console.error("Error fetching watchlist entries:", error);
+      console.error(`Error fetching entries for watchlist ${wl.name}:`, error);
+      toast.error("Failed to load watchlist entries. Please try again.");
+      setWatchlistEntries([]);
     } finally {
       setIsLoading(false);
     }
@@ -242,21 +282,33 @@ function Watchlist() {
   // MERGE LIVE DATA INTO WATCHLIST ENTRIES
   // -------------------------------------------------------
   useEffect(() => {
-    if (!watchlistEntries || !liveData) return;
+    if (
+      !watchlistEntries ||
+      !watchlistEntries.length ||
+      !liveData ||
+      !liveData.length
+    )
+      return;
+
     const mergedEntries = watchlistEntries.map((entry) => {
+      if (!entry || typeof entry !== "object") return entry;
+
       const liveItem = liveData.find(
-        (ld) => ld.instrument_token === entry.instrument_token
+        (ld) => ld && ld.instrument_token === entry.instrument_token
       );
+
       if (liveItem) {
         return {
           ...entry,
-          last_price: liveItem.last_price,
-          change: liveItem.change,
-          prevClose: liveItem?.ohlc?.close,
+          last_price: liveItem.last_price || entry.last_price || 0,
+          change:
+            liveItem.change !== undefined ? liveItem.change : entry.change || 0,
+          prevClose: liveItem?.ohlc?.close || entry.prevClose || 0,
         };
       }
       return entry;
     });
+
     setWatchlistEntries(mergedEntries);
   }, [liveData]);
 
@@ -314,21 +366,7 @@ function Watchlist() {
   // RENDER
   // -------------------------------------------------------
   return (
-    <div
-      className="
-        mx-auto 
-        w-full 
-        max-w-[1600px] 
-        bg-[#1a1a1c] 
-        flex 
-        flex-col 
-        md:flex-row
-        text-white 
-        relative
-        md:h-[calc(100vh-96px)]
-        h-auto
-      "
-    >
+    <div className="w-full px-6 text-white relative">
       {/* Modals */}
       <BuyModal
         isOpen={isBuyModalOpen}
@@ -365,260 +403,24 @@ function Watchlist() {
         onWatchlistAdded={fetchWatchlistNames}
       />
 
-      {/* LEFT SIDEBAR: Search + Watchlist Entries */}
-      <div className="relative md:pb-[5vh] flex flex-col w-full md:w-[420px] h-[calc(100vh-98px)] md:h-full p-4 border-b border-zinc-700 md:border-b-0 md:border-r md:border-zinc-700 bg-[#1a1a1c]">
-        {/* Search Bar */}
-        <div
-          ref={searchContainerRef}
-          className="relative pb-2 mb-2 border-b border-zinc-600"
-        >
-          <span className="absolute -translate-y-1/2 left-3 top-1/2 text-zinc-500">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={2}
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 21l-4.35-4.35m0 0a8.5 8.5 0 1 0-12.04 0 8.5 8.5 0 0 0 12.04 0z"
-              />
-            </svg>
-          </span>
-          <input
-            type="text"
-            placeholder="Search"
-            className="w-full h-10 pl-10 pr-2 rounded bg-[#1a1a1c] text-zinc-300 placeholder-zinc-600 focus:outline-none"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          {searchResults.length > 0 && (
-            <div className="absolute left-0 z-10 w-full mt-1 border rounded top-12 bg-[#1a1a1c] border-zinc-700 max-h-[60vh] overflow-y-auto custom-scrollbar">
-              {searchResults.map((stock) => {
-                const displayName = stock.tradingsymbol || stock.company_name;
-                return (
-                  <div
-                    key={stock.instrument_token}
-                    className="flex items-center justify-between h-10 px-2 border-b cursor-pointer border-zinc-700 hover:bg-zinc-700"
-                    onClick={() =>
-                      handleAddStock(stock.instrument_token, displayName)
-                    }
-                  >
-                    <span className="flex items-center text-sm text-zinc-200">
-                      {displayName}
-                      <span className="ml-2 text-xs text-zinc-400">
-                        {stock.exchange || ""}
-                      </span>
-                    </span>
-                    <button className="flex items-center text-blue-400 hover:text-blue-300">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                        className="w-5 h-5"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Watchlist Entries */}
-        <div className="flex-1 mt-2 space-y-1 overflow-auto custom-scrollbar">
-          {isLoading && (
-            <div className="flex items-center justify-center">
-              <Spinner size="lg" />
-            </div>
-          )}
-          {selectedWatchlist ? (
-            watchlistEntries.length > 0 ? (
-              watchlistEntries.map((entry) => {
-                const colorClass =
-                  entry.change > 0
-                    ? "text-green-500"
-                    : entry.change < 0
-                    ? "text-red-500"
-                    : "text-zinc-400";
-                const priceDiff = entry.last_price - entry.prevClose || 0;
-                const diffColor =
-                  priceDiff > 0
-                    ? "text-green-500"
-                    : priceDiff < 0
-                    ? "text-red-500"
-                    : "text-zinc-400";
-                return (
-                  <div
-                    key={entry.id}
-                    className="flex items-center justify-between px-2 py-3 border-b bg-[#1a1a1c] border-zinc-700 group"
-                  >
-                    <div className="text-sm">{entry.symbol}</div>
-                    <div className="flex items-center gap-3">
-                      <div className="block group-hover:hidden">
-                        <span className={`text-xs ${diffColor} mr-1`}>
-                          ({priceDiff.toFixed(2)})
-                        </span>
-                        <span className={`text-xs ${colorClass} mr-1`}>
-                          {entry.change?.toFixed(2) || "0.00"}%
-                        </span>
-                        <span className={`text-sm ${colorClass}`}>
-                          {entry.last_price?.toFixed(2) || "--"}
-                        </span>
-                      </div>
-                      <div className="items-center hidden h-fit group-hover:flex">
-                        <ButtonGroup className="h-6">
-                          {userRole === "admin" && (
-                            <>
-                              <Button
-                                isIconOnly
-                                color="success"
-                                variant="flat"
-                                size="sm"
-                                onPress={() => {
-                                  populateBuyData(entry);
-                                  handleOpenBuyModal();
-                                }}
-                              >
-                                B
-                              </Button>
-                              <Button
-                                isIconOnly
-                                color="danger"
-                                variant="flat"
-                                size="sm"
-                                onPress={() => {
-                                  populateSellData(entry);
-                                  handleOpenSellModal();
-                                }}
-                              >
-                                S
-                              </Button>
-                              <Button
-                                isIconOnly
-                                color="primary"
-                                variant="flat"
-                                size="sm"
-                                onPress={() => {
-                                  populateAddAlertData(entry);
-                                  handleOpenAddAlertModal();
-                                }}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={1.5}
-                                  stroke="currentColor"
-                                  className="size-4"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
-                                  />
-                                </svg>
-                              </Button>
-                            </>
-                          )}
-                          <Button
-                            isIconOnly
-                            color="warning"
-                            variant="flat"
-                            size="sm"
-                            onPress={() => {
-                              populateChartData(entry);
-                              if (chartContainerRef.current) {
-                                chartContainerRef.current.scrollIntoView({
-                                  behavior: "smooth",
-                                  block: "start",
-                                });
-                              }
-                            }}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              strokeWidth={1.5}
-                              stroke="currentColor"
-                              className="size-4"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
-                              />
-                            </svg>
-                          </Button>
-                          <Button
-                            isIconOnly
-                            color="danger"
-                            variant="flat"
-                            size="sm"
-                            onPress={() => {
-                              handleDeleteEntry(entry);
-                            }}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              strokeWidth={1.5}
-                              stroke="currentColor"
-                              className="size-4"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
-                              />
-                            </svg>
-                          </Button>
-                        </ButtonGroup>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="text-zinc-400">No entries yet.</div>
-            )
-          ) : (
-            <div className="text-zinc-400">No watchlist selected.</div>
-          )}
-        </div>
-      </div>
-
-      {/* RIGHT SIDE: The Chart */}
-      <div
-        className="w-full p-4 md:flex-1 md:h-full h-[95vh] overflow-hidden"
-        ref={chartContainerRef}
-      >
-        <SideChart symbol={chartData?.symbol} token={chartData?.token} />
-      </div>
-
-      {/* FOOTER */}
-      <div className="static flex items-center justify-between w-full p-2 border-t md:absolute md:bottom-0 md:left-0 border-zinc-700 bg-zinc-800">
-        <div className="ml-4 text-zinc-400">
-          {selectedWatchlist
-            ? `Watchlist: ${selectedWatchlist.name}`
-            : "No watchlist selected"}
-        </div>
-        <div className="flex items-center gap-2 mr-4">
+      {/* Top Controls and Search */}
+      <div className="flex flex-col sm:flex-row items-center justify-between my-3">
+        <div className="flex items-center gap-3">
+          <Button
+            size="md"
+            color="success"
+            variant="flat"
+            className="min-w-[150px] h-10 px-4 bg-green-500/20 hover:bg-green-500/30 text-green-500"
+            onPress={() => {
+              if (selectedWatchlist) {
+                handleSelectWatchlist(selectedWatchlist);
+              }
+            }}
+          >
+            Refresh Watchlist
+          </Button>
           <select
-            className="px-2 py-1 rounded bg-zinc-900 text-zinc-300 focus:outline-none"
+            className="h-10 px-4 py-1 text-sm text-white rounded-md border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-green-500 shadow-md"
             value={selectedWatchlist?.id || ""}
             onChange={(e) => {
               const found = watchlists.find(
@@ -638,49 +440,304 @@ function Watchlist() {
               </option>
             ))}
           </select>
-          <button
-            className="px-3 py-1 text-white bg-blue-600 rounded"
-            onClick={handleOpenAddWatchlistModal}
+          <Button
+            size="md"
+            color="primary"
+            variant="flat"
+            className="h-10 px-3 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
+            onPress={handleOpenAddWatchlistModal}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className="w-5 h-5"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-              />
-            </svg>
-          </button>
+            Add Watchlist
+          </Button>
           {userRole === "admin" && selectedWatchlist && (
-            <button
-              className="px-3 py-1 text-white bg-red-600 rounded"
-              onClick={handleDeleteWatchlist}
+            <Button
+              size="md"
+              color="danger"
+              variant="flat"
+              className="h-10 px-3 bg-red-500/20 hover:bg-red-500/30 text-red-500"
+              onPress={handleDeleteWatchlist}
             >
+              Delete Watchlist
+            </Button>
+          )}
+        </div>
+
+        {watchlistEntries && (
+          <span className="text-sm mt-2 sm:mt-0 font-medium text-zinc-300">
+            Watchlist Count:{" "}
+            <span className="text-white font-semibold">
+              {watchlistEntries.length}
+            </span>
+          </span>
+        )}
+      </div>
+
+      {/* Layout container */}
+      <div className="flex flex-col md:flex-row h-[calc(100vh-190px)] gap-6">
+        {/* LEFT SIDE: Search + Watchlist Entries */}
+        <div className="relative w-full md:w-1/2 lg:w-1/3 h-full">
+          {/* Search input */}
+          <div ref={searchContainerRef} className="relative mb-4 w-full">
+            <span className="absolute -translate-y-1/2 left-3 top-1/2 text-zinc-500">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
+                className="w-5 h-5"
                 fill="none"
                 viewBox="0 0 24 24"
-                strokeWidth={1.5}
+                strokeWidth={2}
                 stroke="currentColor"
-                className="w-5 h-5"
               >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
+                  d="M21 21l-4.35-4.35m0 0a8.5 8.5 0 1 0-12.04 0 8.5 8.5 0 0 0 12.04 0z"
                 />
               </svg>
-            </button>
+            </span>
+            <input
+              type="text"
+              placeholder="Search stocks to add..."
+              className="w-full h-10 pl-10 pr-2 rounded-md bg-zinc-800/70 backdrop-blur-sm border border-zinc-700 text-zinc-300 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchResults.length > 0 && (
+              <div className="absolute left-0 z-10 w-full mt-1 border rounded top-12 bg-zinc-800 border-zinc-700 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                {searchResults.map((stock) => {
+                  const displayName = stock.tradingsymbol || stock.company_name;
+                  return (
+                    <div
+                      key={stock.instrument_token}
+                      className="flex items-center justify-between h-10 px-2 border-b cursor-pointer border-zinc-700 hover:bg-zinc-700"
+                      onClick={() =>
+                        handleAddStock(stock.instrument_token, displayName)
+                      }
+                    >
+                      <span className="flex items-center text-sm text-zinc-200">
+                        {displayName}
+                        <span className="ml-2 text-xs text-zinc-400">
+                          {stock.exchange || ""}
+                        </span>
+                      </span>
+                      <button className="flex items-center text-blue-400 hover:text-blue-300">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="w-5 h-5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Watchlist Table with Glassmorphism effect */}
+          {isLoading ? (
+            <div className="flex flex-col justify-center items-center w-full h-[calc(100%-60px)]">
+              <Spinner size="lg" />
+              <span className="m-5 text-2xl">Loading Watchlist Data</span>
+            </div>
+          ) : selectedWatchlist ? (
+            watchlistEntries.length > 0 ? (
+              <div className="w-full h-[calc(100%-60px)] overflow-auto custom-scrollbar">
+                <Table
+                  aria-label="Watchlist table"
+                  className="w-full no-scrollbar"
+                  align="center"
+                  radius="lg"
+                  shadow="md"
+                  isStriped
+                  classNames={{
+                    base: "bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden",
+                    thead: "bg-zinc-900 border-b border-zinc-800",
+                    th: "text-zinc-400 font-medium text-xs py-3 px-4 uppercase tracking-wider",
+                    td: "py-3 px-4 text-white/90",
+                    tr: "border-b border-zinc-800/50",
+                  }}
+                >
+                  <TableHeader>
+                    <TableColumn className="w-[25%]">Symbol</TableColumn>
+                    <TableColumn className="w-[25%] text-center">
+                      Last Price
+                    </TableColumn>
+                    <TableColumn className="w-[25%] text-center">
+                      Change
+                    </TableColumn>
+                    <TableColumn className="w-[25%] text-center">
+                      Actions
+                    </TableColumn>
+                  </TableHeader>
+                  <TableBody>
+                    {watchlistEntries.map((entry) => {
+                      const colorClass =
+                        entry.change > 0
+                          ? "text-green-500"
+                          : entry.change < 0
+                          ? "text-red-500"
+                          : "text-zinc-400";
+                      const priceDiff = entry.last_price - entry.prevClose || 0;
+                      return (
+                        <TableRow key={entry.id}>
+                          <TableCell>{entry.symbol}</TableCell>
+                          <TableCell className="text-center">
+                            {entry.last_price?.toFixed(2) || "--"}
+                          </TableCell>
+                          <TableCell className={`${colorClass} text-center`}>
+                            {entry.change?.toFixed(2) || "0.00"}%
+                            <span className="ml-1 text-xs">
+                              ({priceDiff.toFixed(2)})
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <ButtonGroup className="shadow-sm">
+                              {userRole === "admin" && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    color="success"
+                                    variant="flat"
+                                    className="min-w-[40px] h-9 px-3 bg-green-500/20 hover:bg-green-500/30 text-green-500"
+                                    onPress={() => {
+                                      populateBuyData(entry);
+                                      handleOpenBuyModal();
+                                    }}
+                                  >
+                                    En
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    color="danger"
+                                    variant="flat"
+                                    className="min-w-[40px] h-9 px-3 bg-red-500/20 hover:bg-red-500/30 text-red-500"
+                                    onPress={() => {
+                                      populateSellData(entry);
+                                      handleOpenSellModal();
+                                    }}
+                                  >
+                                    Ex
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    color="primary"
+                                    variant="flat"
+                                    className="min-w-[40px] h-9 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
+                                    onPress={() => {
+                                      populateAddAlertData(entry);
+                                      handleOpenAddAlertModal();
+                                    }}
+                                  >
+                                    <svg
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      fill="none"
+                                      viewBox="0 0 24 24"
+                                      strokeWidth={1.5}
+                                      stroke="currentColor"
+                                      className="w-5 h-5"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
+                                      />
+                                    </svg>
+                                  </Button>
+                                </>
+                              )}
+                              <Button
+                                size="sm"
+                                color="warning"
+                                variant="flat"
+                                className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
+                                onPress={() => {
+                                  populateChartData(entry);
+                                  if (chartContainerRef.current) {
+                                    chartContainerRef.current.scrollIntoView({
+                                      behavior: "smooth",
+                                      block: "start",
+                                    });
+                                  }
+                                }}
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  strokeWidth={1.5}
+                                  stroke="currentColor"
+                                  className="w-5 h-5"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
+                                  />
+                                </svg>
+                              </Button>
+                              <Button
+                                size="sm"
+                                color="danger"
+                                variant="flat"
+                                className="min-w-[40px] h-9 bg-red-500/20 hover:bg-red-500/30 text-red-500"
+                                onPress={() => {
+                                  handleDeleteEntry(entry);
+                                }}
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  strokeWidth={1.5}
+                                  stroke="currentColor"
+                                  className="w-5 h-5"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                                  />
+                                </svg>
+                              </Button>
+                            </ButtonGroup>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="flex justify-center items-center h-[calc(100%-60px)] bg-zinc-900/50 border border-zinc-800 rounded-xl text-zinc-400">
+                No entries in this watchlist. Search and add stocks above.
+              </div>
+            )
+          ) : (
+            <div className="flex justify-center items-center h-[calc(100%-60px)] bg-zinc-900/50 border border-zinc-800 rounded-xl text-zinc-400">
+              No watchlist selected. Please select or create a watchlist.
+            </div>
           )}
         </div>
+
+        {/* RIGHT SIDE: The Chart */}
+        <div
+          className="w-full md:w-1/2 lg:w-2/3 h-full bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden"
+          ref={chartContainerRef}
+        >
+          <SideChart symbol={chartData?.symbol} token={chartData?.token} />
+        </div>
       </div>
-      {/* Custom Scrollbar Styles for Left Sidebar */}
+
+      {/* Custom Scrollbar Styles */}
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;

@@ -98,6 +98,7 @@ const pageVariants = {
 const AppRoutes = () => {
   const location = useLocation();
   const { logout, token } = useContext(AuthContext);
+  const { alertMessages } = useContext(DataContext);
 
   // Get user info from token
   let userName = "User";
@@ -139,7 +140,8 @@ const AppRoutes = () => {
         onLogout={logout}
         userName={userName}
         userRole={userRole}
-        notificationCount={0}
+        notificationCount={alertMessages?.length || 0}
+        alertMessages={alertMessages}
       />
       <Box
         component="main"
@@ -330,6 +332,7 @@ function App() {
   const fetchAlertMessages = async () => {
     try {
       const response = await api.get("/api/alerts/messages");
+      console.log("Alert messages data:", response.data || response);
       setAlertMessages(response.data || response);
     } catch (error) {
       console.error("Error fetching alert messages:", error);

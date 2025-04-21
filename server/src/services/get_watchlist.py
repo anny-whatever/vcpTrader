@@ -53,31 +53,45 @@ def get_watchlist_entries(cur, watchlist_name: str):
             TIMEZONE = pytz.timezone("Asia/Kolkata")
             now = datetime.datetime.now(TIMEZONE).time()
             if START_TIME <= now <= END_TIME:
-                live_quotes = kite.quote(unique_tokens)
+                try:
+                    live_quotes = kite.quote(unique_tokens)
+                except Exception as quote_error:
+                    logger.error(f"Error fetching quotes from Kite API: {quote_error}")
+                    # Proceed without live quotes, using fallback data
         except Exception as e:
-            logger.error(f"Error fetching live quotes for watchlist: {e}")
-            live_quotes = {}
+            logger.error(f"Error checking market hours: {e}")
         
         # Update each entry with additional live quote details.
-        
         updated_entries = []
         for entry in entries:
             token_str = str(entry['instrument_token'])
             quote_data = live_quotes.get(token_str, {})
             
-            # Attach basic live data
+            # Attach basic live data with fallbacks to prevent null values
             entry['last_price'] = float(quote_data.get('last_price', 0))
-            # If available, unpack the OHLC details.
+            
+            # If available, unpack the OHLC details with fallbacks
             ohlc = quote_data.get('ohlc', {})
             entry['prevClose'] = float(ohlc.get('close', 0))
-            # Calculate percentage change, if previous close is available.
-            if ohlc.get('close', 0):
-                change_pct = ((entry['last_price'] - ohlc.get('close', 0)) / ohlc.get('close', 0)) * 100
+            
+            # Calculate percentage change safely
+            if entry['prevClose'] and entry['prevClose'] != 0:
+                change_pct = ((entry['last_price'] - entry['prevClose']) / entry['prevClose']) * 100
                 entry['change'] = round(change_pct, 2)
             else:
                 entry['change'] = 0.0
             
-            updated_entries.append(entry)
+            # Ensure all entries have consistent format
+            updated_entries.append({
+                'id': entry.get('id', 0),
+                'watchlist_name': entry.get('watchlist_name', watchlist_name),
+                'instrument_token': entry.get('instrument_token', 0),
+                'symbol': entry.get('symbol', ''),
+                'added_at': entry.get('added_at', ''),
+                'last_price': entry.get('last_price', 0.0),
+                'prevClose': entry.get('prevClose', 0.0),
+                'change': entry.get('change', 0.0)
+            })
         
         return updated_entries 
     except Exception as e:

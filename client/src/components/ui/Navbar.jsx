@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   AppBar,
@@ -34,6 +34,9 @@ import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CloseIcon from "@mui/icons-material/Close";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { useTheme } from "@mui/material/styles";
+import api from "../../utils/api";
+import { toast } from "sonner";
+import { PlayToastSound, PlayErrorSound } from "../../utils/PlaySound";
 
 // Styled components
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
@@ -221,6 +224,7 @@ const Navbar = ({
   userName = "User",
   userRole = "user",
   notificationCount = 0,
+  alertMessages = [],
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -299,6 +303,30 @@ const Navbar = ({
       external: true,
     },
   ];
+
+  // Clear all notifications
+  const handleClearAllNotifications = async () => {
+    try {
+      await api.delete("/api/alerts/messages/clear");
+      PlayToastSound();
+      toast.success("All notifications cleared", {
+        duration: 5000,
+      });
+      // Close the menu
+      handleNotificationsClose();
+    } catch (error) {
+      PlayErrorSound();
+      toast.error("Failed to clear notifications", {
+        duration: 5000,
+      });
+      console.error("Error clearing notifications:", error);
+    }
+  };
+
+  // Log alerts for debugging
+  useEffect(() => {
+    console.log("Navbar alertMessages:", alertMessages);
+  }, [alertMessages]);
 
   // Mobile drawer content
   const drawer = (
@@ -453,7 +481,7 @@ const Navbar = ({
                 size="medium"
                 sx={{ mr: 1 }}
               >
-                <Badge badgeContent={notificationCount} color="error">
+                <Badge badgeContent={alertMessages?.length || 0} color="error">
                   <NotificationsIcon />
                 </Badge>
               </IconButton>
@@ -564,28 +592,19 @@ const Navbar = ({
           <Typography variant="subtitle1" fontWeight={600}>
             Notifications
           </Typography>
-          <Badge
-            badgeContent={notificationCount}
-            color="error"
-            sx={{
-              "& .MuiBadge-badge": {
-                fontSize: "0.75rem",
-                height: "1.25rem",
-                minWidth: "1.25rem",
-              },
-            }}
-          >
+          {alertMessages?.length > 0 && (
             <Typography
               variant="body2"
               color="primary"
               sx={{ cursor: "pointer" }}
+              onClick={handleClearAllNotifications}
             >
-              {notificationCount > 0 ? "Mark all as read" : ""}
+              Clear all
             </Typography>
-          </Badge>
+          )}
         </Box>
 
-        {notificationCount === 0 ? (
+        {!alertMessages || alertMessages.length === 0 ? (
           <Box sx={{ p: 4, textAlign: "center" }}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -633,10 +652,10 @@ const Navbar = ({
               },
             }}
           >
-            {/* Example notifications - This should be replaced with real data */}
-            {[...Array(Math.min(notificationCount, 5))].map((_, index) => (
+            {/* Real alert notifications */}
+            {alertMessages.map((alert) => (
               <MenuItem
-                key={`notification-${index}`}
+                key={`notification-${alert.id}`}
                 onClick={handleNotificationsClose}
                 sx={{
                   px: 2,
@@ -659,15 +678,7 @@ const Navbar = ({
                     }}
                   >
                     <Typography variant="body2" fontWeight={600}>
-                      {index === 0
-                        ? "Position Alert"
-                        : index === 1
-                        ? "Target Reached"
-                        : index === 2
-                        ? "Stop Loss Hit"
-                        : index === 3
-                        ? "Market Update"
-                        : "System Notification"}
+                      {alert.symbol}
                     </Typography>
                     <Typography
                       variant="caption"
@@ -678,68 +689,15 @@ const Navbar = ({
                         "& svg": { mr: 0.5 },
                       }}
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12 6 12 12 16 14" />
-                      </svg>
-                      {index === 0
-                        ? "Just now"
-                        : index === 1
-                        ? "5m ago"
-                        : index === 2
-                        ? "30m ago"
-                        : index === 3
-                        ? "1h ago"
-                        : "2h ago"}
+                      {alert.alert_type === "sl" ? "Stop Loss" : "Target"}
                     </Typography>
                   </Box>
                   <Typography variant="body2" color="text.secondary">
-                    {index === 0
-                      ? "New position opened for INFY at ₹1580"
-                      : index === 1
-                      ? "Target reached for HDFC at ₹2950"
-                      : index === 2
-                      ? "Stop loss triggered for RELIANCE at ₹2480"
-                      : index === 3
-                      ? "Market is up by 1.5% today"
-                      : "System maintenance scheduled for tonight"}
+                    Triggered at ₹{alert.triggered_price}
                   </Typography>
                 </Box>
               </MenuItem>
             ))}
-          </Box>
-        )}
-
-        {notificationCount > 0 && (
-          <Box
-            sx={{
-              p: 1,
-              borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            }}
-          >
-            <MenuItem
-              sx={{
-                borderRadius: 1,
-                justifyContent: "center",
-                "&:hover": {
-                  backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                },
-              }}
-            >
-              <Typography variant="body2" color="primary" fontWeight={500}>
-                View all notifications
-              </Typography>
-            </MenuItem>
           </Box>
         )}
       </Menu>

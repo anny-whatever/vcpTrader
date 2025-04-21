@@ -472,25 +472,36 @@ function Dashboard() {
         <Grid item xs={12} md={6}>
           <Box
             sx={{
-              backgroundColor: "#18181B",
+              backgroundColor: "rgba(35, 35, 40, 0.3)",
               borderRadius: "1rem",
               height: isMobile ? "200px" : "300px",
-              boxShadow:
-                "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+              boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.18)",
               p: 3,
-              border: "1px solid rgba(63, 63, 70, 0.5)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
               backdropFilter: "blur(10px)",
               transition: "all 0.3s ease",
               "&:hover": {
-                boxShadow:
-                  "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+                boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.25)",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+              },
+              position: "relative",
+              overflow: "hidden",
+              "&::before": {
+                content: '""',
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: "1px",
+                background:
+                  "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0) 100%)",
               },
             }}
           >
             <Typography
               variant="subtitle1"
               sx={{
-                color: "#d4d4d8",
+                color: "#e4e4e7",
                 mb: 1.5,
                 fontWeight: 600,
                 fontSize: "1rem",
@@ -506,7 +517,7 @@ function Dashboard() {
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="#3f3f46"
-                  opacity={0.4}
+                  opacity={0.3}
                 />
                 <XAxis
                   dataKey="name"
@@ -519,10 +530,11 @@ function Dashboard() {
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#27272a",
-                    border: "none",
+                    backgroundColor: "rgba(39, 39, 42, 0.8)",
+                    backdropFilter: "blur(12px)",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
                     borderRadius: "0.5rem",
-                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                    boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.18)",
                   }}
                   labelStyle={{
                     color: "#e4e4e7",
@@ -550,25 +562,36 @@ function Dashboard() {
         <Grid item xs={12} md={6}>
           <Box
             sx={{
-              backgroundColor: "#18181B",
+              backgroundColor: "rgba(35, 35, 40, 0.3)",
               borderRadius: "1rem",
               height: isMobile ? "200px" : "300px",
-              boxShadow:
-                "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+              boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.18)",
               p: 3,
-              border: "1px solid rgba(63, 63, 70, 0.5)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
               backdropFilter: "blur(10px)",
               transition: "all 0.3s ease",
               "&:hover": {
-                boxShadow:
-                  "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+                boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.25)",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+              },
+              position: "relative",
+              overflow: "hidden",
+              "&::before": {
+                content: '""',
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: "1px",
+                background:
+                  "linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0) 100%)",
               },
             }}
           >
             <Typography
               variant="subtitle1"
               sx={{
-                color: "#d4d4d8",
+                color: "#e4e4e7",
                 mb: 1.5,
                 fontWeight: 600,
                 fontSize: "1rem",
@@ -584,7 +607,7 @@ function Dashboard() {
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="#3f3f46"
-                  opacity={0.4}
+                  opacity={0.3}
                 />
                 <XAxis
                   dataKey="name"
@@ -597,10 +620,11 @@ function Dashboard() {
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#27272a",
-                    border: "none",
+                    backgroundColor: "rgba(39, 39, 42, 0.8)",
+                    backdropFilter: "blur(12px)",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
                     borderRadius: "0.5rem",
-                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                    boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.18)",
                   }}
                   labelStyle={{
                     color: "#e4e4e7",
