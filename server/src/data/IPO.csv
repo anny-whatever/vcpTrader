@@ -1,61 +1,46 @@
 Company Name,Industry,Symbol,Series,ISIN Code
-ACME Solar Holdings Ltd.,Financial Services,ACMESOLAR,EQ,INE622W01025
-ASK Automotive Ltd.,Automobile and Auto Components,ASKAUTOLTD,EQ,INE491J01022
+ACME Solar Holdings Ltd.,Power,ACMESOLAR,EQ,INE622W01025
 Aadhar Housing Finance Ltd.,Financial Services,AADHARHFC,EQ,INE883F01010
 Afcons Infrastructure Ltd.,Construction,AFCONS,EQ,INE101I01011
 Ajax Engineering Ltd.,Capital Goods,AJAXENGG,EQ,INE274Y01021
-Akme Fintrade (India) Ltd.,Financial Services,AFIL,EQ,INE916Y01019
+Akme Fintrade (India) Ltd.,Financial Services,AFIL,EQ,INE916Y01027
 Akums Drugs and Pharmaceuticals Ltd.,Healthcare,AKUMS,EQ,INE09XN01023
 Allied Blenders and Distillers Ltd.,Fast Moving Consumer Goods,ABDL,EQ,INE552Z01027
 Apeejay Surrendra Park Hotels Ltd.,Consumer Services,PARKHOTELS,EQ,INE988S01028
 Arkade Developers Ltd.,Realty,ARKADE,EQ,INE0QRL01017
 Awfis Space Solutions Ltd.,Services,AWFIS,EQ,INE108V01019
-Azad Engineering Ltd.,Capital Goods,AZAD,EQ,INE02IJ01035
 BLS E-Services Ltd.,Information Technology,BLSE,EQ,INE0NLT01010
 Baazar Style Retail Ltd.,Consumer Services,STYLEBAAZA,EQ,INE01FR01028
 Bajaj Housing Finance Ltd.,Financial Services,BAJAJHFL,EQ,INE377Y01014
 Bansal Wire Industries Ltd.,Capital Goods,BANSALWIRE,EQ,INE0B9K01025
 Bharti Hexacom Ltd.,Telecommunication,BHARTIHEXA,EQ,INE343G01021
-Blue Jet Healthcare Ltd.,Healthcare,BLUEJET,EQ,INE0KBH01020
 Brainbees Solutions Ltd.,Consumer Services,FIRSTCRY,EQ,INE02RE01045
 Capital Small Finance Bank Ltd.,Financial Services,CAPITALSFB,EQ,INE646H01017
 Carraro India Ltd.,Automobile and Auto Components,CARRARO,EQ,INE0V7W01012
 Ceigall India Ltd.,Construction,CEIGALL,EQ,INE0AG901020
-Cello World Ltd.,Consumer Durables,CELLO,EQ,INE0LMW01024
 Concord Enviro Systems Ltd.,Utilities,CEWATER,EQ,INE037Z01029
-Credo Brands Marketing Ltd.,Consumer Services,MUFTI,EQ,INE220Q01020
 DEE Development Engineers Ltd.,Capital Goods,DEEDEV,EQ,INE841L01016
-DOMS Industries Ltd.,Fast Moving Consumer Goods,DOMS,EQ,INE321T01012
 Dam Capital Advisors Ltd.,Financial Services,DAMCAPITAL,EQ,INE284H01025
 Deepak Builders & Engineers India Ltd.,Construction,DBEIL,EQ,INE0OPA01019
 Denta Water and Infra Solutions Ltd.,Utilities,DENTA,EQ,INE0R4L01018
 Diffusion Engineers Ltd.,Capital Goods,DIFFNKG,BE,INE184O01015
 Dr. Agarwal's Health Care Ltd.,Healthcare,AGARWALEYE,EQ,INE943P01029
 EPACK Durable Ltd.,Consumer Durables,EPACK,EQ,INE0G5901015
-ESAF Small Finance Bank Ltd.,Financial Services,ESAFSFB,EQ,INE818W01011
 Ecos (India) Mobility & Hospitality Ltd.,Services,ECOSMOBLTY,EQ,INE06HJ01020
 Emcure Pharmaceuticals Ltd.,Healthcare,EMCURE,EQ,INE168P01015
 Entero Healthcare Solutions Ltd.,Consumer Services,ENTERO,EQ,INE010601016
 Enviro Infra Engineers Ltd.,Utilities,EIEL,EQ,INE0LLY01014
 Exicom Tele-Systems Ltd.,Capital Goods,EXICOM,EQ,INE777F01014
-Fedbank Financial Services Ltd.,Financial Services,FEDFINA,EQ,INE007N01010
-Flair Writing Industries Ltd.,Fast Moving Consumer Goods,FLAIR,EQ,INE00Y201027
 GPT Healthcare Ltd.,Healthcare,GPTHEALTH,EQ,INE486R01017
 Gala Precision Engineering Ltd.,Capital Goods,GALAPREC,EQ,INE0RE001014
-Gandhar Oil Refinery (India) Ltd.,Oil Gas & Consumable Fuels,GANDHAR,EQ,INE717W01049
 Garuda Construction and Engineering Ltd.,Construction,GARUDA,EQ,INE0JVO01026
 Go Digit General Insurance Ltd.,Financial Services,GODIGIT,EQ,INE03JT01014
 Godavari Biorefineries Ltd.,Fast Moving Consumer Goods,GODAVARIB,BE,INE497S01012
 Gopal Snacks Ltd.,Fast Moving Consumer Goods,GOPAL,EQ,INE0L9R01028
-Happy Forgings Ltd.,Capital Goods,HAPPYFORGE,EQ,INE330T01021
 Hexaware Technologies Ltd.,Information Technology,HEXT,EQ,INE093A01041
-Honasa Consumer Ltd.,Fast Moving Consumer Goods,HONASA,EQ,INE0J5401028
 Hyundai Motor India Ltd.,Automobile and Auto Components,HYUNDAI,EQ,INE0V6F01027
-INOX India Ltd.,Capital Goods,INOXINDIA,EQ,INE616N01034
 Indegene Ltd.,Healthcare,INDGN,EQ,INE065X01017
-India Shelter Finance Corporation Ltd.,Financial Services,INDIASHLTR,EQ,INE922K01024
-Indian Renewable Energy Development Agency Ltd.,Financial Services,IREDA,EQ,INE202E01016
-Indo Farm Equipment Ltd.,Capital Goods,INDOFARM,EQ,INE622H01018
+Indo Farm Equipment Ltd.,Capital Goods,INDOFARM,BE,INE622H01018
 Innova Captab Ltd.,Healthcare,INNOVACAP,EQ,INE0DUT01020
 Interarch Building Products Ltd.,Construction,INTERARCH,EQ,INE00M901018
 International Gemmological Institute (India) Ltd.,Services,IGIL,EQ,INE0Q9301021
@@ -74,9 +59,7 @@ Le Travenues Technology Ltd.,Consumer Services,IXIGO,EQ,INE0HV901016
 Mamata Machinery Ltd.,Capital Goods,MAMATA,EQ,INE0TO701015
 Manba Finance Ltd.,Financial Services,MANBA,EQ,INE939X01013
 Medi Assist Healthcare Services Ltd.,Financial Services,MEDIASSIST,EQ,INE456Z01021
-Motisons Jewellers Ltd.,Consumer Durables,MOTISONS,EQ,INE0FRK01020
 Mukka Proteins Ltd.,Fast Moving Consumer Goods,MUKKA,EQ,INE0CG401037
-Muthoot Microfin Ltd.,Financial Services,MUTHOOTMF,EQ,INE046W01019
 NTPC Green Energy Ltd.,Power,NTPCGREEN,EQ,INE0ONG01011
 Niva Bupa Health Insurance Company Ltd.,Financial Services,NIVABUPA,EQ,INE995S01015
 Northern Arc Capital Ltd.,Financial Services,NORTHARC,EQ,INE850M01015
@@ -102,11 +85,9 @@ Shree Tirupati Balajee Agro Trading Company Ltd.,Capital Goods,BALAJEE,EQ,INE0S2
 Stallion India Fluorochemicals Ltd.,Chemicals,STALLION,EQ,INE0RYC01010
 Standard Glass Lining Technology Ltd.,Capital Goods,SGLTL,EQ,INE0M4D01010
 Stanley Lifestyles Ltd.,Consumer Durables,STANLEY,EQ,INE01A001028
-Suraj Estate Developers Ltd.,Realty,SURAJEST,EQ,INE843S01025
 Suraksha Diagnostic Ltd.,Healthcare,SURAKSHA,EQ,INE877V01027
 Swiggy Ltd.,Consumer Services,SWIGGY,EQ,INE00H001014
 TBO Tek Ltd.,Consumer Services,TBOTEK,EQ,INE673O01025
-Tata Technologies Ltd.,Information Technology,TATATECH,EQ,INE142M01025
 Tolins Tyres Ltd.,Automobile and Auto Components,TOLINS,BE,INE0RWQ01014
 Transrail Lighting Ltd.,Capital Goods,TRANSRAILL,EQ,INE454P01035
 Unicommerce Esolutions Ltd.,Information Technology,UNIECOM,EQ,INE00U401027
