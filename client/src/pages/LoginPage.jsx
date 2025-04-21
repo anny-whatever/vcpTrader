@@ -2,38 +2,83 @@ import React, { useState, useContext } from "react";
 import {
   Avatar,
   Button,
-  Card,
-  CardContent,
-  CssBaseline,
   TextField,
   Typography,
   Container,
   Box,
+  InputAdornment,
+  IconButton,
+  Link,
+  useTheme,
+  alpha,
 } from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { AuthContext } from "../utils/AuthContext"; // Adjust the path as needed
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import { motion } from "framer-motion";
+import { AuthContext } from "../utils/AuthContext";
 import api from "../utils/api";
+import { Card, CardContent } from "../components/ui/Card";
 
-const theme = createTheme({
-  palette: {
-    primary: { main: "#1976d2" },
-    secondary: { main: "#ff4081" },
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      duration: 0.5,
+      when: "beforeChildren",
+      staggerChildren: 0.1,
+    },
   },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 24,
+    },
   },
-});
+};
+
+const logoVariants = {
+  hidden: { scale: 0.8, opacity: 0 },
+  visible: {
+    scale: 1,
+    opacity: 1,
+    transition: {
+      type: "spring",
+      stiffness: 500,
+      damping: 25,
+      delay: 0.2,
+    },
+  },
+};
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const { saveToken } = useContext(AuthContext);
+  const theme = useTheme();
 
-  // Handle login submission by calling the /login endpoint.
+  // Handle toggle password visibility
+  const handleTogglePassword = () => {
+    setShowPassword(!showPassword);
+  };
 
+  // Handle login submission
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setLoading(true);
+    setError("");
 
     // Prepare form data as x-www-form-urlencoded
     const data = new URLSearchParams();
@@ -50,58 +95,120 @@ const LoginPage = () => {
           },
         }
       );
-      // The response data is available on response.data
-      const result = response.data;
 
-      // Save the JWT token using AuthContext (and in localStorage)
-      saveToken(result.access_token);
+      // Save the JWT token using AuthContext
+      saveToken(response.data.access_token);
 
-      // Redirect to your protected route (dashboard)
+      // Redirect to dashboard
       window.location.href = "/";
     } catch (error) {
-      // Axios errors have a response property if the request was made and the server responded
       if (error.response) {
-        console.error("Login failed:", error.response.data);
+        setError(
+          error.response.data.detail ||
+            "Login failed. Please check your credentials."
+        );
       } else {
-        console.error("Error during login:", error.message);
+        setError("Network error. Please try again.");
       }
+      setLoading(false);
     }
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          p: 2,
-        }}
-      >
-        <Container maxWidth="sm">
-          <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
-            <CardContent sx={{ p: 4 }}>
-              <Box sx={{ display: "flex", justifyContent: "center", mb: 2 }}>
-                <Avatar sx={{ bgcolor: "warning.main", width: 56, height: 56 }}>
+    <Box
+      component={motion.div}
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        p: 2,
+        backgroundImage: `radial-gradient(circle at 25% 15%, ${alpha(
+          theme.palette.primary.dark,
+          0.2
+        )} 0%, transparent 50%), 
+                          radial-gradient(circle at 75% 75%, ${alpha(
+                            theme.palette.primary.main,
+                            0.1
+                          )} 0%, transparent 50%)`,
+      }}
+    >
+      <Container maxWidth="sm">
+        <Card variant="glass">
+          <CardContent padding="large">
+            <Box sx={{ textAlign: "center", mb: 3 }}>
+              <motion.div variants={logoVariants}>
+                <Avatar
+                  sx={{
+                    mx: "auto",
+                    bgcolor: "primary.main",
+                    width: 64,
+                    height: 64,
+                    boxShadow: `0 0 20px ${alpha(
+                      theme.palette.primary.main,
+                      0.4
+                    )}`,
+                  }}
+                >
                   <LockOutlinedIcon fontSize="large" />
                 </Avatar>
-              </Box>
-              <Typography
-                component="h1"
-                variant="h5"
-                align="center"
-                gutterBottom
+              </motion.div>
+
+              <motion.div variants={itemVariants}>
+                <Typography
+                  component="h1"
+                  variant="h4"
+                  sx={{
+                    mt: 2,
+                    fontWeight: 700,
+                    background:
+                      "linear-gradient(45deg, #f5f5f5 30%, #a1a1aa 90%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  theTerminal
+                </Typography>
+              </motion.div>
+
+              <motion.div variants={itemVariants}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 1 }}
+                >
+                  Sign in to access your trading dashboard
+                </Typography>
+              </motion.div>
+            </Box>
+
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
               >
-                Sign in to theTerminal
-              </Typography>
-              <Box
-                component="form"
-                onSubmit={handleSubmit}
-                noValidate
-                sx={{ mt: 1 }}
-              >
+                <Box
+                  sx={{
+                    p: 2,
+                    mb: 3,
+                    borderRadius: 2,
+                    bgcolor: alpha(theme.palette.error.main, 0.1),
+                    border: `1px solid ${alpha(theme.palette.error.main, 0.2)}`,
+                  }}
+                >
+                  <Typography color="error.main" variant="body2">
+                    {error}
+                  </Typography>
+                </Box>
+              </motion.div>
+            )}
+
+            <Box component="form" onSubmit={handleSubmit} noValidate>
+              <motion.div variants={itemVariants}>
                 <TextField
                   margin="normal"
                   required
@@ -118,42 +225,88 @@ const LoginPage = () => {
                     autoCapitalize: "none",
                     autoCorrect: "off",
                   }}
+                  sx={{ mb: 2 }}
                 />
+              </motion.div>
+
+              <motion.div variants={itemVariants}>
                 <TextField
                   margin="normal"
                   required
                   fullWidth
                   name="password"
                   label="Password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   id="password"
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={handleTogglePassword}
+                          edge="end"
+                        >
+                          {showPassword ? (
+                            <VisibilityOffIcon />
+                          ) : (
+                            <VisibilityIcon />
+                          )}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                   inputProps={{
                     autoCapitalize: "none",
                     autoCorrect: "off",
                   }}
+                  sx={{ mb: 3 }}
                 />
+              </motion.div>
+
+              <motion.div variants={itemVariants}>
                 <Button
                   type="submit"
                   fullWidth
                   variant="contained"
-                  color="warning"
+                  color="primary"
                   size="large"
-                  sx={{ mt: 3, mb: 2, borderRadius: 2 }}
+                  disabled={loading}
+                  sx={{
+                    py: 1.5,
+                    fontWeight: 600,
+                    boxShadow: `0 8px 16px ${alpha(
+                      theme.palette.primary.main,
+                      0.2
+                    )}`,
+                  }}
                 >
-                  Sign In
+                  {loading ? "Signing in..." : "Sign In"}
                 </Button>
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  Forgot password? Irresponsible bitch, call me
+              </motion.div>
+
+              <motion.div variants={itemVariants}>
+                <Box sx={{ mt: 3, textAlign: "center" }}>
+                  <Link
+                    href="#"
+                    variant="body2"
+                    color="primary"
+                    sx={{
+                      opacity: 0.8,
+                      "&:hover": { opacity: 1 },
+                    }}
+                  >
+                    Forgot password?
+                  </Link>
                 </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Container>
-      </Box>
-    </ThemeProvider>
+              </motion.div>
+            </Box>
+          </CardContent>
+        </Card>
+      </Container>
+    </Box>
   );
 };
 

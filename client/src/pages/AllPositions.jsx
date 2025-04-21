@@ -166,12 +166,12 @@ function AllPositions() {
     <>
       <div className="w-full px-6">
         {/* TOP STATS */}
-        <div className="flex flex-wrap justify-between gap-1 my-3">
-          <div className="flex flex-col bg-zinc-900 rounded-lg p-3 max-w-[120px] md:max-w-[250px]">
-            <span className="text-sm text-zinc-400">Total P&L</span>
+        <div className="flex flex-wrap gap-4 my-4">
+          <div className="flex flex-col bg-zinc-900 rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
+            <span className="text-sm text-zinc-400 font-medium">Total P&L</span>
             <span
-              className={`text-xl mt-1 ${
-                totalPnl >= 0 ? "text-green-400" : "text-red-400"
+              className={`text-xl mt-1 font-semibold ${
+                totalPnl >= 0 ? "text-green-500" : "text-red-500"
               }`}
             >
               {(totalPnl * multiplier).toFixed(2)}{" "}
@@ -184,31 +184,34 @@ function AllPositions() {
               </span>
             </span>
           </div>
-          <div className="flex flex-col bg-zinc-900 rounded-lg p-3 max-w-[120px] md:max-w-[250px]">
-            <span className="text-sm text-zinc-400">Capital Used</span>
-            <span className="mt-1 text-xl text-zinc-200">
+          <div className="flex flex-col bg-zinc-900 rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
+            <span className="text-sm text-zinc-400 font-medium">
+              Capital Used
+            </span>
+            <span className="mt-1 text-xl text-zinc-200 font-semibold">
               {(capitalUsed * multiplier).toFixed(2)}
             </span>
           </div>
-          <div className="flex flex-col bg-zinc-900 rounded-lg p-3 max-w-[120px] md:max-w-[250px]">
-            <span className="text-sm text-zinc-400">Used Risk</span>
-            <span className="mt-1 text-xl text-zinc-200">
+          <div className="flex flex-col bg-zinc-900 rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
+            <span className="text-sm text-zinc-400 font-medium">Used Risk</span>
+            <span className="mt-1 text-xl text-zinc-200 font-semibold">
               {(riskpool?.used_risk * multiplier || 0).toFixed(2)}
             </span>
           </div>
-          <div className="flex flex-col bg-zinc-900 rounded-lg p-3 max-w-[120px] md:max-w-[250px]">
-            <span className="text-sm text-zinc-400">Available Risk</span>
-            <span className="mt-1 text-xl text-zinc-200">
+          <div className="flex flex-col bg-zinc-900 rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
+            <span className="text-sm text-zinc-400 font-medium">
+              Available Risk
+            </span>
+            <span className="mt-1 text-xl text-zinc-200 font-semibold">
               {(riskpool?.available_risk * multiplier || 0).toFixed(2)}
             </span>
           </div>
-          <div className="flex flex-col bg-zinc-900 rounded-lg p-3 max-w-[120px] md:max-w-[250px]">
-            <span className="text-sm text-zinc-400">Total Risk</span>
-            <span className="mt-1 text-xl text-zinc-200">
-              {(
-                (riskpool?.available_risk * multiplier || 0) +
-                (riskpool?.used_risk * multiplier || 0)
-              ).toFixed(2)}
+          <div className="flex flex-col bg-zinc-900 rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
+            <span className="text-sm text-zinc-400 font-medium">
+              Total Risk
+            </span>
+            <span className="mt-1 text-xl text-zinc-200 font-semibold">
+              {(riskpool?.total_risk * multiplier || 0).toFixed(2)}
             </span>
           </div>
         </div>
@@ -217,8 +220,17 @@ function AllPositions() {
         <div className="hidden w-full md:block">
           <Table
             aria-label="Positions Table"
-            className="w-full table-auto no-scrollbar"
+            className="w-full no-scrollbar"
             align="center"
+            radius="lg"
+            shadow="md"
+            isStriped
+            classNames={{
+              base: "bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden",
+              thead: "bg-zinc-800/70 backdrop-blur-sm",
+              th: "text-zinc-400 font-medium text-sm py-3 px-4",
+              td: "py-3 px-4 text-white/90",
+            }}
           >
             <TableHeader>
               <TableColumn>Instrument</TableColumn>
@@ -229,7 +241,7 @@ function AllPositions() {
               <TableColumn>P&L</TableColumn>
               <TableColumn>Actions</TableColumn>
             </TableHeader>
-            <TableBody>
+            <TableBody emptyContent="No positions available.">
               {positions.map((row, index) => {
                 const curVal =
                   row.last_price * row.current_qty + row.booked_pnl;
@@ -258,24 +270,26 @@ function AllPositions() {
                       {(currentPnl * multiplier).toFixed(2)} ({pnlPercent}%)
                     </TableCell>
                     <TableCell>
-                      <ButtonGroup>
+                      <ButtonGroup className="shadow-sm">
                         {userRole === "admin" && (
                           <>
                             <Button
-                              isIconOnly
+                              size="sm"
                               color="success"
                               variant="flat"
+                              className="min-w-[40px] h-9 px-3 bg-green-500/20 hover:bg-green-500/30 text-green-500"
                               onPress={() => {
                                 populatePositionData(row);
                                 handleOpenIncreaseModal();
                               }}
                             >
-                              In
+                              En
                             </Button>
                             <Button
-                              isIconOnly
+                              size="sm"
                               color="secondary"
                               variant="flat"
+                              className="min-w-[40px] h-9 px-3 bg-purple-500/20 hover:bg-purple-500/30 text-purple-500"
                               onPress={() => {
                                 populatePositionData(row);
                                 handleOpenReduceModal();
@@ -284,9 +298,10 @@ function AllPositions() {
                               Re
                             </Button>
                             <Button
-                              isIconOnly
+                              size="sm"
                               color="danger"
                               variant="flat"
+                              className="min-w-[40px] h-9 px-3 bg-red-500/20 hover:bg-red-500/30 text-red-500"
                               onPress={() => {
                                 populatePositionData(row);
                                 handleOpenSellModal();
@@ -294,11 +309,11 @@ function AllPositions() {
                             >
                               Ex
                             </Button>
-                            {/* New: Add Alert Button */}
                             <Button
-                              isIconOnly
+                              size="sm"
                               color="primary"
                               variant="flat"
+                              className="min-w-[40px] h-9 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
                               onPress={() => {
                                 populateAddAlertData(row);
                                 handleOpenAddAlertModal();
@@ -310,7 +325,7 @@ function AllPositions() {
                                 viewBox="0 0 24 24"
                                 strokeWidth={1.5}
                                 stroke="currentColor"
-                                className="size-5"
+                                className="w-5 h-5"
                               >
                                 <path
                                   strokeLinecap="round"
@@ -320,145 +335,36 @@ function AllPositions() {
                               </svg>
                             </Button>
 
-                            {/* Stats dropdown */}
-                            <Dropdown className="dark">
-                              <DropdownTrigger>
-                                <Button
-                                  isIconOnly
-                                  className="text-pink-300 bg-pink-400 bg-opacity-30"
-                                  variant="flat"
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    strokeWidth={1.5}
-                                    stroke="currentColor"
-                                    className="size-5"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
-                                    />
-                                  </svg>
-                                </Button>
-                              </DropdownTrigger>
-                              <DropdownMenu
-                                aria-label="Stats Menu"
-                                className="dark"
+                            <Button
+                              size="sm"
+                              variant="flat"
+                              className="min-w-[40px] h-9 bg-pink-500/20 hover:bg-pink-500/30 text-pink-500"
+                              onPress={() => {
+                                // This will open the dropdown
+                              }}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
                               >
-                                <DropdownItem
-                                  className="p-0 hover:bg-zinc-900"
-                                  textValue="Stats"
-                                >
-                                  <div className="flex flex-col justify-between gap-1 p-3 text-left text-white rounded-lg w-72 bg-zinc-900">
-                                    <div className="text-xl">Stats</div>
-                                    <div className="py-1 text-md">
-                                      Stop-Loss: {row.stop_loss?.toFixed(2)} (
-                                      {(
-                                        ((row.stop_loss - row.entry_price) /
-                                          row.entry_price) *
-                                        100
-                                      ).toFixed(2)}
-                                      %)
-                                      {userRole === "admin" && (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            populatePositionData(row);
-                                            handleOpenModifySlModal();
-                                          }}
-                                          disabled={userRole !== "admin"}
-                                          className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
-                                        >
-                                          C
-                                        </button>
-                                      )}
-                                    </div>
-                                    <div className="py-1 text-md">
-                                      Target: {row.target?.toFixed(2)} (
-                                      {(
-                                        ((row.target - row.entry_price) /
-                                          row.entry_price) *
-                                        100
-                                      ).toFixed(2)}
-                                      %)
-                                      {userRole === "admin" && (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            populatePositionData(row);
-                                            handleOpenModifyTgtModal();
-                                          }}
-                                          disabled={userRole !== "admin"}
-                                          className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
-                                        >
-                                          C
-                                        </button>
-                                      )}
-                                    </div>
-                                    <div className="py-1 text-md">
-                                      Capital Used:{" "}
-                                      {(
-                                        row.entry_price *
-                                        row.current_qty *
-                                        multiplier
-                                      ).toFixed(2)}
-                                    </div>
-                                    <div className="py-1 text-md">
-                                      Risk:{" "}
-                                      {(
-                                        ((row.stop_loss - row.entry_price) *
-                                          row.current_qty +
-                                          row.booked_pnl) *
-                                        multiplier
-                                      ).toFixed(2)}
-                                    </div>
-                                    <div className="py-1 text-md">
-                                      Reward:{" "}
-                                      {(
-                                        ((row.target - row.entry_price) *
-                                          row.current_qty +
-                                          row.booked_pnl) *
-                                        multiplier
-                                      ).toFixed(2)}
-                                    </div>
-                                    <div
-                                      className={
-                                        row.booked_pnl > 0
-                                          ? "text-green-500 text-md py-1"
-                                          : "text-red-500 text-md py-1"
-                                      }
-                                    >
-                                      Booked:{" "}
-                                      {(row.booked_pnl * multiplier).toFixed(2)}
-                                    </div>
-                                    {userRole === "admin" && (
-                                      <div className="py-1">
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            toggleAutoExit(row);
-                                          }}
-                                          className="px-2 py-1 text-xs bg-blue-500 rounded-md bg-opacity-40 hover:bg-blue-700"
-                                        >
-                                          {`Auto Exit: ${
-                                            row.auto_exit ? "True" : "False"
-                                          }`}
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                </DropdownItem>
-                              </DropdownMenu>
-                            </Dropdown>
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+                                />
+                              </svg>
+                            </Button>
                           </>
                         )}
                         <Button
-                          isIconOnly
+                          size="sm"
                           color="warning"
                           variant="flat"
+                          className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
                           onPress={() => {
                             populateChartData(row);
                             handleOpenChartModal();
@@ -470,7 +376,7 @@ function AllPositions() {
                             viewBox="0 0 24 24"
                             strokeWidth={1.5}
                             stroke="currentColor"
-                            className="size-5"
+                            className="w-5 h-5"
                           >
                             <path
                               strokeLinecap="round"
@@ -489,7 +395,7 @@ function AllPositions() {
         </div>
 
         {/* MOBILE CARD LAYOUT */}
-        <div className="block mt-3 space-y-3 md:hidden">
+        <div className="block mt-4 space-y-4 md:hidden">
           {positions.map((row, index) => {
             const curVal = row.last_price * row.current_qty + row.booked_pnl;
             const currentPnl =
@@ -503,36 +409,35 @@ function AllPositions() {
             return (
               <div
                 key={`mobile-position-${index}-${row.stock_name}`}
-                className={`flex flex-col gap-2 p-3 bg-zinc-900 rounded-lg 
-                            ${
-                              index < positions.length - 1
-                                ? "border-b border-zinc-700 rounded-none"
-                                : ""
-                            }`}
+                className="flex flex-col gap-3 p-4 bg-zinc-900 rounded-xl border border-zinc-800 shadow-md"
               >
                 {/* Title row with Instrument name and Actions */}
                 <div className="flex items-center justify-between">
                   <span className="text-base font-semibold">
                     {row.stock_name}
                   </span>
-                  <ButtonGroup>
+                  <div className="flex items-center gap-2">
                     {userRole === "admin" && (
                       <>
                         <Button
-                          isIconOnly
+                          size="sm"
                           color="success"
-                          variant="flat"
+                          variant="solid"
+                          radius="md"
+                          className="shadow-md font-medium px-3 bg-green-600 hover:bg-green-700"
                           onPress={() => {
                             populatePositionData(row);
                             handleOpenIncreaseModal();
                           }}
                         >
-                          In
+                          En
                         </Button>
                         <Button
-                          isIconOnly
+                          size="sm"
                           color="secondary"
-                          variant="flat"
+                          variant="solid"
+                          radius="md"
+                          className="shadow-md font-medium px-3 bg-purple-600 hover:bg-purple-700"
                           onPress={() => {
                             populatePositionData(row);
                             handleOpenReduceModal();
@@ -541,9 +446,11 @@ function AllPositions() {
                           Re
                         </Button>
                         <Button
-                          isIconOnly
+                          size="sm"
                           color="danger"
-                          variant="flat"
+                          variant="solid"
+                          radius="md"
+                          className="shadow-md font-medium px-3 bg-red-600 hover:bg-red-700"
                           onPress={() => {
                             populatePositionData(row);
                             handleOpenSellModal();
@@ -553,9 +460,11 @@ function AllPositions() {
                         </Button>
                         {/* New: Add Alert Button */}
                         <Button
-                          isIconOnly
+                          size="sm"
                           color="primary"
-                          variant="flat"
+                          variant="solid"
+                          radius="md"
+                          className="shadow-md font-medium bg-blue-600 hover:bg-blue-700"
                           onPress={() => {
                             populateAddAlertData(row);
                             handleOpenAddAlertModal();
@@ -567,7 +476,7 @@ function AllPositions() {
                             viewBox="0 0 24 24"
                             strokeWidth={1.5}
                             stroke="currentColor"
-                            className="size-5"
+                            className="w-4 h-4"
                           >
                             <path
                               strokeLinecap="round"
@@ -576,12 +485,15 @@ function AllPositions() {
                             />
                           </svg>
                         </Button>
+
+                        {/* Stats dropdown */}
                         <Dropdown className="dark">
                           <DropdownTrigger>
                             <Button
-                              isIconOnly
-                              className="text-pink-300 bg-pink-400 bg-opacity-30"
-                              variant="flat"
+                              size="sm"
+                              className="bg-pink-500 text-white shadow-md hover:bg-pink-600"
+                              variant="solid"
+                              radius="md"
                             >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -589,7 +501,7 @@ function AllPositions() {
                                 viewBox="0 0 24 24"
                                 strokeWidth={1.5}
                                 stroke="currentColor"
-                                className="size-5"
+                                className="w-4 h-4"
                               >
                                 <path
                                   strokeLinecap="round"
@@ -712,9 +624,11 @@ function AllPositions() {
                     )}
                     {/* Chart Button */}
                     <Button
-                      isIconOnly
+                      size="sm"
                       color="warning"
-                      variant="flat"
+                      variant="solid"
+                      radius="md"
+                      className="shadow-md font-medium bg-amber-600 hover:bg-amber-700"
                       onPress={() => {
                         populateChartData(row);
                         handleOpenChartModal();
@@ -726,7 +640,7 @@ function AllPositions() {
                         viewBox="0 0 24 24"
                         strokeWidth={1.5}
                         stroke="currentColor"
-                        className="size-5"
+                        className="w-4 h-4"
                       >
                         <path
                           strokeLinecap="round"
@@ -735,32 +649,119 @@ function AllPositions() {
                         />
                       </svg>
                     </Button>
-                  </ButtonGroup>
+                  </div>
                 </div>
                 {/* Body of the card with details */}
-                <div className="flex flex-col gap-1 mt-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Qty</span>
-                    <span>{(row.current_qty * multiplier).toFixed(2)}</span>
+                <div className="grid grid-cols-2 gap-3 mt-1">
+                  <div className="flex flex-col">
+                    <span className="text-xs text-zinc-400 font-medium">
+                      Quantity
+                    </span>
+                    <span className="text-sm font-medium">
+                      {(row.current_qty * multiplier).toFixed(2)}
+                    </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Avg Cost</span>
-                    <span>{row.entry_price?.toFixed(2)}</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-zinc-400 font-medium">
+                      Entry Price
+                    </span>
+                    <span className="text-sm font-medium">
+                      {row.entry_price?.toFixed(2)}
+                    </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>LTP</span>
-                    <span>{row.last_price?.toFixed(2)}</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-zinc-400 font-medium">
+                      LTP
+                    </span>
+                    <span className="text-sm font-medium">
+                      {row.last_price?.toFixed(2)}
+                    </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Cur. Val</span>
-                    <span>{(curVal * multiplier).toFixed(2)}</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-zinc-400 font-medium">
+                      Current Value
+                    </span>
+                    <span className="text-sm font-medium">
+                      {(curVal * multiplier).toFixed(2)}
+                    </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>P&L</span>
-                    <span className={pnlClass}>
+                  <div className="flex flex-col col-span-2">
+                    <span className="text-xs text-zinc-400 font-medium">
+                      P&L
+                    </span>
+                    <span className={`text-base font-semibold ${pnlClass}`}>
                       {(currentPnl * multiplier).toFixed(2)} ({pnlPercent}%)
                     </span>
                   </div>
+                </div>
+                {/* Action Buttons */}
+                <div className="mt-2">
+                  <ButtonGroup className="shadow-sm w-full">
+                    {userRole === "admin" && (
+                      <>
+                        <Button
+                          size="sm"
+                          color="success"
+                          variant="flat"
+                          className="flex-1 h-9 bg-green-500/20 hover:bg-green-500/30 text-green-500"
+                          onPress={() => {
+                            populatePositionData(row);
+                            handleOpenIncreaseModal();
+                          }}
+                        >
+                          Add
+                        </Button>
+                        <Button
+                          size="sm"
+                          color="secondary"
+                          variant="flat"
+                          className="flex-1 h-9 bg-purple-500/20 hover:bg-purple-500/30 text-purple-500"
+                          onPress={() => {
+                            populatePositionData(row);
+                            handleOpenReduceModal();
+                          }}
+                        >
+                          Reduce
+                        </Button>
+                        <Button
+                          size="sm"
+                          color="danger"
+                          variant="flat"
+                          className="flex-1 h-9 bg-red-500/20 hover:bg-red-500/30 text-red-500"
+                          onPress={() => {
+                            populatePositionData(row);
+                            handleOpenSellModal();
+                          }}
+                        >
+                          Exit
+                        </Button>
+                        <Button
+                          size="sm"
+                          color="primary"
+                          variant="flat"
+                          className="flex-1 h-9 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
+                          onPress={() => {
+                            populateAddAlertData(row);
+                            handleOpenAddAlertModal();
+                          }}
+                        >
+                          Alert
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      size="sm"
+                      color="warning"
+                      variant="flat"
+                      className="flex-1 h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
+                      onPress={() => {
+                        populateChartData(row);
+                        handleOpenChartModal();
+                      }}
+                    >
+                      Chart
+                    </Button>
+                  </ButtonGroup>
                 </div>
               </div>
             );

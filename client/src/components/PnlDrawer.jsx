@@ -3,6 +3,44 @@ import React, { useState, useContext, useEffect } from "react";
 import { DataContext } from "../utils/DataContext";
 import { AuthContext } from "../utils/AuthContext";
 import { jwtDecode } from "jwt-decode";
+import {
+  Paper,
+  Typography,
+  Box,
+  IconButton,
+  alpha,
+  styled,
+} from "@mui/material";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import { motion } from "framer-motion";
+
+const DrawerContainer = styled(motion.div)(({ theme }) => ({
+  position: "fixed",
+  bottom: theme.spacing(4),
+  right: theme.spacing(4),
+  zIndex: 1000,
+  borderRadius: theme.shape.borderRadius * 2,
+  boxShadow: "0 8px 32px rgba(0, 0, 0, 0.25)",
+  overflow: "hidden",
+  backdropFilter: "blur(8px)",
+}));
+
+const DrawerPaper = styled(Paper)(({ theme, open }) => ({
+  backgroundColor: alpha(theme.palette.background.paper, 0.85),
+  transition: theme.transitions.create(["width", "padding"], {
+    easing: theme.transitions.easing.sharp,
+    duration: theme.transitions.duration.standard,
+  }),
+  width: open ? 250 : 56,
+  padding: open ? theme.spacing(2) : theme.spacing(1),
+}));
+
+const ToggleButton = styled(IconButton)(({ theme }) => ({
+  position: "absolute",
+  right: theme.spacing(0.5),
+  top: theme.spacing(0.5),
+}));
 
 const PnlDrawer = () => {
   const { positions, liveData } = useContext(DataContext);
@@ -55,38 +93,95 @@ const PnlDrawer = () => {
     }
   }, [positions, liveData]);
 
+  // Animation variants for the drawer
+  const variants = {
+    open: {
+      width: 250,
+      transition: {
+        type: "spring",
+        stiffness: 500,
+        damping: 30,
+      },
+    },
+    closed: {
+      width: 56,
+      transition: {
+        type: "spring",
+        stiffness: 500,
+        damping: 30,
+      },
+    },
+  };
+
   return (
-    <div
-      className={`fixed bottom-4 right-4 bg-zinc-800 text-white rounded-lg shadow-lg transition-all duration-300 ${
-        isOpen ? "w-64 p-4" : "w-12 p-2"
-      }`}
+    <DrawerContainer
+      initial="open"
+      animate={isOpen ? "open" : "closed"}
+      variants={variants}
     >
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full text-center focus:outline-none"
-      >
-        {isOpen ? "Hide" : "P&L"}
-      </button>
-      {isOpen && (
-        <div className="mt-2">
-          <div className="text-sm text-zinc-400">Total P&L</div>
-          <div
-            className={`text-xl mt-1 ${
-              totalPnl >= 0 ? "text-green-400" : "text-red-400"
-            }`}
-          >
-            {(totalPnl * multiplier).toFixed(2)}
-            <span className="ml-2 text-sm text-zinc-400">
-              (
-              {capitalUsed === 0
-                ? "0.00"
-                : ((totalPnl / capitalUsed) * 100).toFixed(2)}
-              %)
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
+      <DrawerPaper open={isOpen} elevation={6}>
+        <ToggleButton
+          size="small"
+          onClick={() => setIsOpen(!isOpen)}
+          aria-label={isOpen ? "Hide P&L drawer" : "Show P&L drawer"}
+        >
+          {isOpen ? (
+            <ChevronRightIcon fontSize="small" />
+          ) : (
+            <ChevronLeftIcon fontSize="small" />
+          )}
+        </ToggleButton>
+
+        <Box
+          mt={isOpen ? 2 : 0}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        >
+          {!isOpen ? (
+            <Typography
+              variant="button"
+              sx={{
+                transform: "rotate(-90deg)",
+                whiteSpace: "nowrap",
+                color: totalPnl >= 0 ? "success.main" : "error.main",
+                fontWeight: "bold",
+              }}
+            >
+              P&L
+            </Typography>
+          ) : (
+            <Box width="100%" mt={2}>
+              <Typography variant="caption" color="text.secondary">
+                Total P&L
+              </Typography>
+              <Box display="flex" alignItems="baseline" mt={0.5}>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: totalPnl >= 0 ? "success.main" : "error.main",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {(totalPnl * multiplier).toFixed(2)}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ ml: 1 }}
+                >
+                  (
+                  {capitalUsed === 0
+                    ? "0.00"
+                    : ((totalPnl / capitalUsed) * 100).toFixed(2)}
+                  %)
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </DrawerPaper>
+    </DrawerContainer>
   );
 };
 

@@ -11,7 +11,8 @@ import {
   TableRow,
   TableCell,
   Spinner,
-} from "@heroui/react";
+  Item,
+} from "../utils/compat";
 import {
   LineChart,
   Line,
@@ -472,48 +473,73 @@ function Dashboard() {
           <Box
             sx={{
               backgroundColor: "#18181B",
-              borderRadius: 3,
+              borderRadius: "1rem",
               height: isMobile ? "200px" : "300px",
-              boxShadow: 3,
-              p: 2,
+              boxShadow:
+                "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+              p: 3,
+              border: "1px solid rgba(63, 63, 70, 0.5)",
+              backdropFilter: "blur(10px)",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                boxShadow:
+                  "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+              },
             }}
           >
-            <Typography variant="body2" sx={{ color: "#a1a1aa", mb: 1 }}>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                color: "#d4d4d8",
+                mb: 1.5,
+                fontWeight: 600,
+                fontSize: "1rem",
+              }}
+            >
               Cumulative PnL Curve
             </Typography>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="90%">
               <LineChart
                 data={lineChartData}
-                margin={{ top: 10, right: 10, bottom: 20, left: 0 }}
+                margin={{ top: 10, right: 10, bottom: 30, left: 10 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#666" />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#3f3f46"
+                  opacity={0.4}
+                />
                 <XAxis
                   dataKey="name"
-                  stroke="#999"
-                  tick={{ fontSize: 12, fill: "#999" }}
+                  stroke="#a1a1aa"
+                  tick={{ fontSize: 12, fill: "#a1a1aa" }}
                 />
-                <YAxis stroke="#999" tick={{ fontSize: 12, fill: "#999" }} />
+                <YAxis
+                  stroke="#a1a1aa"
+                  tick={{ fontSize: 12, fill: "#a1a1aa" }}
+                />
                 <Tooltip
-                  contentStyle={{ backgroundColor: "#333", border: "none" }}
-                  labelStyle={{ color: "#fff", fontSize: 12 }}
-                  itemStyle={{ color: "#fff", fontSize: 12 }}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  align="center"
-                  wrapperStyle={{
-                    fontSize: "0.8rem",
-                    color: "#999",
-                    marginTop: 10,
+                  contentStyle={{
+                    backgroundColor: "#27272a",
+                    border: "none",
+                    borderRadius: "0.5rem",
+                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                   }}
+                  labelStyle={{
+                    color: "#e4e4e7",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    marginBottom: "0.25rem",
+                  }}
+                  itemStyle={{ color: "#e4e4e7", fontSize: 12 }}
                 />
                 <Line
                   type="monotone"
                   dataKey="trailingPnl"
-                  stroke="#82ca9d"
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
+                  stroke="#22c55e"
+                  strokeWidth={2.5}
+                  dot={{ r: 3, strokeWidth: 2, fill: "#18181b" }}
+                  activeDot={{ r: 6, strokeWidth: 0, fill: "#22c55e" }}
+                  name="trailingPnl"
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -525,43 +551,67 @@ function Dashboard() {
           <Box
             sx={{
               backgroundColor: "#18181B",
-              borderRadius: 3,
+              borderRadius: "1rem",
               height: isMobile ? "200px" : "300px",
-              boxShadow: 3,
-              p: 2,
+              boxShadow:
+                "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+              p: 3,
+              border: "1px solid rgba(63, 63, 70, 0.5)",
+              backdropFilter: "blur(10px)",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                boxShadow:
+                  "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+              },
             }}
           >
-            <Typography variant="body2" sx={{ color: "#a1a1aa", mb: 1 }}>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                color: "#d4d4d8",
+                mb: 1.5,
+                fontWeight: 600,
+                fontSize: "1rem",
+              }}
+            >
               % Based PnL (Ignoring Qty)
             </Typography>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="90%">
               <BarChart
                 data={barChartData}
-                margin={{ top: 10, right: 10, bottom: 20, left: 0 }}
+                margin={{ top: 10, right: 10, bottom: 30, left: 10 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#666" />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#3f3f46"
+                  opacity={0.4}
+                />
                 <XAxis
                   dataKey="name"
-                  stroke="#999"
-                  tick={{ fontSize: 12, fill: "#999" }}
+                  stroke="#a1a1aa"
+                  tick={{ fontSize: 12, fill: "#a1a1aa" }}
                 />
-                <YAxis stroke="#999" tick={{ fontSize: 12, fill: "#999" }} />
+                <YAxis
+                  stroke="#a1a1aa"
+                  tick={{ fontSize: 12, fill: "#a1a1aa" }}
+                />
                 <Tooltip
-                  contentStyle={{ backgroundColor: "#333", border: "none" }}
-                  labelStyle={{ color: "#fff", fontSize: 12 }}
-                  itemStyle={{ color: "#fff", fontSize: 12 }}
-                />
-                <Legend
-                  verticalAlign="bottom"
-                  align="center"
-                  wrapperStyle={{
-                    fontSize: "0.8rem",
-                    color: "#999",
-                    marginTop: 10,
+                  contentStyle={{
+                    backgroundColor: "#27272a",
+                    border: "none",
+                    borderRadius: "0.5rem",
+                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
                   }}
+                  labelStyle={{
+                    color: "#e4e4e7",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    marginBottom: "0.25rem",
+                  }}
+                  itemStyle={{ color: "#e4e4e7", fontSize: 12 }}
                 />
-                <ReferenceLine y={0} stroke="#fff" strokeDasharray="3 3" />
-                <Bar dataKey="percentPnl">
+                <ReferenceLine y={0} stroke="#a1a1aa" strokeDasharray="3 3" />
+                <Bar dataKey="percentPnl" name="percentPnl">
                   {barChartData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
@@ -578,84 +628,181 @@ function Dashboard() {
       </Grid>
 
       {/* BOTTOM AREA: Paginated Table of Historical Trades */}
-      <Typography variant="body1" sx={{ mb: 1 }}>
-        Latest Trades
-      </Typography>
-      {!historicalTrades ? (
+      {/* DESKTOP TABLE */}
+      <Box
+        sx={{
+          backgroundColor: "rgba(50, 50, 51, 0.5)",
+          borderRadius: "1rem",
+          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.3)",
+          border: "1px solid rgba(63, 63, 70, 0.5)",
+          mb: 3,
+          display: { xs: "none", md: "block" },
+          overflow: "hidden",
+        }}
+      >
         <Box
           sx={{
             display: "flex",
-            flexDirection: "column",
+            justifyContent: "space-between",
             alignItems: "center",
-            mt: 4,
+            p: 2,
+            borderBottom: "1px solid rgba(63, 63, 70, 0.5)",
           }}
         >
-          <Spinner size="lg" />
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Loading...
+          <Typography
+            variant="subtitle1"
+            sx={{
+              color: "#d4d4d8",
+              fontWeight: 600,
+              fontSize: "1rem",
+            }}
+          >
+            Historical Trades
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#a1a1aa",
+              fontWeight: 500,
+            }}
+          >
+            Count:{" "}
+            <span style={{ color: "#f4f4f5" }}>{currentTrades.length}</span>
           </Typography>
         </Box>
-      ) : (
-        <>
-          {/* DESKTOP TABLE */}
-          <Box sx={{ width: "100%", display: { xs: "none", md: "block" } }}>
-            <Table size="small">
-              <TableHeader>
-                <TableRow>
-                  <TableCell>Stock</TableCell>
-                  <TableCell>Entry Date</TableCell>
-                  <TableCell>Entry Price</TableCell>
-                  <TableCell>Exit Date</TableCell>
-                  <TableCell>Exit Price</TableCell>
-                  <TableCell>Final PnL</TableCell>
-                  <TableCell>Highest Qty</TableCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentTrades.map((row, index) => {
-                  const stock = row.stock_name || "";
-                  const entryPrice = safeNumber(row.entry_price);
-                  const exitPrice = safeNumber(row.exit_price);
-                  const finalPnl = safeNumber(row.final_pnl);
-                  const highestQty = safeNumber(row.highest_qty);
-                  const entryDate = formatDate(row.entry_time);
-                  const exitDate = formatDate(row.exit_time);
-                  const isPositive = finalPnl >= 0;
-
-                  return (
-                    <TableRow
-                      key={`trade-${index}-${row.trade_id || row.stock_name}`}
-                      className="hover:bg-zinc-800"
-                    >
-                      <TableCell>{stock}</TableCell>
-                      <TableCell>{entryDate}</TableCell>
-                      <TableCell>{entryPrice.toFixed(2)}</TableCell>
-                      <TableCell>{exitDate}</TableCell>
-                      <TableCell>{exitPrice.toFixed(2)}</TableCell>
-                      <TableCell
-                        className={
-                          isPositive ? "text-green-500" : "text-red-500"
-                        }
-                      >
-                        {(finalPnl * multiplier).toFixed(2)} (
-                        {(
-                          ((exitPrice - entryPrice) / entryPrice) *
-                          100
-                        ).toFixed(1)}
-                        %)
-                      </TableCell>
-                      <TableCell>
-                        {(highestQty * multiplier).toFixed(2)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+        {!historicalTrades ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+            <Spinner size="lg" />
           </Box>
+        ) : (
+          <table className="w-full">
+            <thead className="bg-zinc-800 border-b border-zinc-700/50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  Stock
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  Entry Date
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  Entry Price
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  Exit Date
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  Exit Price
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  Final PnL
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                  Highest Qty
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentTrades.map((row, index) => {
+                const stock = row.stock_name || "";
+                const entryPrice = safeNumber(row.entry_price);
+                const exitPrice = safeNumber(row.exit_price);
+                const finalPnl = safeNumber(row.final_pnl);
+                const highestQty = safeNumber(row.highest_qty);
+                const entryDate = formatDate(row.entry_time);
+                const exitDate = formatDate(row.exit_time);
+                const isPositive = finalPnl >= 0;
+                const pnlValue = (finalPnl * multiplier).toFixed(2);
+                const pnlPercent = (
+                  ((exitPrice - entryPrice) / entryPrice) *
+                  100
+                ).toFixed(1);
 
-          {/* MOBILE CARD LAYOUT */}
-          <Box className="block mt-3 space-y-3 md:hidden">
+                return (
+                  <tr
+                    key={`trade-${index}-${row.trade_id || row.stock_name}`}
+                    className="border-b border-zinc-800 hover:bg-zinc-900/50"
+                  >
+                    <td className="px-4 py-3 text-white font-medium">
+                      {stock}
+                    </td>
+                    <td className="px-4 py-3 text-white">{entryDate}</td>
+                    <td className="px-4 py-3 text-white">
+                      {entryPrice.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-white">{exitDate}</td>
+                    <td className="px-4 py-3 text-white">
+                      {exitPrice.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`px-2 py-1 rounded text-${
+                          isPositive ? "green" : "red"
+                        }-500 bg-${isPositive ? "green" : "red"}-500/20`}
+                      >
+                        {isPositive ? "" : "-"}
+                        {pnlValue.replace("-", "")} ({pnlPercent}%)
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-white">
+                      {(highestQty * multiplier).toFixed(2)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </Box>
+
+      {/* MOBILE CARD LAYOUT */}
+      <Box
+        sx={{
+          display: { xs: "block", md: "none" },
+          backgroundColor: "rgba(24, 24, 27, 0.5)",
+          backdropFilter: "blur(10px)",
+          borderRadius: "1rem",
+          boxShadow:
+            "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+          p: 3,
+          border: "1px solid rgba(63, 63, 70, 0.5)",
+          mb: 3,
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 2,
+          }}
+        >
+          <Typography
+            variant="subtitle1"
+            sx={{
+              color: "#d4d4d8",
+              fontWeight: 600,
+              fontSize: "1rem",
+            }}
+          >
+            Historical Trades
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#a1a1aa",
+              fontWeight: 500,
+            }}
+          >
+            Count:{" "}
+            <span style={{ color: "#f4f4f5" }}>{currentTrades.length}</span>
+          </Typography>
+        </Box>
+        {!historicalTrades ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+            <Spinner size="lg" />
+          </Box>
+        ) : (
+          <Box className="space-y-4 mt-4">
             {currentTrades.map((row, index) => {
               const stock = row.stock_name || "";
               const entryPrice = safeNumber(row.entry_price);
@@ -665,135 +812,177 @@ function Dashboard() {
               const entryDate = formatDate(row.entry_time);
               const exitDate = formatDate(row.exit_time);
               const isPositive = finalPnl >= 0;
+              const colorClass = isPositive ? "text-green-500" : "text-red-500";
+              const pnlPercentage = (
+                ((exitPrice - entryPrice) / entryPrice) *
+                100
+              ).toFixed(1);
 
               return (
                 <Box
                   key={`mobile-trade-${index}-${
                     row.trade_id || row.stock_name
                   }`}
-                  sx={{ backgroundColor: "#1e1e1e", borderRadius: 1, p: 2 }}
+                  className="flex flex-col gap-3 p-5 bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800/70 shadow-md transition-all hover:border-zinc-700 hover:bg-zinc-800/80"
                 >
-                  <Typography variant="body2" fontWeight="bold">
-                    {stock}
-                  </Typography>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      mt: 1,
-                    }}
-                  >
-                    <Typography variant="caption" sx={{ color: "#a1a1aa" }}>
-                      Entry Date:
+                  <Box className="flex items-center justify-between">
+                    <Typography className="text-base font-bold text-white">
+                      {stock}
                     </Typography>
-                    <Typography variant="caption">{entryDate}</Typography>
-                  </Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      mt: 0.5,
-                    }}
-                  >
-                    <Typography variant="caption" sx={{ color: "#a1a1aa" }}>
-                      Entry Price:
-                    </Typography>
-                    <Typography variant="caption">
-                      {entryPrice.toFixed(2)}
-                    </Typography>
-                  </Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      mt: 0.5,
-                    }}
-                  >
-                    <Typography variant="caption" sx={{ color: "#a1a1aa" }}>
-                      Exit Date:
-                    </Typography>
-                    <Typography variant="caption">{exitDate}</Typography>
-                  </Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      mt: 0.5,
-                    }}
-                  >
-                    <Typography variant="caption" sx={{ color: "#a1a1aa" }}>
-                      Exit Price:
-                    </Typography>
-                    <Typography variant="caption">
-                      {exitPrice.toFixed(2)}
-                    </Typography>
-                  </Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      mt: 0.5,
-                    }}
-                  >
-                    <Typography variant="caption" sx={{ color: "#a1a1aa" }}>
-                      Final PnL:
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{ color: isPositive ? "#22c55e" : "#ef4444" }}
+                    <Box
+                      className={`px-3 py-1 rounded-full ${
+                        isPositive ? "bg-green-500/10" : "bg-red-500/10"
+                      }`}
                     >
-                      {(finalPnl * multiplier).toFixed(2)} (
-                      {(((exitPrice - entryPrice) / entryPrice) * 100).toFixed(
-                        1
-                      )}
-                      %)
-                    </Typography>
+                      <Typography
+                        className={`text-base font-semibold ${colorClass}`}
+                      >
+                        {(finalPnl * multiplier).toFixed(2)} ({pnlPercentage}%)
+                      </Typography>
+                    </Box>
                   </Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      mt: 0.5,
-                    }}
-                  >
-                    <Typography variant="caption" sx={{ color: "#a1a1aa" }}>
-                      Highest Qty:
-                    </Typography>
-                    <Typography variant="caption">
-                      {(highestQty * multiplier).toFixed(2)}
-                    </Typography>
+                  <Box className="grid grid-cols-2 gap-4 mt-2">
+                    <Box className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+                      <Typography className="text-xs text-zinc-400 font-medium mb-1">
+                        Entry Date
+                      </Typography>
+                      <Typography className="text-sm font-medium text-white">
+                        {entryDate}
+                      </Typography>
+                    </Box>
+                    <Box className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+                      <Typography className="text-xs text-zinc-400 font-medium mb-1">
+                        Exit Date
+                      </Typography>
+                      <Typography className="text-sm font-medium text-white">
+                        {exitDate}
+                      </Typography>
+                    </Box>
+                    <Box className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+                      <Typography className="text-xs text-zinc-400 font-medium mb-1">
+                        Entry Price
+                      </Typography>
+                      <Typography className="text-sm font-medium text-white">
+                        {entryPrice.toFixed(2)}
+                      </Typography>
+                    </Box>
+                    <Box className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+                      <Typography className="text-xs text-zinc-400 font-medium mb-1">
+                        Exit Price
+                      </Typography>
+                      <Typography className="text-sm font-medium text-white">
+                        {exitPrice.toFixed(2)}
+                      </Typography>
+                    </Box>
+                    <Box className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+                      <Typography className="text-xs text-zinc-400 font-medium mb-1">
+                        Highest Qty
+                      </Typography>
+                      <Typography className="text-sm font-medium text-white">
+                        {(highestQty * multiplier).toFixed(2)}
+                      </Typography>
+                    </Box>
+                    <Box className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+                      <Typography className="text-xs text-zinc-400 font-medium mb-1">
+                        Final PnL
+                      </Typography>
+                      <Typography
+                        className={`text-sm font-semibold ${colorClass}`}
+                      >
+                        {(finalPnl * multiplier).toFixed(2)}
+                      </Typography>
+                    </Box>
                   </Box>
                 </Box>
               );
             })}
           </Box>
+        )}
+      </Box>
 
-          {/* PAGINATION CONTROLS */}
-          <Box
-            sx={{ display: "flex", justifyContent: "center", mt: 2, gap: 2 }}
+      {/* Pagination Controls */}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          mt: 2,
+          gap: 2,
+          pb: 4,
+        }}
+      >
+        <Button
+          variant="flat"
+          size="sm"
+          className="bg-zinc-800/50 backdrop-blur-sm hover:bg-zinc-700/70 text-white px-4 min-w-[90px] h-9 border border-zinc-700/50"
+          disabled={page === 0}
+          onClick={() => setPage((p) => p - 1)}
+          startContent={
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-4 h-4"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.75 19.5 8.25 12l7.5-7.5"
+              />
+            </svg>
+          }
+        >
+          Previous
+        </Button>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            px: 3,
+            py: 1,
+            backgroundColor: "rgba(24, 24, 27, 0.6)",
+            backdropFilter: "blur(10px)",
+            borderRadius: "0.5rem",
+            border: "1px solid rgba(63, 63, 70, 0.5)",
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#d4d4d8",
+              fontWeight: 500,
+            }}
           >
-            <Button
-              variant="outlined"
-              size="small"
-              disabled={page === 0}
-              onClick={() => setPage((p) => p - 1)}
+            Page {page + 1} of {totalPages}
+          </Typography>
+        </Box>
+        <Button
+          variant="flat"
+          size="sm"
+          className="bg-zinc-800/50 backdrop-blur-sm hover:bg-zinc-700/70 text-white px-4 min-w-[90px] h-9 border border-zinc-700/50"
+          disabled={page + 1 >= totalPages}
+          onClick={() => setPage((p) => p + 1)}
+          endContent={
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+              className="w-4 h-4"
             >
-              Previous
-            </Button>
-            <Typography variant="body2" sx={{ alignSelf: "center" }}>
-              Page {page + 1} of {totalPages}
-            </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              disabled={page + 1 >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
-          </Box>
-        </>
-      )}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="m8.25 4.5 7.5 7.5-7.5 7.5"
+              />
+            </svg>
+          }
+        >
+          Next
+        </Button>
+      </Box>
     </Box>
   );
 }

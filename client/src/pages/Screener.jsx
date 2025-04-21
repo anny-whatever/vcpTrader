@@ -183,14 +183,16 @@ function Screener() {
       <div className="flex flex-col items-center justify-between my-3 sm:flex-row">
         <div className="flex items-center gap-3">
           <Button
-            className="bg-green-500 bg-opacity-90 hover:bg-green-600 text-white rounded-md px-4 py-2 min-w-[130px] sm:min-w-[150px]"
+            size="md"
+            color="success"
+            variant="flat"
+            className="min-w-[150px] h-10 px-4 bg-green-500/20 hover:bg-green-500/30 text-green-500"
             onPress={fetchScreenerData}
           >
             Refresh Screener
           </Button>
           <select
-            className="h-10 px-3 py-1 text-sm text-white transition-colors rounded bg-zinc-700 focus:outline-none hover:bg-zinc-600"
-            style={{ minWidth: "80px" }}
+            className="h-10 px-4 py-1 text-sm text-white rounded-md border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-green-500 shadow-md"
             value={screen}
             onChange={(e) => setScreen(e.target.value)}
           >
@@ -200,7 +202,12 @@ function Screener() {
           </select>
         </div>
         {screenerData && (
-          <span className="text-sm">Screen Count: {screenerData.length}</span>
+          <span className="text-sm mt-2 sm:mt-0 font-medium text-zinc-300">
+            Screen Count:{" "}
+            <span className="text-white font-semibold">
+              {screenerData.length}
+            </span>
+          </span>
         )}
       </div>
 
@@ -216,8 +223,17 @@ function Screener() {
           <div className="hidden w-full md:block">
             <Table
               aria-label="Screener table"
-              className="m-auto rounded-lg no-scrollbar bg-zinc-900"
+              className="w-full no-scrollbar"
               align="center"
+              radius="lg"
+              shadow="md"
+              isStriped
+              classNames={{
+                base: "bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden",
+                thead: "bg-zinc-800/70 backdrop-blur-sm",
+                th: "text-zinc-400 font-medium text-sm py-3 px-4",
+                td: "py-3 px-4 text-white/90",
+              }}
             >
               <TableHeader>
                 <TableColumn>Symbol</TableColumn>
@@ -246,14 +262,14 @@ function Screener() {
                       </TableCell>
                       <TableCell>{atrPercent}</TableCell>
                       <TableCell>
-                        <ButtonGroup>
-                          {/* Buy */}
+                        <ButtonGroup className="shadow-sm">
                           {userRole === "admin" && (
                             <>
                               <Button
-                                isIconOnly
+                                size="sm"
                                 color="success"
                                 variant="flat"
+                                className="min-w-[40px] h-9 px-3 bg-green-500/20 hover:bg-green-500/30 text-green-500"
                                 onPress={() => {
                                   populateBuyData(row);
                                   handleOpenBuyModal();
@@ -262,11 +278,11 @@ function Screener() {
                               >
                                 En
                               </Button>
-                              {/* Sell */}
                               <Button
-                                isIconOnly
+                                size="sm"
                                 color="danger"
                                 variant="flat"
+                                className="min-w-[40px] h-9 px-3 bg-red-500/20 hover:bg-red-500/30 text-red-500"
                                 onPress={() => {
                                   populateSellData(row);
                                   handleOpenSellModal();
@@ -276,9 +292,10 @@ function Screener() {
                                 Ex
                               </Button>
                               <Button
-                                isIconOnly
+                                size="sm"
                                 color="primary"
                                 variant="flat"
+                                className="min-w-[40px] h-9 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
                                 onPress={() => {
                                   populateAddAlertData(row);
                                   handleOpenAddAlertModal();
@@ -290,7 +307,7 @@ function Screener() {
                                   viewBox="0 0 24 24"
                                   strokeWidth={1.5}
                                   stroke="currentColor"
-                                  className="size-5"
+                                  className="w-5 h-5"
                                 >
                                   <path
                                     strokeLinecap="round"
@@ -301,12 +318,11 @@ function Screener() {
                               </Button>
                             </>
                           )}
-                          {/* New: Add Alert Button (using second provided SVG) */}
-                          {/* Chart */}
                           <Button
-                            isIconOnly
+                            size="sm"
                             color="warning"
                             variant="flat"
+                            className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
                             onPress={() => {
                               populateChartData(row);
                               handleOpenChartModal();
@@ -318,7 +334,7 @@ function Screener() {
                               viewBox="0 0 24 24"
                               strokeWidth={1.5}
                               stroke="currentColor"
-                              className="size-5"
+                              className="w-5 h-5"
                             >
                               <path
                                 strokeLinecap="round"
@@ -337,7 +353,7 @@ function Screener() {
           </div>
 
           {/* Mobile Card Layout */}
-          <div className="block space-y-4 md:hidden">
+          <div className="block mt-4 space-y-4 md:hidden">
             {screenerData.map((row, idx) => {
               const colorClass =
                 row.change > 0 ? "text-green-500" : "text-red-500";
@@ -346,25 +362,20 @@ function Screener() {
               return (
                 <div
                   key={row.symbol}
-                  className={`flex flex-col gap-2 p-3 bg-zinc-900 rounded-lg 
-                              ${
-                                idx < screenerData.length - 1
-                                  ? "border-b border-zinc-700 rounded-none"
-                                  : ""
-                              }`}
+                  className="flex flex-col gap-3 p-4 bg-zinc-900 rounded-xl border border-zinc-800 shadow-md"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-base font-semibold">
                       {row.symbol}
                     </span>
-                    <ButtonGroup>
-                      {/* Buy */}
+                    <ButtonGroup className="shadow-sm">
                       {userRole === "admin" && (
                         <>
                           <Button
-                            isIconOnly
+                            size="sm"
                             color="success"
                             variant="flat"
+                            className="min-w-[40px] h-9 px-3 bg-green-500/20 hover:bg-green-500/30 text-green-500"
                             onPress={() => {
                               populateBuyData(row);
                               handleOpenBuyModal();
@@ -373,11 +384,11 @@ function Screener() {
                           >
                             En
                           </Button>
-                          {/* Sell */}
                           <Button
-                            isIconOnly
+                            size="sm"
                             color="danger"
                             variant="flat"
+                            className="min-w-[40px] h-9 px-3 bg-red-500/20 hover:bg-red-500/30 text-red-500"
                             onPress={() => {
                               populateSellData(row);
                               handleOpenSellModal();
@@ -387,9 +398,10 @@ function Screener() {
                             Ex
                           </Button>
                           <Button
-                            isIconOnly
+                            size="sm"
                             color="primary"
                             variant="flat"
+                            className="min-w-[40px] h-9 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
                             onPress={() => {
                               populateAddAlertData(row);
                               handleOpenAddAlertModal();
@@ -401,7 +413,7 @@ function Screener() {
                               viewBox="0 0 24 24"
                               strokeWidth={1.5}
                               stroke="currentColor"
-                              className="size-5"
+                              className="w-5 h-5"
                             >
                               <path
                                 strokeLinecap="round"
@@ -412,12 +424,11 @@ function Screener() {
                           </Button>
                         </>
                       )}
-                      {/* New: Add Alert Button */}
-                      {/* Chart */}
                       <Button
-                        isIconOnly
+                        size="sm"
                         color="warning"
                         variant="flat"
+                        className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
                         onPress={() => {
                           populateChartData(row);
                           handleOpenChartModal();
@@ -429,7 +440,7 @@ function Screener() {
                           viewBox="0 0 24 24"
                           strokeWidth={1.5}
                           stroke="currentColor"
-                          className="size-5"
+                          className="w-5 h-5"
                         >
                           <path
                             strokeLinecap="round"
@@ -440,22 +451,28 @@ function Screener() {
                       </Button>
                     </ButtonGroup>
                   </div>
-                  <div className="flex flex-col gap-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Last Price:</span>
-                      <span className={colorClass}>
+                  <div className="grid grid-cols-2 gap-3 mt-1">
+                    <div className="flex flex-col">
+                      <span className="text-xs text-zinc-400 font-medium">
+                        Last Price
+                      </span>
+                      <span className={`text-sm font-medium ${colorClass}`}>
                         {row.last_price?.toFixed(2)}
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Change:</span>
-                      <span className={colorClass}>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-zinc-400 font-medium">
+                        Change
+                      </span>
+                      <span className={`text-sm font-medium ${colorClass}`}>
                         {row.change?.toFixed(2)} %
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>ATR %:</span>
-                      <span>{atrPercent}</span>
+                    <div className="flex flex-col col-span-2">
+                      <span className="text-xs text-zinc-400 font-medium">
+                        ATR %
+                      </span>
+                      <span className="text-sm font-medium">{atrPercent}</span>
                     </div>
                   </div>
                 </div>
