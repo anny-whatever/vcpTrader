@@ -23,7 +23,7 @@ import { jwtDecode } from "jwt-decode"; // ✅ Correct import
 function Screener() {
   const { liveData, riskpool } = useContext(DataContext);
   const { token, logout } = useContext(AuthContext);
-  const screenOptions = ["VCP", "IPO"];
+  const screenOptions = ["VCP", "Weekly VCP", "IPO"];
   const [screenerData, setScreenerData] = useState(null);
   const [screen, setScreen] = useState("VCP");
 
@@ -53,6 +53,9 @@ function Screener() {
     setScreenerData(null);
     if (screen === "VCP") {
       const response = await api.get("/api/screener/vcpscreen");
+      setScreenerData(response?.data);
+    } else if (screen === "Weekly VCP") {
+      const response = await api.get("/api/screener/weekly_vcpscreen");
       setScreenerData(response?.data);
     } else if (screen === "IPO") {
       const response = await api.get("/api/screener/iposcreen");

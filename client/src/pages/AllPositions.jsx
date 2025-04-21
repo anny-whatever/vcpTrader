@@ -230,7 +230,7 @@ function AllPositions() {
               <TableColumn>Actions</TableColumn>
             </TableHeader>
             <TableBody>
-              {positions.map((row) => {
+              {positions.map((row, index) => {
                 const curVal =
                   row.last_price * row.current_qty + row.booked_pnl;
                 const currentPnl =
@@ -243,7 +243,10 @@ function AllPositions() {
                   100
                 ).toFixed(2);
                 return (
-                  <TableRow key={row.stock_name} className="hover:bg-zinc-800">
+                  <TableRow
+                    key={`position-${index}-${row.stock_name}`}
+                    className="hover:bg-zinc-800"
+                  >
                     <TableCell>{row.stock_name}</TableCell>
                     <TableCell>
                       {(row.current_qty * multiplier).toFixed(2)}
@@ -487,7 +490,7 @@ function AllPositions() {
 
         {/* MOBILE CARD LAYOUT */}
         <div className="block mt-3 space-y-3 md:hidden">
-          {positions.map((row, idx) => {
+          {positions.map((row, index) => {
             const curVal = row.last_price * row.current_qty + row.booked_pnl;
             const currentPnl =
               (row.last_price - row.entry_price) * row.current_qty +
@@ -499,10 +502,10 @@ function AllPositions() {
             ).toFixed(2);
             return (
               <div
-                key={row.stock_name}
+                key={`mobile-position-${index}-${row.stock_name}`}
                 className={`flex flex-col gap-2 p-3 bg-zinc-900 rounded-lg 
                             ${
-                              idx < positions.length - 1
+                              index < positions.length - 1
                                 ? "border-b border-zinc-700 rounded-none"
                                 : ""
                             }`}

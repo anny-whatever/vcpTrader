@@ -103,14 +103,22 @@ def fetch_historical_trade_details_for_display():
         if conn and cur:
             close_db_connection()
 
-def get_combined_ohlc(instrument_token, symbol):
+def get_combined_ohlc(instrument_token, symbol, interval='day'):
     try:
         conn, cur = get_db_connection()
-        historical_data = SaveOHLC.fetch_by_instrument(cur, instrument_token)
+        
+        # Fetch either daily or weekly data based on interval parameter
+        if interval == 'week':
+            historical_data = SaveOHLC.fetch_by_instrument_weekly(cur, instrument_token)
+        else:  # Default to daily data
+            historical_data = SaveOHLC.fetch_by_instrument(cur, instrument_token)
+            
         combined_data = [dict(record) for record in historical_data] if historical_data else []
         now = datetime.now(TIMEZONE)
         today_date = now.date()
-        if combined_data:
+        
+        # Only add today's data for daily charts if market is open
+        if interval == 'day' and combined_data:
             last_historical_date = pd.to_datetime(combined_data[-1]['date']).astimezone(TIMEZONE).date()
             if last_historical_date < today_date and MARKET_OPEN <= now.time() <= MARKET_CLOSE:
                 try:
@@ -121,7 +129,7 @@ def get_combined_ohlc(instrument_token, symbol):
                         today_entry = {
                             'instrument_token': instrument_token,
                             'symbol': symbol,
-                            'interval': 'day',
+                            'interval': interval,
                             'date': TIMEZONE.localize(datetime.combine(today_date, time(15, 30))),
                             'open': ohlc.get('open', 0),
                             'high': ohlc.get('high', 0),
@@ -132,32 +140,47 @@ def get_combined_ohlc(instrument_token, symbol):
                         combined_data.append(today_entry)
                 except Exception as e:
                     logger.error(f"Error fetching live data for {symbol}: {e}")
+                    
         formatted_data = []
         for record in combined_data:
             formatted = record.copy()
             formatted['date'] = pd.to_datetime(formatted['date']).isoformat()
             for key in ['open', 'high', 'low', 'close', 'volume']:
                 formatted[key] = safe_float(formatted.get(key))
+            
+            # Add indicators if they're not already in the data (weekly already has them)
+            if interval == 'week':
+                # These fields are already in the weekly data
+                for key in ['sma_50', 'sma_150', 'sma_200', 'atr']:
+                    if key in record:
+                        formatted[key] = safe_float(record.get(key))
+            
             formatted_data.append(formatted)
         
-        df = pd.DataFrame(formatted_data)
-        if not df.empty:
-            df['sma_50'] = ta.sma(df['close'], length=min(50, len(df)))
-            df['sma_150'] = ta.sma(df['close'], length=min(150, len(df)))
-            df['sma_200'] = ta.sma(df['close'], length=min(200, len(df)))
-            import numpy as np
-            for col in ['sma_50', 'sma_150', 'sma_200']:
-                df[col] = df[col].replace([np.inf, -np.inf], np.nan)
-                df[col] = df[col].fillna(0)
-                df[col] = np.around(df[col], decimals=2)
-            import math
-            df = df.map(lambda x: 0 if isinstance(x, float) and not math.isfinite(x) else x)
-            logger.info(f"get_combined_ohlc: returning {len(df)} rows")
-            return df.to_dict(orient="records")
-        else:
-            return []
+        # For daily data, we need to calculate SMAs (weekly already has them)
+        if interval == 'day':
+            df = pd.DataFrame(formatted_data)
+            if not df.empty:
+                df['sma_50'] = ta.sma(df['close'], length=min(50, len(df)))
+                df['sma_150'] = ta.sma(df['close'], length=min(150, len(df)))
+                df['sma_200'] = ta.sma(df['close'], length=min(200, len(df)))
+                import numpy as np
+                for col in ['sma_50', 'sma_150', 'sma_200']:
+                    df[col] = df[col].replace([np.inf, -np.inf], np.nan)
+                    df[col] = df[col].fillna(0)
+                    df[col] = np.around(df[col], decimals=2)
+                import math
+                df = df.map(lambda x: 0 if isinstance(x, float) and not math.isfinite(x) else x)
+                logger.info(f"get_combined_ohlc: returning {len(df)} rows of {interval} data")
+                return df.to_dict(orient="records")
+            else:
+                return []
+                
+        # Weekly data already has all indicators computed
+        logger.info(f"get_combined_ohlc: returning {len(formatted_data)} rows of {interval} data")
+        return formatted_data
     except Exception as e:
-        logger.error(f"Error in get_combined_ohlc for instrument {instrument_token}, symbol {symbol}: {e}")
+        logger.error(f"Error in get_combined_ohlc for instrument {instrument_token}, symbol {symbol}, interval {interval}: {e}")
         raise
     finally:
         if conn and cur:

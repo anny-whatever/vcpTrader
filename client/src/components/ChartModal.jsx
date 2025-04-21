@@ -9,6 +9,8 @@ import {
   Typography,
   useTheme,
   useMediaQuery,
+  ToggleButtonGroup,
+  ToggleButton,
 } from "@mui/material";
 import api from "../utils/api";
 import {
@@ -27,6 +29,7 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
   const [liveChange, setLiveChange] = useState(null);
   const [OHLC, setOHLC] = useState(null);
   const [livePrice, setLivePrice] = useState(null);
+  const [interval, setInterval] = useState("day"); // State to track current interval
   const chartContainerRef = useRef(null);
 
   // Refs for chart objects and series
@@ -53,7 +56,7 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
       setOHLC(null);
       setLivePrice(null);
       const response = await api.get(
-        `/api/data/chartdata?token=${token}&symbol=${symbol}`
+        `/api/data/chartdata?token=${token}&symbol=${symbol}&interval=${interval}`
       );
       const transformedData = response.data.map((item) => ({
         time: item.date.split("T")[0],
@@ -72,12 +75,23 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
     }
   };
 
+  // Handle interval change
+  const handleIntervalChange = (event, newInterval) => {
+    if (newInterval !== null && newInterval !== interval) {
+      // Mark that we're changing intervals so the chart will be recreated
+      if (chartRef.current) {
+        chartRef.current._isChangingInterval = true;
+      }
+      setInterval(newInterval);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       getChartData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, symbol, token]);
+  }, [isOpen, symbol, token, interval]); // Add interval as dependency
 
   // --------------------------------------------
   // 2. Create the chart (or update series if already created)
@@ -86,8 +100,8 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
     if (!chartData || !chartData.length) return;
     if (!chartContainerRef.current) return;
 
-    // If the chart already exists, update the series data (without re-creating)
-    if (chartRef.current) {
+    // If the chart already exists and we're not changing intervals, just update the series data
+    if (chartRef.current && !chartRef.current._isChangingInterval) {
       // Update main (bar) series
       barSeriesRef.current.setData(chartData);
       // Update volume series
@@ -114,7 +128,30 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
       ma200SeriesRef.current.setData(sma200Data);
       // Update our reference to the last candle
       lastCandleRef.current = chartData[chartData.length - 1];
+
+      // Adjust visible range when updating data
+      if (chartData.length > 75) {
+        const fromIdx = chartData.length - 75;
+        chartRef.current.timeScale().setVisibleRange({
+          from: chartData[fromIdx].time,
+          to: chartData[chartData.length - 1].time,
+        });
+      } else {
+        chartRef.current.timeScale().fitContent();
+      }
+
       return;
+    }
+
+    // When interval changes or initializing, remove the old chart if it exists
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+      barSeriesRef.current = null;
+      volumeSeriesRef.current = null;
+      ma50SeriesRef.current = null;
+      ma150SeriesRef.current = null;
+      ma200SeriesRef.current = null;
     }
 
     // Otherwise, create the chart for the first time
@@ -243,6 +280,9 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
   // 3. Real-Time Updates via .update() on the last candle
   // --------------------------------------------
   useEffect(() => {
+    // Only apply live updates to daily charts
+    if (interval !== "day") return;
+
     if (
       !liveData ||
       !liveData.length ||
@@ -304,8 +344,9 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
   // 4. UI / Render Modal
   // --------------------------------------------
   const openFullChart = (symbol) => {
+    const timeframe = interval === "week" ? "&timeframe=W" : "";
     window.open(
-      `https://www.tradingview.com/chart/?symbol=NSE:${symbol}`,
+      `https://www.tradingview.com/chart/?symbol=NSE:${symbol}${timeframe}`,
       "_blank"
     );
   };
@@ -327,6 +368,9 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
         },
       }}
     >
+      <DialogTitle sx={{ color: "white", fontSize: "1.2rem", px: 2, py: 1 }}>
+        {symbol} - {interval === "day" ? "Daily" : "Weekly"} Chart
+      </DialogTitle>
       <DialogContent
         dividers
         sx={{
@@ -377,6 +421,45 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
             <span>C: {livePrice?.toFixed(2)}</span>
           </div>
         </div>
+
+        {/* Add Interval Toggle Buttons */}
+        <div
+          style={{
+            position: "absolute",
+            top: "16px",
+            right: "16px",
+            zIndex: 10,
+          }}
+        >
+          <ToggleButtonGroup
+            value={interval}
+            exclusive
+            onChange={handleIntervalChange}
+            size="small"
+            color="primary"
+            aria-label="chart interval"
+            sx={{
+              backgroundColor: "#2c2c2e4D",
+              ".MuiToggleButton-root": {
+                color: "#fff",
+                borderColor: "#444",
+                fontSize: "0.8rem",
+                py: 0.5,
+              },
+              ".Mui-selected": {
+                backgroundColor: "#444 !important",
+              },
+            }}
+          >
+            <ToggleButton value="day" aria-label="daily">
+              Daily
+            </ToggleButton>
+            <ToggleButton value="week" aria-label="weekly">
+              Weekly
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </div>
+
         <div
           ref={chartContainerRef}
           style={{ width: "100%", height: "100%" }}

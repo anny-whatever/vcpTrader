@@ -34,6 +34,7 @@ def get_ohlc_on_schedule():
         download_nse_csv("https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv", "ALL")
 
         get_equity_ohlc_data_loop("day")
+        get_equity_ohlc_data_loop("week")
         load_precomputed_ohlc()
 
         run_vcp_screener_on_schedule()

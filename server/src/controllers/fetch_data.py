@@ -41,10 +41,10 @@ async def screen_historicaltrades(user: dict = Depends(require_user)):
         raise HTTPException(status_code=500, detail="Failed to fetch historical trades")
 
 @router.get("/chartdata")
-async def screen_chartdata(token: int, symbol: str, user: dict = Depends(require_user)):
+async def screen_chartdata(token: int, symbol: str, interval: str = 'day', user: dict = Depends(require_user)):
     try:
-        response = get_combined_ohlc(instrument_token=token, symbol=symbol)
+        response = get_combined_ohlc(instrument_token=token, symbol=symbol, interval=interval)
         return JSONResponse(content=response)
     except Exception as e:
-        logger.error(f"Error in screen_chartdata for token {token} and symbol {symbol}: {e}")
+        logger.error(f"Error in screen_chartdata for token {token}, symbol {symbol}, interval {interval}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch chart data")

@@ -39,7 +39,7 @@ def get_ohlc(instrument_token, interval, symbol, segment):
         for _ in range(loop_count):
             time_window_to = to_date.isoformat()[:10]
             # Example: fetch ~2000 days in one go if your subscription/data source allows
-            time_window_from = (to_date - datetime.timedelta(days=2000)).isoformat()[:10]
+            time_window_from = (to_date - datetime.timedelta(days=500)).isoformat()[:10]
             logger.info(f"Fetching OHLC data from {time_window_from} to {time_window_to} "
                         f"for instrument {instrument_token}")
             try:
@@ -55,7 +55,7 @@ def get_ohlc(instrument_token, interval, symbol, segment):
                 logger.error(f"Error fetching OHLC data for instrument {instrument_token}: {err}")
                 return {"error": str(err)}
             # Move our 'to_date' pointer back another block of days
-            to_date = to_date - datetime.timedelta(days=2001)
+            to_date = to_date - datetime.timedelta(days=501)
             delay(200)
     
         # 3) Process and insert into database

@@ -598,23 +598,21 @@ function Dashboard() {
       ) : (
         <>
           {/* DESKTOP TABLE */}
-          <Box className="hidden md:block">
-            <Table
-              aria-label="Latest Historical Trades Table"
-              className="m-auto rounded-md no-scrollbar bg-zinc-900"
-              align="center"
-            >
+          <Box sx={{ width: "100%", display: { xs: "none", md: "block" } }}>
+            <Table size="small">
               <TableHeader>
-                <TableColumn>Stock</TableColumn>
-                <TableColumn>Entry Date</TableColumn>
-                <TableColumn>Entry Price</TableColumn>
-                <TableColumn>Exit Date</TableColumn>
-                <TableColumn>Exit Price</TableColumn>
-                <TableColumn>Final PnL</TableColumn>
-                <TableColumn>Highest Qty</TableColumn>
+                <TableRow>
+                  <TableCell>Stock</TableCell>
+                  <TableCell>Entry Date</TableCell>
+                  <TableCell>Entry Price</TableCell>
+                  <TableCell>Exit Date</TableCell>
+                  <TableCell>Exit Price</TableCell>
+                  <TableCell>Final PnL</TableCell>
+                  <TableCell>Highest Qty</TableCell>
+                </TableRow>
               </TableHeader>
               <TableBody>
-                {currentTrades.map((row) => {
+                {currentTrades.map((row, index) => {
                   const stock = row.stock_name || "";
                   const entryPrice = safeNumber(row.entry_price);
                   const exitPrice = safeNumber(row.exit_price);
@@ -626,7 +624,7 @@ function Dashboard() {
 
                   return (
                     <TableRow
-                      key={row.trade_id || row.stock_name}
+                      key={`trade-${index}-${row.trade_id || row.stock_name}`}
                       className="hover:bg-zinc-800"
                     >
                       <TableCell>{stock}</TableCell>
@@ -658,7 +656,7 @@ function Dashboard() {
 
           {/* MOBILE CARD LAYOUT */}
           <Box className="block mt-3 space-y-3 md:hidden">
-            {currentTrades.map((row) => {
+            {currentTrades.map((row, index) => {
               const stock = row.stock_name || "";
               const entryPrice = safeNumber(row.entry_price);
               const exitPrice = safeNumber(row.exit_price);
@@ -670,7 +668,9 @@ function Dashboard() {
 
               return (
                 <Box
-                  key={row.trade_id || row.stock_name}
+                  key={`mobile-trade-${index}-${
+                    row.trade_id || row.stock_name
+                  }`}
                   sx={{ backgroundColor: "#1e1e1e", borderRadius: 1, p: 2 }}
                 >
                   <Typography variant="body2" fontWeight="bold">
