@@ -309,8 +309,11 @@ def screen_eligible_stocks_weekly(df):
         # Weekly screening criteria - simpler than VCP
         # Just check if price > 50sma > 150sma > 200sma
         if (
-            current_close > safe_float(last_row["sma_50"])
-            and safe_float(last_row["sma_50"]) > safe_float(last_row["sma_150"]) > safe_float(last_row["sma_200"])
+            current_close > last_row["sma_50"]
+            and last_row["sma_50"] > last_row["sma_150"] > last_row["sma_200"]
+            and safe_float(group.iloc[max(0, last_index - 25)]["sma_200"]) < safe_float(last_row["sma_200"])
+            and safe_float(last_row["away_from_high"]) < 25
+            and safe_float(last_row["away_from_low"]) > 50
         ):
             eligible_stocks.append({
                 "instrument_token": int(safe_float(last_row["instrument_token"])),

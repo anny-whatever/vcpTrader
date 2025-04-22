@@ -27,6 +27,7 @@ const AllPositions = lazy(() => import("./pages/AllPositions.jsx"));
 const Screener = lazy(() => import("./pages/Screener.jsx"));
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
 const Watchlist = lazy(() => import("./pages/Watchlist.jsx"));
+const Alerts = lazy(() => import("./pages/Alerts.jsx"));
 
 // Loading fallback for lazy-loaded components
 const PageLoader = () => (
@@ -190,6 +191,14 @@ const AppRoutes = () => {
                   element={
                     <ProtectedRoute>
                       <Watchlist />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/alerts"
+                  element={
+                    <ProtectedRoute>
+                      <Alerts />
                     </ProtectedRoute>
                   }
                 />

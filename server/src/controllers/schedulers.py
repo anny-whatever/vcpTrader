@@ -6,6 +6,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.schedulers.base import STATE_RUNNING
 
+
+
 logger = logging.getLogger(__name__)
 scheduler = None
 
@@ -39,6 +41,7 @@ def get_ohlc_on_schedule():
 
         run_vcp_screener_on_schedule()
         run_ipo_screener_on_schedule()
+        run_weekly_vcp_screener_on_schedule()
 
         logger.info("OHLC data retrieval job completed.")
     except Exception as e:
@@ -57,6 +60,13 @@ def run_ipo_screener_on_schedule():
         run_ipo_screener()
     except Exception as e:
         logger.error(f"Error in run_ipo_screener_on_schedule: {e}")
+
+def run_weekly_vcp_screener_on_schedule():
+    try:
+        from services import run_weekly_vcp_screener
+        run_weekly_vcp_screener()
+    except Exception as e:
+        logger.error(f"Error in run_vcp_screener_on_schedule: {e}")
 
 #
 # Utility to decide if we are within the time range for resampling
@@ -199,6 +209,28 @@ def get_scheduler():
             max_instances=3,
             replace_existing=False,
             id="run_vcp_screener_job_part3"
+        )
+        
+        scheduler.add_job(
+            run_weekly_vcp_screener_on_schedule,
+            CronTrigger(day_of_week='mon-fri', hour='9', minute='15-59'),
+            max_instances=3,
+            replace_existing=False,
+            id="run_weekly_vcp_screener_job_part1"
+        )
+        scheduler.add_job(
+            run_weekly_vcp_screener_on_schedule,
+            CronTrigger(day_of_week='mon-fri', hour='10-14', minute='*'),
+            max_instances=3,
+            replace_existing=False,
+            id="run_weekly_vcp_screener_job_part2"
+        )
+        scheduler.add_job(
+            run_weekly_vcp_screener_on_schedule,
+            CronTrigger(day_of_week='mon-fri', hour='15', minute='0-30'),
+            max_instances=3,
+            replace_existing=False,
+            id="run_weekly_vcp_screener_job_part3"
         )
 
         # IPO screener jobs => runs multiple times daily

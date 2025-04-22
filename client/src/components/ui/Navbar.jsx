@@ -21,6 +21,7 @@ import {
   useMediaQuery,
   styled,
   alpha,
+  Button,
 } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -29,6 +30,7 @@ import BarChartIcon from "@mui/icons-material/BarChart";
 import SearchIcon from "@mui/icons-material/Search";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import NotificationsIcon from "@mui/icons-material/Notifications";
+import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CloseIcon from "@mui/icons-material/Close";
@@ -292,6 +294,11 @@ const Navbar = ({
       name: "Watchlist",
       path: "/watchlist",
       icon: <ListAltIcon />,
+    },
+    {
+      name: "Alerts",
+      path: "/alerts",
+      icon: <NotificationsActiveIcon />,
     },
   ];
 
@@ -698,6 +705,33 @@ const Navbar = ({
                 </Box>
               </MenuItem>
             ))}
+
+            {/* Add View All Alerts link */}
+            <Box
+              sx={{
+                p: 2,
+                borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <Button
+                component={Link}
+                to="/alerts"
+                startIcon={<NotificationsActiveIcon />}
+                onClick={handleNotificationsClose}
+                variant="outlined"
+                size="small"
+                sx={{
+                  borderRadius: 1,
+                  px: 2,
+                  py: 0.75,
+                  fontSize: "0.75rem",
+                }}
+              >
+                View All Alerts
+              </Button>
+            </Box>
           </Box>
         )}
       </Menu>

@@ -24,48 +24,80 @@ def get_ohlc(instrument_token, interval, symbol, segment):
         # 1) Remove existing OHLC data for this token + interval (if that's your desired logic)
         try:
             SaveOHLC.delete_all(cur, instrument_token, interval)
+            logger.info(f"Successfully deleted data for {symbol} ({instrument_token}), interval: {interval}")
         except Exception as err:
             logger.error(f"Error deleting OHLC data: {err}")
             return {"error": str(err)}
     
         if not kite.access_token:
+            logger.error(f"Missing Kite access token for {symbol} ({instrument_token})")
             return {"error": "Access token not found"}
+        else:
+            logger.info(f"Found valid Kite access token, proceeding with data fetch for {symbol}")
     
         loop_count = 1  # Number of 100-day windows or any chunk window you want
         hist = []
         to_date = datetime.datetime.now()  # Current date for the initial time window
-    
+        logger.info(f"Starting OHLC fetch for {symbol} ({instrument_token}), current date: {to_date.isoformat()}")
+
+        
+        if interval == "week":
+            day_count = 2000
+            loop_count = 2
+        else:
+            day_count = 500
+            loop_count = 1
+        logger.info(f"Using day_count of {day_count} for interval {interval}")
+
         # 2) Fetch historical data from the API
-        for _ in range(loop_count):
+        for i in range(loop_count):
             time_window_to = to_date.isoformat()[:10]
             # Example: fetch ~2000 days in one go if your subscription/data source allows
-            time_window_from = (to_date - datetime.timedelta(days=500)).isoformat()[:10]
+            time_window_from = (to_date - datetime.timedelta(days=day_count)).isoformat()[:10]
             logger.info(f"Fetching OHLC data from {time_window_from} to {time_window_to} "
-                        f"for instrument {instrument_token}")
+                        f"for instrument {instrument_token}, loop {i+1}/{loop_count}")
             try:
+                logger.info(f"Calling kite.historical_data for {symbol} ({instrument_token})")
                 data = kite.historical_data(
                     instrument_token,
                     time_window_from,
                     time_window_to,
                     interval
                 )
+                logger.info(f"Received response from kite.historical_data, data length: {len(data) if data else 0}")
                 if data:
                     hist.extend(data)
+                    logger.info(f"Added {len(data)} records, total records: {len(hist)}")
+                else:
+                    logger.warning(f"No data returned from kite.historical_data for {symbol} ({instrument_token})")
             except Exception as err:
                 logger.error(f"Error fetching OHLC data for instrument {instrument_token}: {err}")
                 return {"error": str(err)}
             # Move our 'to_date' pointer back another block of days
-            to_date = to_date - datetime.timedelta(days=501)
+            to_date = to_date - datetime.timedelta(days=day_count + 1)
+            logger.info(f"Waiting 200ms before next request, new to_date: {to_date.isoformat()}")
             delay(200)
     
         # 3) Process and insert into database
         if hist:
+            logger.info(f"Processing {len(hist)} records for {symbol} ({instrument_token})")
             try:
                 # Remove duplicates if any
+                old_len = len(hist)
                 hist = list({tuple(item.items()): item for item in hist}.values())
+                logger.info(f"Removed {old_len - len(hist)} duplicate records")
+                
                 # Sort by date ascending
                 hist.sort(key=lambda x: x['date'])
+                logger.info(f"Sorted {len(hist)} records by date")
+                
                 hist = pd.DataFrame(hist)
+                logger.info(f"Created DataFrame with shape {hist.shape}")
+
+                # Log the head of the fetched data
+                logger.info(f"Fetched OHLC data for {symbol} ({instrument_token}), interval: {interval}")
+                logger.info(f"Data shape: {hist.shape}")
+                logger.info(f"Data head:\n{hist.head().to_string()}")
 
                 # Convert to appropriate data types
                 # (Kite data is typically numeric in open/high/low/close/volume, but confirm as needed)
@@ -74,6 +106,7 @@ def get_ohlc(instrument_token, interval, symbol, segment):
                 hist["low"] = hist["low"].astype(float)
                 hist["close"] = hist["close"].astype(float)
                 hist["volume"] = hist["volume"].astype(float)
+                logger.info(f"Converted data types to float for numeric columns")
                 
                 # ---- Compute Indicators ----
                 # Use rolling windows that don't exceed the length of the dataset
@@ -81,6 +114,8 @@ def get_ohlc(instrument_token, interval, symbol, segment):
                 length_150 = min(150, len(hist))
                 length_200 = min(200, len(hist))
                 length_252 = min(252, len(hist))
+                
+                logger.info(f"Computing technical indicators with adjusted lengths: SMA50={length_50}, SMA150={length_150}, SMA200={length_200}, 52W={length_252}")
                 
                 hist["sma_50"] = ta.sma(hist["close"], length=length_50)
                 hist["sma_150"] = ta.sma(hist["close"], length=length_150)
@@ -105,10 +140,16 @@ def get_ohlc(instrument_token, interval, symbol, segment):
                 hist["away_from_low"] = (
                     (hist["close"] - hist["52_week_low"]) / hist["52_week_low"] * 100
                 )
+                logger.info(f"Computed all technical indicators successfully")
 
                 # Replace NaN or infinite values with 0
                 hist = hist.fillna(0)
                 hist.replace([float('inf'), float('-inf')], 0, inplace=True)
+                logger.info(f"Replaced NaN and infinite values with 0")
+
+                # Log the processed data head with indicators
+                logger.info(f"Processed OHLC data with indicators for {symbol}:")
+                logger.info(f"Processed data head:\n{hist.head().to_string()}")
 
                 # 4) Prepare data for insertion into `ohlc` table (with new columns)
                 batch_data = []
@@ -133,6 +174,7 @@ def get_ohlc(instrument_token, interval, symbol, segment):
                         row["away_from_high"],
                         row["away_from_low"]
                     ))
+                logger.info(f"Prepared {len(batch_data)} rows for database insertion")
 
                 # Make sure your `ohlc` table has these extra columns
                 insert_query = """
@@ -150,8 +192,10 @@ def get_ohlc(instrument_token, interval, symbol, segment):
                             %s, %s)
                 """
 
+                logger.info(f"Executing database insert for {len(batch_data)} rows")
                 cur.executemany(insert_query, batch_data)
                 conn.commit()
+                logger.info(f"Successfully inserted {len(batch_data)} rows for {symbol} ({instrument_token})")
 
                 return {"data": f"Inserted {len(batch_data)} rows with technical indicators."}
 
@@ -159,6 +203,7 @@ def get_ohlc(instrument_token, interval, symbol, segment):
                 logger.error(f"Error processing OHLC data for instrument {instrument_token}: {e}")
                 return {"error": str(e)}
         else:
+            logger.warning(f"No data found for {symbol} ({instrument_token}), interval: {interval}")
             return {"error": "No data found"}
     except Exception as e:
         logger.error(f"Unexpected error in get_ohlc: {e}")
@@ -167,6 +212,7 @@ def get_ohlc(instrument_token, interval, symbol, segment):
         # Ensure the DB connection is closed even if there's an error
         try:
             if conn and cur:
+                logger.info(f"Closing database connection for {symbol} ({instrument_token})")
                 close_db_connection()
         except Exception as e:
             logger.error(f"Error closing DB connection: {e}")
@@ -179,6 +225,7 @@ def get_equity_ohlc_data_loop(interval):
         cur.execute(select_query)
         tokens = cur.fetchall()
         for token in tokens:
+        # for token in tokens[:1]:
             get_ohlc(token[0], interval, token[1], token[4])
         return {"data": "Done"}
     except Exception as err:
