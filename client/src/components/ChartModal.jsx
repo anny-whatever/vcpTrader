@@ -25,7 +25,6 @@ import {
 } from "lightweight-charts";
 import { DataContext } from "../utils/DataContext";
 import { Spinner } from "@nextui-org/react";
-import modalStyles from "./ui/ModalStyles";
 
 function ChartModal({
   isOpen,
@@ -85,7 +84,7 @@ function ChartModal({
       }));
       setChartData(transformedData);
     } catch (error) {
-      // Error fetching chart data
+      console.error("Error fetching chart data:", error);
     }
   };
 
@@ -385,241 +384,251 @@ function ChartModal({
 
   return (
     <Dialog
+      fullScreen={fullScreen}
       open={isOpen}
       onClose={onClose}
       fullWidth
-      maxWidth="md"
+      maxWidth="xl"
       PaperProps={{
         sx: {
-          ...modalStyles.paper,
-          height: "90vh",
-          maxHeight: "90vh",
-          overflow: "hidden",
+          bgcolor: "#18181b", // zinc-900
+          color: "white",
+          borderRadius: "12px",
+          border: "1px solid #27272a", // zinc-800
+          p: 0,
+          height: fullScreen ? "100%" : "80vh",
         },
       }}
     >
-      <DialogTitle sx={modalStyles.title}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <Box>
-            {symbol}{" "}
-            <Typography
-              component="span"
-              sx={{
-                ml: 1,
-                px: 1,
-                py: 0.3,
-                borderRadius: "4px",
-                fontSize: "0.7rem",
-                fontWeight: "bold",
-                backgroundColor: liveChange < 0 ? "#ef4444" : "#10b981",
-                color: "white",
-              }}
-            >
-              {liveChange ? liveChange?.toFixed(2) + "%" : "-"}
-            </Typography>
-          </Box>
-
-          <Box>
-            {hasNext || hasPrevious ? (
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <IconButton
-                  onClick={onPrevious}
-                  disabled={!hasPrevious}
-                  size="small"
-                  sx={{ color: hasPrevious ? "#a1a1aa" : "#3f3f46" }}
-                >
-                  <KeyboardArrowUpIcon />
-                </IconButton>
-                <IconButton
-                  onClick={onNext}
-                  disabled={!hasNext}
-                  size="small"
-                  sx={{ color: hasNext ? "#a1a1aa" : "#3f3f46" }}
-                >
-                  <KeyboardArrowDownIcon />
-                </IconButton>
-              </Box>
-            ) : null}
-          </Box>
-        </Box>
-      </DialogTitle>
-
-      <DialogContent
+      <DialogTitle
         sx={{
-          ...modalStyles.content,
-          p: 1,
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
+          color: "white",
+          fontSize: "1.2rem",
+          px: 3,
+          py: 2,
+          bgcolor: "#18181b", // zinc-900
+          borderBottom: "1px solid #27272a", // zinc-800
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            px: 1,
-            mb: 1,
-          }}
-        >
-          <ToggleButtonGroup
-            value={interval}
-            exclusive
-            onChange={handleIntervalChange}
-            size="small"
-            sx={{
-              "& .MuiToggleButton-root": {
-                color: "#a1a1aa",
-                fontSize: "0.75rem",
-                px: 1.5,
-                py: 0.5,
-                borderRadius: "8px",
-                borderColor: "rgba(255, 255, 255, 0.1)",
-                "&.Mui-selected": {
-                  color: "#f4f4f5",
-                  backgroundColor: "rgba(99, 102, 241, 0.15)",
-                  borderColor: "rgba(99, 102, 241, 0.5)",
-                },
-              },
-            }}
-          >
-            <ToggleButton value="day">Day</ToggleButton>
-            <ToggleButton value="week">Week</ToggleButton>
-            <ToggleButton value="month">Month</ToggleButton>
-          </ToggleButtonGroup>
-
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            {onAddAlert && (
-              <Button
-                onClick={() => onAddAlert(symbol, livePrice)}
-                size="small"
-                sx={{
-                  ...modalStyles.primaryButton,
-                  mr: 1,
-                  fontSize: "0.75rem",
-                  py: 0.5,
-                  px: 1.5,
-                }}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <span className="text-lg font-bold text-zinc-200 mr-2">
+              {symbol}
+            </span>
+            {liveChange !== null && (
+              <span
+                className={`text-sm font-medium ${
+                  liveChange >= 0 ? "text-green-500" : "text-red-500"
+                }`}
               >
-                Add Alert
-              </Button>
+                {liveChange >= 0 ? "+" : ""}
+                {liveChange?.toFixed(2)}%
+              </span>
             )}
-            <Button
-              onClick={() => openFullChart(symbol)}
+          </div>
+          <div className="flex items-center space-x-1">
+            <IconButton
               size="small"
+              disabled={!hasPrevious}
+              onClick={onPrevious}
               sx={{
-                ...modalStyles.secondaryButton,
-                fontSize: "0.75rem",
-                py: 0.5,
-                px: 1.5,
+                color: hasPrevious ? "white" : "gray",
+                "&:hover": {
+                  backgroundColor: hasPrevious
+                    ? "rgba(255, 255, 255, 0.1)"
+                    : "transparent",
+                },
               }}
             >
-              Tradingview
-            </Button>
+              <KeyboardArrowUpIcon />
+            </IconButton>
+            <IconButton
+              size="small"
+              disabled={!hasNext}
+              onClick={onNext}
+              sx={{
+                color: hasNext ? "white" : "gray",
+                "&:hover": {
+                  backgroundColor: hasNext
+                    ? "rgba(255, 255, 255, 0.1)"
+                    : "transparent",
+                },
+              }}
+            >
+              <KeyboardArrowDownIcon />
+            </IconButton>
+          </div>
+        </div>
+      </DialogTitle>
+      <DialogContent
+        sx={{
+          p: 0,
+          height: fullScreen ? "calc(100% - 130px)" : "calc(80vh - 130px)",
+          overflow: "hidden",
+          bgcolor: "#18181b", // zinc-900
+          position: "relative",
+        }}
+      >
+        {!chartData && (
+          <Box sx={{ p: 0, height: "100%" }}>
+            <div className="flex flex-col items-center justify-center w-full h-full">
+              <Spinner size="lg" />
+              <span className="m-5 text-xl font-medium text-zinc-300">
+                Loading Chart Data
+              </span>
+            </div>
           </Box>
-        </Box>
-
-        <Box
-          sx={{
-            display: "flex",
-            gap: 1,
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            mb: 0.5,
-            px: 1,
-          }}
-        >
-          {OHLC && (
-            <>
-              <Typography
-                sx={{
-                  fontSize: "0.75rem",
-                  color: "#a1a1aa",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <span>O: {OHLC.open?.toFixed(2)}</span>
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: "0.75rem",
-                  color: "#a1a1aa",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <span>H: {OHLC.high?.toFixed(2)}</span>
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: "0.75rem",
-                  color: "#a1a1aa",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <span>L: {OHLC.low?.toFixed(2)}</span>
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: "0.75rem",
-                  color: "#a1a1aa",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <span>C: {OHLC.close?.toFixed(2)}</span>
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: "0.75rem",
-                  color: "#a1a1aa",
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                <span>LTP: {livePrice?.toFixed(2) || "-"}</span>
-              </Typography>
-            </>
-          )}
-        </Box>
-
-        <Box
-          ref={chartContainerRef}
-          sx={{
-            flex: 1,
-            width: "100%",
-            height: "calc(90vh - 180px)",
-            position: "relative",
-          }}
-        >
-          {!chartData && (
-            <Box
-              sx={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+        )}
+        <div className="absolute top-3 left-3 z-10 bg-zinc-900/80 backdrop-blur-md text-white px-3 py-2 rounded-lg border border-zinc-800 shadow-lg">
+          <div className="text-sm font-medium mb-1">{symbol}</div>
+          <div className="text-xs mb-1">
+            Change:{" "}
+            <span
+              className={
+                liveChange > 0
+                  ? "text-emerald-500 font-medium"
+                  : "text-red-500 font-medium"
+              }
             >
-              <Spinner color="primary" />
-            </Box>
-          )}
-        </Box>
-      </DialogContent>
+              {liveChange?.toFixed(2)}%
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-3 text-xs text-zinc-300">
+            <span>
+              O: <span className="text-white">{OHLC?.open?.toFixed(2)}</span>
+            </span>
+            <span>
+              H: <span className="text-white">{OHLC?.high?.toFixed(2)}</span>
+            </span>
+            <span>
+              L: <span className="text-white">{OHLC?.low?.toFixed(2)}</span>
+            </span>
+            <span>
+              C: <span className="text-white">{livePrice?.toFixed(2)}</span>
+            </span>
+          </div>
+        </div>
 
-      <DialogActions sx={modalStyles.actions}>
-        <Button onClick={onClose} sx={modalStyles.secondaryButton}>
+        {/* Interval Toggle Buttons */}
+        <div className="absolute top-3 right-3 z-10">
+          <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-lg overflow-hidden shadow-lg">
+            <div className="flex">
+              <button
+                className={`px-3 py-1.5 text-xs font-medium ${
+                  interval === "day"
+                    ? "bg-zinc-700 text-white"
+                    : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                }`}
+                onClick={() => handleIntervalChange(null, "day")}
+              >
+                Daily
+              </button>
+              <button
+                className={`px-3 py-1.5 text-xs font-medium ${
+                  interval === "week"
+                    ? "bg-zinc-700 text-white"
+                    : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
+                }`}
+                onClick={() => handleIntervalChange(null, "week")}
+              >
+                Weekly
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div
+          ref={chartContainerRef}
+          style={{ width: "100%", height: "100%" }}
+        />
+      </DialogContent>
+      <DialogActions
+        sx={{
+          p: 2,
+          bgcolor: "#18181b", // zinc-900
+          borderTop: "1px solid #27272a", // zinc-800
+          gap: 1,
+        }}
+      >
+        <Button
+          onClick={() => openFullChart(symbol)}
+          variant="outlined"
+          sx={{
+            color: "#e4e4e7", // zinc-200
+            borderColor: "#3f3f46", // zinc-700
+            borderRadius: "8px",
+            textTransform: "none",
+            fontWeight: "normal",
+            fontSize: "0.875rem",
+            py: 0.75,
+            px: 2,
+            "&:hover": {
+              borderColor: "#52525b", // zinc-600
+              bgcolor: "rgba(82, 82, 91, 0.1)",
+            },
+          }}
+        >
+          Open in TradingView
+        </Button>
+        <Button
+          onClick={() => onAddAlert(symbol, token, livePrice)}
+          variant="outlined"
+          sx={{
+            color: "#3b82f6", // blue-500
+            borderColor: "#1e3a8a", // blue-900
+            borderRadius: "8px",
+            textTransform: "none",
+            fontWeight: "normal",
+            fontSize: "0.875rem",
+            py: 0.75,
+            px: 2,
+            "&:hover": {
+              borderColor: "#1d4ed8", // blue-700
+              bgcolor: "rgba(59, 130, 246, 0.1)",
+            },
+          }}
+        >
+          Add Alert
+        </Button>
+        <Button
+          onClick={getChartData}
+          variant="outlined"
+          sx={{
+            color: "#10b981", // emerald-500
+            borderColor: "#064e3b", // emerald-900
+            borderRadius: "8px",
+            textTransform: "none",
+            fontWeight: "normal",
+            fontSize: "0.875rem",
+            py: 0.75,
+            px: 2,
+            "&:hover": {
+              borderColor: "#047857", // emerald-700
+              bgcolor: "rgba(16, 185, 129, 0.1)",
+            },
+          }}
+        >
+          Refresh
+        </Button>
+        <Button
+          onClick={onClose}
+          variant="outlined"
+          sx={{
+            ml: "auto",
+            color: "#ef4444", // red-500
+            borderColor: "#7f1d1d", // red-900
+            borderRadius: "8px",
+            textTransform: "none",
+            fontWeight: "normal",
+            fontSize: "0.875rem",
+            py: 0.75,
+            px: 2,
+            "&:hover": {
+              borderColor: "#b91c1c", // red-700
+              bgcolor: "rgba(239, 68, 68, 0.1)",
+            },
+          }}
+        >
           Close
         </Button>
       </DialogActions>
