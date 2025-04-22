@@ -11,7 +11,10 @@ import {
   useMediaQuery,
   ToggleButtonGroup,
   ToggleButton,
+  IconButton,
 } from "@mui/material";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import api from "../utils/api";
 import {
   createChart,
@@ -23,7 +26,17 @@ import {
 import { DataContext } from "../utils/DataContext";
 import { Spinner } from "@nextui-org/react";
 
-function ChartModal({ isOpen, onClose, symbol, token }) {
+function ChartModal({
+  isOpen,
+  onClose,
+  symbol,
+  token,
+  onPrevious,
+  onNext,
+  hasNext,
+  hasPrevious,
+  onAddAlert,
+}) {
   const { liveData } = useContext(DataContext);
   const [chartData, setChartData] = useState(null);
   const [liveChange, setLiveChange] = useState(null);
@@ -340,6 +353,24 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
     });
   }, [liveData, chartData, token]);
 
+  // Listen for keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!isOpen) return;
+
+      if (e.key === "ArrowUp" && hasPrevious) {
+        onPrevious();
+      } else if (e.key === "ArrowDown" && hasNext) {
+        onNext();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onNext, onPrevious, hasNext, hasPrevious]);
+
   // --------------------------------------------
   // 4. UI / Render Modal
   // --------------------------------------------
@@ -379,7 +410,55 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
           borderBottom: "1px solid #27272a", // zinc-800
         }}
       >
-        {symbol} {interval === "day" ? "Daily" : "Weekly"} Chart
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <span className="text-lg font-bold text-zinc-200 mr-2">
+              {symbol}
+            </span>
+            {liveChange !== null && (
+              <span
+                className={`text-sm font-medium ${
+                  liveChange >= 0 ? "text-green-500" : "text-red-500"
+                }`}
+              >
+                {liveChange >= 0 ? "+" : ""}
+                {liveChange?.toFixed(2)}%
+              </span>
+            )}
+          </div>
+          <div className="flex items-center space-x-1">
+            <IconButton
+              size="small"
+              disabled={!hasPrevious}
+              onClick={onPrevious}
+              sx={{
+                color: hasPrevious ? "white" : "gray",
+                "&:hover": {
+                  backgroundColor: hasPrevious
+                    ? "rgba(255, 255, 255, 0.1)"
+                    : "transparent",
+                },
+              }}
+            >
+              <KeyboardArrowUpIcon />
+            </IconButton>
+            <IconButton
+              size="small"
+              disabled={!hasNext}
+              onClick={onNext}
+              sx={{
+                color: hasNext ? "white" : "gray",
+                "&:hover": {
+                  backgroundColor: hasNext
+                    ? "rgba(255, 255, 255, 0.1)"
+                    : "transparent",
+                },
+              }}
+            >
+              <KeyboardArrowDownIcon />
+            </IconButton>
+          </div>
+        </div>
       </DialogTitle>
       <DialogContent
         sx={{
@@ -490,6 +569,26 @@ function ChartModal({ isOpen, onClose, symbol, token }) {
           }}
         >
           Open in TradingView
+        </Button>
+        <Button
+          onClick={() => onAddAlert(symbol, token, livePrice)}
+          variant="outlined"
+          sx={{
+            color: "#3b82f6", // blue-500
+            borderColor: "#1e3a8a", // blue-900
+            borderRadius: "8px",
+            textTransform: "none",
+            fontWeight: "normal",
+            fontSize: "0.875rem",
+            py: 0.75,
+            px: 2,
+            "&:hover": {
+              borderColor: "#1d4ed8", // blue-700
+              bgcolor: "rgba(59, 130, 246, 0.1)",
+            },
+          }}
+        >
+          Add Alert
         </Button>
         <Button
           onClick={getChartData}

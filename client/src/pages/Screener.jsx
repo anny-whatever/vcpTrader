@@ -1,5 +1,12 @@
 // Screener.jsx
-import React, { useState, useEffect, useContext } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import { DataContext } from "../utils/DataContext";
 import {
   Table,
@@ -8,9 +15,10 @@ import {
   TableBody,
   TableRow,
   TableCell,
-  Button,
+  Button as NextUIButton,
   ButtonGroup,
   Spinner,
+  Pagination,
 } from "@nextui-org/react";
 import BuyModal from "../components/BuyModal";
 import SellModal from "../components/SellModal";
@@ -19,6 +27,7 @@ import AddAlertModal from "../components/AddAlertModal"; // New modal for adding
 import api from "../utils/api";
 import { AuthContext } from "../utils/AuthContext";
 import { jwtDecode } from "jwt-decode"; // ✅ Correct import
+import { Box, Typography, Button } from "@mui/material";
 
 function Screener() {
   const { liveData, riskpool } = useContext(DataContext);
@@ -26,6 +35,11 @@ function Screener() {
   const screenOptions = ["VCP", "Weekly VCP", "IPO"];
   const [screenerData, setScreenerData] = useState(null);
   const [screen, setScreen] = useState("VCP");
+  const previousScreenRef = useRef(screen);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(50);
 
   // Modals for buy, sell, chart and now add alert
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
@@ -39,6 +53,14 @@ function Screener() {
   const [chartData, setChartData] = useState(null);
   const [addAlertData, setAddAlertData] = useState(null);
 
+  // Current selected stock index for navigation
+  const [currentStockIndex, setCurrentStockIndex] = useState(null);
+
+  // For debouncing updates
+  const updateTimeoutRef = useRef(null);
+  const lastUpdateTime = useRef(0);
+  const UPDATE_THROTTLE = 500; // ms
+
   let userRole = "";
   if (token) {
     try {
@@ -48,103 +70,546 @@ function Screener() {
       console.error("Failed to decode token:", error);
     }
   }
+
+  // Reset to first page when screen changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [screen]);
+
   // Fetch screener data
-  const fetchScreenerData = async () => {
-    setScreenerData(null);
-    if (screen === "VCP") {
-      const response = await api.get("/api/screener/vcpscreen");
-      setScreenerData(response?.data);
-    } else if (screen === "Weekly VCP") {
-      const response = await api.get("/api/screener/weekly_vcpscreen");
-      setScreenerData(response?.data);
-    } else if (screen === "IPO") {
-      const response = await api.get("/api/screener/iposcreen");
-      setScreenerData(response?.data);
+  const fetchScreenerData = useCallback(async () => {
+    if (previousScreenRef.current !== screen) {
+      previousScreenRef.current = screen;
+      setScreenerData(null);
+      setCurrentPage(1); // Reset to first page when screen changes
     }
-  };
+
+    try {
+      let response;
+      let endpoint = "";
+
+      // Determine endpoint based on screen
+      switch (screen) {
+        case "VCP":
+          endpoint = "/api/screener/vcpscreen";
+          break;
+        case "Weekly VCP":
+          endpoint = "/api/screener/weekly_vcpscreen";
+          break;
+        case "IPO":
+          endpoint = "/api/screener/iposcreen";
+          break;
+        default:
+          endpoint = "/api/screener/vcpscreen";
+      }
+
+      // Single API call with the determined endpoint
+      response = await api.get(endpoint);
+
+      // Use requestAnimationFrame to schedule state update in next frame
+      if (response?.data) {
+        requestAnimationFrame(() => {
+          setScreenerData(response.data);
+        });
+      }
+    } catch (error) {
+      console.error(`Error fetching ${screen} data:`, error);
+    }
+  }, [screen]);
 
   useEffect(() => {
     fetchScreenerData();
-  }, [screen]);
+  }, [fetchScreenerData]);
 
-  // Merge liveData into screenerData
-  useEffect(() => {
-    if (!screenerData || !liveData) return;
+  // Create a memoized map of instrument tokens to live data for faster lookups
+  const liveDataMap = useMemo(() => {
+    if (!liveData) return new Map();
+    const map = new Map();
+    liveData.forEach((item) => {
+      if (item && item.instrument_token) {
+        map.set(item.instrument_token, item);
+      }
+    });
+    return map;
+  }, [liveData]);
+
+  // Memoize the screener data transformation to prevent unnecessary recalculations
+  const transformedScreenerData = useMemo(() => {
+    if (!screenerData || !liveDataMap.size) return screenerData;
+
     let changed = false;
     const newData = screenerData.map((item) => {
-      const liveDataItem = liveData.find(
-        (liveItem) => liveItem.instrument_token === item.instrument_token
-      );
-      if (liveDataItem) {
-        const updatedItem = { ...item };
-        if (updatedItem.change !== liveDataItem.change) {
-          updatedItem.change = liveDataItem.change;
-          changed = true;
-        }
-        if (updatedItem.last_price !== liveDataItem.last_price) {
-          updatedItem.last_price = liveDataItem.last_price;
-          changed = true;
-        }
-        return updatedItem;
+      const liveDataItem = liveDataMap.get(item.instrument_token);
+
+      if (!liveDataItem) return item;
+
+      // Only create a new object if there are actual changes
+      if (
+        item.change !== liveDataItem.change ||
+        item.last_price !== liveDataItem.last_price
+      ) {
+        changed = true;
+        return {
+          ...item,
+          change: liveDataItem.change,
+          last_price: liveDataItem.last_price,
+        };
       }
       return item;
     });
-    newData.sort((a, b) => (b.change || 0) - (a.change || 0));
-    const oldString = JSON.stringify(screenerData);
-    const newString = JSON.stringify(newData);
-    if (oldString !== newString) {
-      setScreenerData(newData);
+
+    if (changed) {
+      // Sort only if there were changes
+      return [...newData].sort((a, b) => (b.change || 0) - (a.change || 0));
     }
-  }, [liveData, screenerData]);
 
-  // Populate data for modals
-  const populateBuyData = (row) => {
-    setBuyData({
-      symbol: row.symbol,
-      instrument_token: row.instrument_token,
-      available_risk: riskpool?.available_risk,
-      used_risk: riskpool?.used_risk,
-      last_price: row.last_price,
+    return screenerData;
+  }, [screenerData, liveDataMap]);
+
+  // Calculate pagination values
+  const paginatedData = useMemo(() => {
+    if (!transformedScreenerData) return null;
+
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+
+    return transformedScreenerData.slice(indexOfFirstItem, indexOfLastItem);
+  }, [transformedScreenerData, currentPage, itemsPerPage]);
+
+  // Calculate total pages
+  const totalPages = useMemo(() => {
+    if (!transformedScreenerData) return 0;
+    return Math.ceil(transformedScreenerData.length / itemsPerPage);
+  }, [transformedScreenerData, itemsPerPage]);
+
+  // Handle page change
+  const handlePageChange = useCallback((page) => {
+    // Use requestAnimationFrame to avoid layout thrashing
+    requestAnimationFrame(() => {
+      setCurrentPage(page);
+      // Scroll to top when page changes
+      window.scrollTo(0, 0);
     });
-  };
+  }, []);
 
-  const populateSellData = (row) => {
-    setSellData({
-      symbol: row.symbol,
-      instrument_token: row.instrument_token,
-      available_risk: riskpool?.available_risk,
-      used_risk: riskpool?.used_risk,
-      last_price: row.last_price,
-    });
-  };
+  // Update screenerData using transformedData, but with throttling
+  useEffect(() => {
+    if (transformedScreenerData === screenerData) return;
 
-  const populateChartData = (row) => {
-    setChartData({
-      symbol: row.symbol,
-      token: row.instrument_token,
-    });
-  };
+    const now = Date.now();
+    if (now - lastUpdateTime.current < UPDATE_THROTTLE) {
+      // Clear any existing timeout
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
 
-  const populateAddAlertData = (row) => {
+      // Set a new timeout
+      updateTimeoutRef.current = setTimeout(() => {
+        setScreenerData(transformedScreenerData);
+        lastUpdateTime.current = Date.now();
+      }, UPDATE_THROTTLE);
+    } else {
+      // It's been long enough since the last update, update immediately
+      setScreenerData(transformedScreenerData);
+      lastUpdateTime.current = now;
+    }
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, [transformedScreenerData, screenerData]);
+
+  // Memoize handlers to prevent recreating functions on each render
+  const populateBuyData = useCallback(
+    (row) => {
+      setBuyData({
+        symbol: row.symbol,
+        instrument_token: row.instrument_token,
+        available_risk: riskpool?.available_risk,
+        used_risk: riskpool?.used_risk,
+        last_price: row.last_price,
+      });
+    },
+    [riskpool]
+  );
+
+  const populateSellData = useCallback(
+    (row) => {
+      setSellData({
+        symbol: row.symbol,
+        instrument_token: row.instrument_token,
+        available_risk: riskpool?.available_risk,
+        used_risk: riskpool?.used_risk,
+        last_price: row.last_price,
+      });
+    },
+    [riskpool]
+  );
+
+  const populateChartData = useCallback(
+    (row, index) => {
+      // Convert relative index (in current page) to absolute index in full dataset
+      const absoluteIndex = (currentPage - 1) * itemsPerPage + index;
+
+      setChartData({
+        symbol: row.symbol,
+        token: row.instrument_token,
+      });
+      setCurrentStockIndex(absoluteIndex);
+    },
+    [currentPage, itemsPerPage]
+  );
+
+  const populateAddAlertData = useCallback((row) => {
     setAddAlertData({
       symbol: row.symbol,
       instrument_token: row.instrument_token,
       ltp: row.last_price,
     });
-  };
+  }, []);
 
-  // Modal Handlers
-  const handleOpenBuyModal = () => setIsBuyModalOpen(true);
-  const handleCloseBuyModal = () => setIsBuyModalOpen(false);
+  // Modal Handlers - memoized
+  const handleOpenBuyModal = useCallback(() => setIsBuyModalOpen(true), []);
+  const handleCloseBuyModal = useCallback(() => setIsBuyModalOpen(false), []);
 
-  const handleOpenSellModal = () => setIsSellModalOpen(true);
-  const handleCloseSellModal = () => setIsSellModalOpen(false);
+  const handleOpenSellModal = useCallback(() => setIsSellModalOpen(true), []);
+  const handleCloseSellModal = useCallback(() => setIsSellModalOpen(false), []);
 
-  const handleOpenChartModal = () => setIsChartModalOpen(true);
-  const handleCloseChartModal = () => setIsChartModalOpen(false);
+  const handleOpenChartModal = useCallback(() => setIsChartModalOpen(true), []);
+  const handleCloseChartModal = useCallback(
+    () => setIsChartModalOpen(false),
+    []
+  );
 
-  const handleOpenAddAlertModal = () => setIsAddAlertModalOpen(true);
-  const handleCloseAddAlertModal = () => setIsAddAlertModalOpen(false);
+  const handleOpenAddAlertModal = useCallback(
+    () => setIsAddAlertModalOpen(true),
+    []
+  );
+  const handleCloseAddAlertModal = useCallback(
+    () => setIsAddAlertModalOpen(false),
+    []
+  );
+
+  // Navigate to previous stock in the list - memoized
+  const handlePreviousStock = useCallback(() => {
+    if (currentStockIndex > 0 && screenerData) {
+      const prevIndex = currentStockIndex - 1;
+      const prevStock = screenerData[prevIndex];
+      setChartData({
+        symbol: prevStock.symbol,
+        token: prevStock.instrument_token,
+      });
+      setCurrentStockIndex(prevIndex);
+    }
+  }, [currentStockIndex, screenerData]);
+
+  // Navigate to next stock in the list - memoized
+  const handleNextStock = useCallback(() => {
+    if (currentStockIndex < screenerData?.length - 1 && screenerData) {
+      const nextIndex = currentStockIndex + 1;
+      const nextStock = screenerData[nextIndex];
+      setChartData({
+        symbol: nextStock.symbol,
+        token: nextStock.instrument_token,
+      });
+      setCurrentStockIndex(nextIndex);
+    }
+  }, [currentStockIndex, screenerData]);
+
+  // Add a function to handle adding alerts from the chart modal - memoized
+  const handleAddAlertFromChart = useCallback(
+    (symbol, instrument_token, ltp) => {
+      setAddAlertData({
+        symbol,
+        instrument_token,
+        ltp,
+      });
+      setIsAddAlertModalOpen(true);
+    },
+    []
+  );
+
+  // Memoize the initial setup for different screen types
+  const screenChangeHandler = useCallback(
+    (e) => {
+      const newScreen = e.target.value;
+
+      // Only update if actually changed
+      if (newScreen !== screen) {
+        // Clear current data first to avoid mixed renders
+        // This prevents reflow by not showing stale data
+        setScreenerData(null);
+
+        // Schedule screen change to next task to reduce main thread blocking
+        setTimeout(() => {
+          setScreen(newScreen);
+        }, 0);
+      }
+    },
+    [screen]
+  );
+
+  // Memoize row action handlers
+  const handleBuyAction = useCallback(
+    (row) => {
+      populateBuyData(row);
+      handleOpenBuyModal();
+    },
+    [populateBuyData, handleOpenBuyModal]
+  );
+
+  const handleSellAction = useCallback(
+    (row) => {
+      populateSellData(row);
+      handleOpenSellModal();
+    },
+    [populateSellData, handleOpenSellModal]
+  );
+
+  const handleChartAction = useCallback(
+    (row, index) => {
+      populateChartData(row, index);
+      handleOpenChartModal();
+    },
+    [populateChartData, handleOpenChartModal]
+  );
+
+  const handleAlertAction = useCallback(
+    (row) => {
+      populateAddAlertData(row);
+      handleOpenAddAlertModal();
+    },
+    [populateAddAlertData, handleOpenAddAlertModal]
+  );
+
+  // Memoize rendering of table rows to prevent forced reflows
+  const renderTableRows = useMemo(() => {
+    if (!paginatedData) return null;
+
+    return paginatedData.map((row, index) => {
+      const colorClass = row.change > 0 ? "text-green-500" : "text-red-500";
+      const atrPercent = ((row?.atr / row?.last_price) * 100).toFixed(2) + "%";
+
+      return (
+        <TableRow key={`${row.symbol}-${index}`}>
+          <TableCell>{row.symbol}</TableCell>
+          <TableCell>{row.last_price}</TableCell>
+          <TableCell>
+            <span className={colorClass}>
+              {row.change > 0 ? "+" : ""}
+              {row.change?.toFixed(2)}%
+            </span>
+          </TableCell>
+          <TableCell>{atrPercent}</TableCell>
+          <TableCell>
+            <ButtonGroup size="sm" variant="flat" className="rounded-lg">
+              {userRole === "admin" || userRole === "trader" ? (
+                <NextUIButton
+                  color="success"
+                  variant="flat"
+                  className="min-w-[40px] h-9 bg-green-500/20 hover:bg-green-500/30 text-green-500"
+                  onPress={() => handleBuyAction(row)}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-5 h-5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 4.5v15m7.5-7.5h-15"
+                    />
+                  </svg>
+                </NextUIButton>
+              ) : null}
+              {userRole === "admin" || userRole === "trader" ? (
+                <NextUIButton
+                  color="danger"
+                  variant="flat"
+                  className="min-w-[40px] h-9 bg-red-500/20 hover:bg-red-500/30 text-red-500"
+                  onPress={() => handleSellAction(row)}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-5 h-5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 12h14"
+                    />
+                  </svg>
+                </NextUIButton>
+              ) : null}
+              <NextUIButton
+                color="warning"
+                variant="flat"
+                className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
+                onPress={() => handleChartAction(row, index)}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
+                  />
+                </svg>
+              </NextUIButton>
+              <NextUIButton
+                color="primary"
+                variant="flat"
+                className="min-w-[40px] h-9 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
+                onPress={() => handleAlertAction(row)}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
+                  />
+                </svg>
+              </NextUIButton>
+            </ButtonGroup>
+          </TableCell>
+        </TableRow>
+      );
+    });
+  }, [
+    paginatedData,
+    userRole,
+    handleBuyAction,
+    handleSellAction,
+    handleChartAction,
+    handleAlertAction,
+  ]);
+
+  // Memoize mobile card rendering
+  const renderMobileCards = useMemo(() => {
+    if (!paginatedData) return null;
+
+    return paginatedData.map((row, index) => {
+      const colorClass = row.change > 0 ? "text-green-500" : "text-red-500";
+      const atrPercent = ((row?.atr / row?.last_price) * 100).toFixed(2) + "%";
+
+      return (
+        <div
+          key={`${row.symbol}-mobile-${index}`}
+          className="flex flex-col gap-3 p-4 bg-zinc-900 rounded-xl border border-zinc-800 shadow-md"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-base font-semibold">{row.symbol}</span>
+            <ButtonGroup className="shadow-sm">
+              {userRole === "admin" && (
+                <>
+                  <NextUIButton
+                    size="sm"
+                    color="success"
+                    variant="flat"
+                    className="min-w-[40px] h-9 px-3 bg-green-500/20 hover:bg-green-500/30 text-green-500"
+                    onPress={() => handleBuyAction(row)}
+                    isDisabled={userRole !== "admin"}
+                  >
+                    En
+                  </NextUIButton>
+                  <NextUIButton
+                    size="sm"
+                    color="danger"
+                    variant="flat"
+                    className="min-w-[40px] h-9 px-3 bg-red-500/20 hover:bg-red-500/30 text-red-500"
+                    onPress={() => handleSellAction(row)}
+                    isDisabled={userRole !== "admin"}
+                  >
+                    Ex
+                  </NextUIButton>
+                  <NextUIButton
+                    size="sm"
+                    color="primary"
+                    variant="flat"
+                    className="min-w-[40px] h-9 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
+                    onPress={() => handleAlertAction(row)}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
+                      />
+                    </svg>
+                  </NextUIButton>
+                </>
+              )}
+              <NextUIButton
+                size="sm"
+                className="bg-blue-600 text-white hover:bg-blue-700 min-w-[40px]"
+                onPress={() => handleChartAction(row, index)}
+              >
+                Chart
+              </NextUIButton>
+            </ButtonGroup>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mt-1">
+            <div className="flex flex-col">
+              <span className="text-xs text-zinc-400 font-medium">
+                Last Price
+              </span>
+              <span className={`text-sm font-medium ${colorClass}`}>
+                {row.last_price?.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs text-zinc-400 font-medium">Change</span>
+              <span className={`text-sm font-medium ${colorClass}`}>
+                {row.change?.toFixed(2)} %
+              </span>
+            </div>
+            <div className="flex flex-col col-span-2">
+              <span className="text-xs text-zinc-400 font-medium">ATR %</span>
+              <span className="text-sm font-medium">{atrPercent}</span>
+            </div>
+          </div>
+        </div>
+      );
+    });
+  }, [
+    paginatedData,
+    userRole,
+    handleBuyAction,
+    handleSellAction,
+    handleChartAction,
+    handleAlertAction,
+  ]);
 
   return (
     <div className="w-full px-6 text-white">
@@ -170,6 +635,11 @@ function Screener() {
         onClose={handleCloseChartModal}
         symbol={chartData?.symbol}
         token={chartData?.token}
+        onPrevious={handlePreviousStock}
+        onNext={handleNextStock}
+        hasPrevious={currentStockIndex > 0}
+        hasNext={currentStockIndex < screenerData?.length - 1}
+        onAddAlert={handleAddAlertFromChart}
       />
       <AddAlertModal
         isOpen={isAddAlertModalOpen}
@@ -182,7 +652,7 @@ function Screener() {
       {/* Top controls */}
       <div className="flex flex-col items-center justify-between my-3 sm:flex-row">
         <div className="flex items-center gap-3">
-          <Button
+          <NextUIButton
             size="md"
             color="success"
             variant="flat"
@@ -190,11 +660,11 @@ function Screener() {
             onPress={fetchScreenerData}
           >
             Refresh Screener
-          </Button>
+          </NextUIButton>
           <select
             className="h-10 px-4 py-1 text-sm text-white rounded-md border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-green-500 shadow-md"
             value={screen}
-            onChange={(e) => setScreen(e.target.value)}
+            onChange={screenChangeHandler}
           >
             {screenOptions.map((option) => (
               <option key={option}>{option}</option>
@@ -207,6 +677,7 @@ function Screener() {
             <span className="text-white font-semibold">
               {screenerData.length}
             </span>
+            {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
           </span>
         )}
       </div>
@@ -242,247 +713,133 @@ function Screener() {
                 <TableColumn>ATR %</TableColumn>
                 <TableColumn>Actions</TableColumn>
               </TableHeader>
-              <TableBody>
-                {screenerData?.map((row) => {
-                  const colorClass =
-                    row.change > 0 ? "text-green-500" : "text-red-500";
-                  const atrPercent =
-                    ((row?.atr / row?.last_price) * 100).toFixed(2) + "%";
-                  return (
-                    <TableRow
-                      key={row.symbol}
-                      className="cursor-pointer hover:bg-zinc-800"
-                    >
-                      <TableCell>{row.symbol}</TableCell>
-                      <TableCell className={colorClass}>
-                        {row.last_price?.toFixed(2)}
-                      </TableCell>
-                      <TableCell className={colorClass}>
-                        {row.change?.toFixed(2)} %
-                      </TableCell>
-                      <TableCell>{atrPercent}</TableCell>
-                      <TableCell>
-                        <ButtonGroup className="shadow-sm">
-                          {userRole === "admin" && (
-                            <>
-                              <Button
-                                size="sm"
-                                color="success"
-                                variant="flat"
-                                className="min-w-[40px] h-9 px-3 bg-green-500/20 hover:bg-green-500/30 text-green-500"
-                                onPress={() => {
-                                  populateBuyData(row);
-                                  handleOpenBuyModal();
-                                }}
-                                isDisabled={userRole !== "admin"}
-                              >
-                                En
-                              </Button>
-                              <Button
-                                size="sm"
-                                color="danger"
-                                variant="flat"
-                                className="min-w-[40px] h-9 px-3 bg-red-500/20 hover:bg-red-500/30 text-red-500"
-                                onPress={() => {
-                                  populateSellData(row);
-                                  handleOpenSellModal();
-                                }}
-                                isDisabled={userRole !== "admin"}
-                              >
-                                Ex
-                              </Button>
-                              <Button
-                                size="sm"
-                                color="primary"
-                                variant="flat"
-                                className="min-w-[40px] h-9 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
-                                onPress={() => {
-                                  populateAddAlertData(row);
-                                  handleOpenAddAlertModal();
-                                }}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  strokeWidth={1.5}
-                                  stroke="currentColor"
-                                  className="w-5 h-5"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
-                                  />
-                                </svg>
-                              </Button>
-                            </>
-                          )}
-                          <Button
-                            size="sm"
-                            color="warning"
-                            variant="flat"
-                            className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
-                            onPress={() => {
-                              populateChartData(row);
-                              handleOpenChartModal();
-                            }}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              strokeWidth={1.5}
-                              stroke="currentColor"
-                              className="w-5 h-5"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
-                              />
-                            </svg>
-                          </Button>
-                        </ButtonGroup>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
+              <TableBody>{renderTableRows}</TableBody>
             </Table>
           </div>
 
           {/* Mobile Card Layout */}
           <div className="block mt-4 space-y-4 md:hidden">
-            {screenerData.map((row, idx) => {
-              const colorClass =
-                row.change > 0 ? "text-green-500" : "text-red-500";
-              const atrPercent =
-                ((row?.atr / row?.last_price) * 100).toFixed(2) + "%";
-              return (
-                <div
-                  key={row.symbol}
-                  className="flex flex-col gap-3 p-4 bg-zinc-900 rounded-xl border border-zinc-800 shadow-md"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-base font-semibold">
-                      {row.symbol}
-                    </span>
-                    <ButtonGroup className="shadow-sm">
-                      {userRole === "admin" && (
-                        <>
-                          <Button
-                            size="sm"
-                            color="success"
-                            variant="flat"
-                            className="min-w-[40px] h-9 px-3 bg-green-500/20 hover:bg-green-500/30 text-green-500"
-                            onPress={() => {
-                              populateBuyData(row);
-                              handleOpenBuyModal();
-                            }}
-                            isDisabled={userRole !== "admin"}
-                          >
-                            En
-                          </Button>
-                          <Button
-                            size="sm"
-                            color="danger"
-                            variant="flat"
-                            className="min-w-[40px] h-9 px-3 bg-red-500/20 hover:bg-red-500/30 text-red-500"
-                            onPress={() => {
-                              populateSellData(row);
-                              handleOpenSellModal();
-                            }}
-                            isDisabled={userRole !== "admin"}
-                          >
-                            Ex
-                          </Button>
-                          <Button
-                            size="sm"
-                            color="primary"
-                            variant="flat"
-                            className="min-w-[40px] h-9 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
-                            onPress={() => {
-                              populateAddAlertData(row);
-                              handleOpenAddAlertModal();
-                            }}
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              strokeWidth={1.5}
-                              stroke="currentColor"
-                              className="w-5 h-5"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
-                              />
-                            </svg>
-                          </Button>
-                        </>
-                      )}
-                      <Button
-                        size="sm"
-                        color="warning"
-                        variant="flat"
-                        className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
-                        onPress={() => {
-                          populateChartData(row);
-                          handleOpenChartModal();
-                        }}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth={1.5}
-                          stroke="currentColor"
-                          className="w-5 h-5"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
-                          />
-                        </svg>
-                      </Button>
-                    </ButtonGroup>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 mt-1">
-                    <div className="flex flex-col">
-                      <span className="text-xs text-zinc-400 font-medium">
-                        Last Price
-                      </span>
-                      <span className={`text-sm font-medium ${colorClass}`}>
-                        {row.last_price?.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs text-zinc-400 font-medium">
-                        Change
-                      </span>
-                      <span className={`text-sm font-medium ${colorClass}`}>
-                        {row.change?.toFixed(2)} %
-                      </span>
-                    </div>
-                    <div className="flex flex-col col-span-2">
-                      <span className="text-xs text-zinc-400 font-medium">
-                        ATR %
-                      </span>
-                      <span className="text-sm font-medium">{atrPercent}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {renderMobileCards}
           </div>
+
+          {/* Pagination Controls - Updated to match dashboard style */}
+          {totalPages > 1 && (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                mt: 2,
+                gap: 2,
+                pb: 4,
+              }}
+            >
+              <Button
+                variant="contained"
+                size="small"
+                sx={{
+                  backgroundColor: "rgba(39, 39, 42, 0.5)",
+                  backdropFilter: "blur(8px)",
+                  minWidth: "90px",
+                  height: "36px",
+                  color: "white",
+                  "&:hover": {
+                    backgroundColor: "rgba(63, 63, 70, 0.7)",
+                  },
+                  borderRadius: "8px",
+                  textTransform: "none",
+                  fontWeight: "medium",
+                  border: "1px solid rgba(63, 63, 70, 0.5)",
+                  padding: "0 16px",
+                }}
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(currentPage - 1)}
+                startIcon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    style={{ width: "16px", height: "16px" }}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15.75 19.5 8.25 12l7.5-7.5"
+                    />
+                  </svg>
+                }
+              >
+                Previous
+              </Button>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  px: 3,
+                  py: 1,
+                  backgroundColor: "rgba(24, 24, 27, 0.6)",
+                  backdropFilter: "blur(10px)",
+                  borderRadius: "0.5rem",
+                  border: "1px solid rgba(63, 63, 70, 0.5)",
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "#d4d4d8",
+                    fontWeight: 500,
+                  }}
+                >
+                  Page {currentPage} of {totalPages}
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                size="small"
+                sx={{
+                  backgroundColor: "rgba(39, 39, 42, 0.5)",
+                  backdropFilter: "blur(8px)",
+                  minWidth: "90px",
+                  height: "36px",
+                  color: "white",
+                  "&:hover": {
+                    backgroundColor: "rgba(63, 63, 70, 0.7)",
+                  },
+                  borderRadius: "8px",
+                  textTransform: "none",
+                  fontWeight: "medium",
+                  border: "1px solid rgba(63, 63, 70, 0.5)",
+                  padding: "0 16px",
+                }}
+                disabled={currentPage >= totalPages}
+                onClick={() => handlePageChange(currentPage + 1)}
+                endIcon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    style={{ width: "16px", height: "16px" }}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m8.25 4.5 7.5 7.5-7.5 7.5"
+                    />
+                  </svg>
+                }
+              >
+                Next
+              </Button>
+            </Box>
+          )}
         </>
       )}
     </div>
   );
 }
 
-export default Screener;
+// Use memo to avoid unnecessary re-renders of the entire component
+export default React.memo(Screener);

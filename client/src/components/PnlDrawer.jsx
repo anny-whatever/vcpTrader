@@ -146,6 +146,7 @@ const PnlDrawer = () => {
                 whiteSpace: "nowrap",
                 color: totalPnl >= 0 ? "success.main" : "error.main",
                 fontWeight: "bold",
+                marginRight: "20px",
               }}
             >
               P&L
