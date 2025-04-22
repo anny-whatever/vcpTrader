@@ -14,6 +14,7 @@ import {
 import api from "../utils/api";
 import { Toaster, toast } from "sonner";
 import { PlayToastSound, PlayErrorSound } from "../utils/PlaySound";
+import modalStyles from "./ui/ModalStyles";
 
 function IncreaseModal({
   isOpen,
@@ -56,7 +57,6 @@ function IncreaseModal({
       );
     } catch (error) {
       PlayErrorSound();
-      console.error("Error executing increase order:", error);
       toast.error("Error executing increase order.", { duration: 5000 });
     }
   };
@@ -76,36 +76,28 @@ function IncreaseModal({
         fullWidth
         maxWidth="xs"
         PaperProps={{
-          sx: {
-            bgcolor: "#18181B",
-            color: "white",
-            backdropFilter: "blur(8px)",
-            borderRadius: "8px",
-            p: 1,
-          },
+          sx: modalStyles.paper,
         }}
       >
-        <DialogTitle sx={{ fontSize: "1rem", pb: 0.5 }}>
-          Increase {symbol}
-        </DialogTitle>
-        <DialogContent sx={{ pb: 0.5 }}>
+        <DialogTitle sx={modalStyles.title}>Increase {symbol}</DialogTitle>
+        <DialogContent sx={modalStyles.content}>
           <Box
             sx={{
               display: "flex",
               justifyContent: "space-between",
               fontSize: "0.85rem",
-              mb: 1,
+              mb: 2,
             }}
           >
-            <Typography variant="body2">
+            <Typography variant="body2" sx={{ color: "#f4f4f5" }}>
               Available Risk: {AvailableRisk?.toFixed(2)}
             </Typography>
-            <Typography variant="body2">
+            <Typography variant="body2" sx={{ color: "#f4f4f5" }}>
               Used Risk: {UsedRisk?.toFixed(2)}
             </Typography>
           </Box>
-          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-            <Typography variant="body2" sx={{ mr: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+            <Typography variant="body2" sx={{ mr: 1, color: "#f4f4f5" }}>
               Quantity
             </Typography>
             <FormControlLabel
@@ -120,7 +112,10 @@ function IncreaseModal({
               label="Risk pool %"
               sx={{
                 m: 0,
-                ".MuiFormControlLabel-label": { fontSize: "0.8rem" },
+                ".MuiFormControlLabel-label": {
+                  fontSize: "0.85rem",
+                  color: "#a1a1aa",
+                },
               }}
             />
           </Box>
@@ -130,25 +125,17 @@ function IncreaseModal({
               type="number"
               value={intendedRisk}
               onChange={(e) => setIntendedRisk(e.target.value)}
-              variant="filled"
+              variant="outlined"
               size="small"
               fullWidth
-              InputProps={{ disableUnderline: true }}
-              sx={{
-                bgcolor: "#27272A",
-                width: "60%",
-                borderRadius: "12px",
-                "& .MuiInputBase-root": { color: "white" },
-                "& .MuiInputLabel-root": { color: "white", fontSize: "0.8rem" },
-              }}
+              sx={modalStyles.input}
             />
           ) : (
             <Box
               sx={{
                 display: "flex",
                 alignItems: "center",
-                gap: 1,
-                mt: 1,
+                gap: 2,
                 justifyContent: "space-between",
               }}
             >
@@ -157,38 +144,22 @@ function IncreaseModal({
                 type="number"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                variant="filled"
+                variant="outlined"
                 size="small"
-                InputProps={{ disableUnderline: true }}
-                sx={{
-                  width: "60%",
-                  bgcolor: "#27272A",
-                  borderRadius: "12px",
-                  "& .MuiInputBase-root": { color: "white" },
-                  "& .MuiInputLabel-root": {
-                    color: "white",
-                    fontSize: "0.8rem",
-                  },
-                }}
+                inputProps={{ min: 0 }}
+                sx={{ ...modalStyles.input, width: "60%" }}
               />
-              <Typography variant="body2" sx={{ fontSize: "0.85rem" }}>
+              <Typography
+                variant="body2"
+                sx={{ fontSize: "0.9rem", color: "#f4f4f5" }}
+              >
                 Cost: {quantity ? (quantity * ltp).toFixed(2) : 0}
               </Typography>
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ pt: 0.5 }}>
-          <Button
-            onClick={handleClose}
-            variant="text"
-            sx={{
-              color: "#EB455F",
-              borderRadius: "12px",
-              textTransform: "none",
-              fontWeight: "normal",
-              fontSize: "0.85rem",
-            }}
-          >
+        <DialogActions sx={modalStyles.actions}>
+          <Button onClick={handleClose} sx={modalStyles.secondaryButton}>
             Close
           </Button>
           <Button
@@ -205,21 +176,13 @@ function IncreaseModal({
               }
               handleClose();
             }}
-            variant="contained"
-            sx={{
-              bgcolor: "#2DD4BF",
-              "&:hover": { bgcolor: "#26BFAE" },
-              color: "black",
-              borderRadius: "12px",
-              textTransform: "none",
-              fontWeight: "normal",
-              fontSize: "0.85rem",
-            }}
+            sx={modalStyles.successButton}
           >
             Increase
           </Button>
         </DialogActions>
       </Dialog>
+      <Toaster position="top-right" richColors />
     </>
   );
 }

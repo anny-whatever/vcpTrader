@@ -12,23 +12,14 @@ const NiftyIndexTicker = () => {
   const { liveData } = useContext(DataContext);
   const [niftyData, setNiftyData] = useState(null);
 
-  // For debugging
-  useEffect(() => {
-    console.log("liveData updated:", liveData);
-  }, [liveData]);
-
   useEffect(() => {
     if (!liveData) return;
 
     try {
-      // Debug the data structure
-      console.log("Processing liveData type:", typeof liveData);
-
       // Handle different potential data formats
       if (typeof liveData === "object") {
         // Case 1: Object with direct key access
         if (liveData[NIFTY_INSTRUMENT_TOKEN]) {
-          console.log("Found Nifty data by direct key access");
           setNiftyData(liveData[NIFTY_INSTRUMENT_TOKEN]);
           return;
         }
@@ -39,7 +30,6 @@ const NiftyIndexTicker = () => {
             (item) => item.instrument_token === NIFTY_INSTRUMENT_TOKEN
           );
           if (niftyTick) {
-            console.log("Found Nifty data in array");
             setNiftyData(niftyTick);
             return;
           }
@@ -48,7 +38,6 @@ const NiftyIndexTicker = () => {
         // Case 3: Data is in a nested "data" property
         if (liveData.data) {
           if (liveData.data[NIFTY_INSTRUMENT_TOKEN]) {
-            console.log("Found Nifty data in nested data object");
             setNiftyData(liveData.data[NIFTY_INSTRUMENT_TOKEN]);
             return;
           }
@@ -58,24 +47,23 @@ const NiftyIndexTicker = () => {
               (item) => item.instrument_token === NIFTY_INSTRUMENT_TOKEN
             );
             if (niftyTick) {
-              console.log("Found Nifty data in nested data array");
               setNiftyData(niftyTick);
               return;
             }
           }
         }
       }
-
-      console.log("Could not locate Nifty data in the provided liveData");
     } catch (error) {
-      console.error("Error processing liveData:", error);
+      // Error processing liveData
     }
   }, [liveData]);
 
   // Determine color and icon based on percentage change
   let color = theme.palette.text.secondary;
   let Icon = TrendingFlatIcon;
-  const percentChange = niftyData?.change_percent || 0;
+  const percentChange =
+    ((niftyData?.last_price - niftyData?.ohlc?.close) / niftyData?.last_price) *
+    100;
 
   if (percentChange > 0) {
     color = theme.palette.success.main;
@@ -131,7 +119,8 @@ const NiftyIndexTicker = () => {
               <Icon fontSize="small" sx={{ marginRight: 0.5 }} />
               <Typography variant="body2" fontWeight={500} color="inherit">
                 {percentChange > 0 ? "+" : ""}
-                {percentChange.toFixed(2)}%
+                {percentChange.toFixed(2)}% (
+                {(niftyData?.last_price - niftyData?.ohlc?.close).toFixed(2)})
               </Typography>
             </Box>
           ) : (

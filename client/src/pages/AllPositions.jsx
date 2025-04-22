@@ -145,12 +145,8 @@ function AllPositions() {
         toast.success("Auto exit toggled", {
           duration: 5000,
         });
-      } else {
-        console.log("Failed to toggle auto exit flag");
       }
-    } catch (error) {
-      console.log("Error toggling auto exit flag", error);
-    }
+    } catch (error) {}
   };
 
   if (!positions) {

@@ -330,11 +330,6 @@ const Navbar = ({
     }
   };
 
-  // Log alerts for debugging
-  useEffect(() => {
-    console.log("Navbar alertMessages:", alertMessages);
-  }, [alertMessages]);
-
   // Mobile drawer content
   const drawer = (
     <Box

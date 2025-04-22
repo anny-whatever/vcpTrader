@@ -354,7 +354,7 @@ function App() {
               (Array.isArray(latestTick) &&
                 latestTick.some((item) => item.instrument_token === 256265)))
           ) {
-            console.log("Nifty data found in tick update");
+            // Removed console.log("Nifty data found in tick update");
           }
 
           setLiveData(latestTick);
@@ -442,7 +442,7 @@ function App() {
                       (item) => item.instrument_token === 256265
                     )))
               ) {
-                console.log("Received Nifty data in WebSocket message");
+                // Removed console.log("Received Nifty data in WebSocket message");
               }
 
               // Use our optimized tick processing
@@ -478,11 +478,11 @@ function App() {
               break;
 
             case "echo":
-              console.log("Echo from server:", parsedData.data);
+              // Removed console.log("Echo from server:", parsedData.data);
               break;
 
             default:
-              console.log("Unhandled WebSocket event:", parsedData.event);
+            // Removed console.log("Unhandled WebSocket event:", parsedData.event);
           }
         } catch (error) {
           console.error("Error processing WebSocket message:", error);
@@ -508,7 +508,7 @@ function App() {
     socketRef.current = new WebSocket("wss://api.devstatz.com/socket/ws");
 
     socketRef.current.onopen = () => {
-      console.log("Connected to WebSocket");
+      // Removed console.log("Connected to WebSocket");
     };
 
     socketRef.current.onmessage = (event) => {
@@ -538,7 +538,7 @@ function App() {
     };
 
     socketRef.current.onclose = () => {
-      console.log("WebSocket closed, attempting to reconnect...");
+      // Removed console.log("WebSocket closed, attempting to reconnect...");
       setTimeout(connectWebSocket, 5000);
     };
 

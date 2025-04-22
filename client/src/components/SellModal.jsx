@@ -11,6 +11,7 @@ import {
 import api from "../utils/api";
 import { Toaster, toast } from "sonner";
 import { PlayToastSound, PlayErrorSound } from "../utils/PlaySound";
+import modalStyles from "./ui/ModalStyles";
 
 function SellModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol }) {
   const sendSellOrder = async () => {
@@ -24,7 +25,6 @@ function SellModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol }) {
       );
     } catch (error) {
       PlayErrorSound();
-      console.error("Error executing sell order:", error);
       toast.error("Error executing sell order.", { duration: 5000 });
     }
   };
@@ -41,47 +41,35 @@ function SellModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol }) {
         fullWidth
         maxWidth="xs"
         PaperProps={{
-          sx: {
-            bgcolor: "#18181B",
-            color: "white",
-            backdropFilter: "blur(8px)",
-            borderRadius: "8px",
-            p: 1,
-          },
+          sx: modalStyles.paper,
         }}
       >
-        <DialogTitle sx={{ fontSize: "1rem", pb: 0.5 }}>
-          Exit {symbol}
-        </DialogTitle>
-        <DialogContent sx={{ pb: 0.5 }}>
+        <DialogTitle sx={modalStyles.title}>Exit {symbol}</DialogTitle>
+        <DialogContent sx={modalStyles.content}>
           <Box
             sx={{
               display: "flex",
               justifyContent: "space-between",
               fontSize: "0.85rem",
-              mb: 1,
+              mb: 2,
             }}
           >
-            <Typography variant="body2">
+            <Typography variant="body2" sx={{ color: "#f4f4f5" }}>
               Available Risk: {AvailableRisk?.toFixed(2)}
             </Typography>
-            <Typography variant="body2">
+            <Typography variant="body2" sx={{ color: "#f4f4f5" }}>
               Used Risk: {UsedRisk?.toFixed(2)}
             </Typography>
           </Box>
-        </DialogContent>
-        <DialogActions sx={{ pt: 0.5 }}>
-          <Button
-            onClick={handleClose}
-            variant="text"
-            sx={{
-              color: "#EB455F",
-              borderRadius: "12px",
-              textTransform: "none",
-              fontWeight: "normal",
-              fontSize: "0.85rem",
-            }}
+          <Typography
+            variant="body2"
+            sx={{ color: "#f4f4f5", textAlign: "center", mt: 1 }}
           >
+            Are you sure you want to exit this position?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={modalStyles.actions}>
+          <Button onClick={handleClose} sx={modalStyles.secondaryButton}>
             Close
           </Button>
           <Button
@@ -89,21 +77,13 @@ function SellModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol }) {
               sendSellOrder();
               handleClose();
             }}
-            variant="contained"
-            sx={{
-              bgcolor: "#EB455F",
-              "&:hover": { bgcolor: "#e03d56" },
-              color: "white",
-              borderRadius: "12px",
-              textTransform: "none",
-              fontWeight: "normal",
-              fontSize: "0.85rem",
-            }}
+            sx={modalStyles.dangerButton}
           >
             Sell
           </Button>
         </DialogActions>
       </Dialog>
+      <Toaster position="top-right" richColors />
     </>
   );
 }

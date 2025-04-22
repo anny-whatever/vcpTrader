@@ -14,6 +14,7 @@ import {
 import api from "../utils/api";
 import { Toaster, toast } from "sonner";
 import { PlayToastSound, PlayErrorSound } from "../utils/PlaySound";
+import modalStyles from "./ui/ModalStyles";
 
 function AddAlertModal({ isOpen, onClose, symbol, instrument_token, ltp }) {
   // Pre-populate the alert price with ltp, but allow editing
@@ -44,7 +45,6 @@ function AddAlertModal({ isOpen, onClose, symbol, instrument_token, ltp }) {
       });
       onClose();
     } catch (error) {
-      console.error("Error adding alert:", error);
       PlayErrorSound();
       toast.error(
         (error?.response && error?.response?.data?.message) ||
@@ -67,66 +67,50 @@ function AddAlertModal({ isOpen, onClose, symbol, instrument_token, ltp }) {
         fullWidth
         maxWidth="xs"
         PaperProps={{
-          sx: {
-            bgcolor: "#18181B",
-            color: "white",
-            backdropFilter: "blur(8px)",
-            borderRadius: "8px",
-            p: 1,
-          },
+          sx: modalStyles.paper,
         }}
       >
-        <DialogTitle sx={{ fontSize: "1rem", pb: 0.5 }}>
-          Add Alert for {symbol}
-        </DialogTitle>
-        <DialogContent sx={{ pb: 0.5 }}>
+        <DialogTitle sx={modalStyles.title}>Add Alert for {symbol}</DialogTitle>
+        <DialogContent sx={modalStyles.content}>
           {/* Single-line display for Instrument Token and LTP */}
           <Box
             sx={{
               display: "flex",
               justifyContent: "space-between",
               fontSize: "0.85rem",
-              mb: 1,
+              mb: 2,
             }}
           >
-            <Typography variant="body2">Token: {instrument_token}</Typography>
-            <Typography variant="body2">
+            <Typography variant="body2" sx={{ color: "#f4f4f5" }}>
+              Token: {instrument_token}
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#f4f4f5" }}>
               LTP:{" "}
               {ltp && typeof ltp === "number" ? ltp.toFixed(2) : ltp || "N/A"}
             </Typography>
           </Box>
           {/* Single row for input fields */}
-          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
             <TextField
               label="Alert Price"
               type="number"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              variant="filled"
+              variant="outlined"
               size="small"
               fullWidth
-              InputProps={{ disableUnderline: true }}
-              sx={{
-                bgcolor: "#27272A",
-                borderRadius: "12px",
-                "& .MuiInputBase-root": { color: "white" },
-                "& .MuiInputLabel-root": { color: "white", fontSize: "0.8rem" },
-              }}
+              sx={modalStyles.input}
             />
             <TextField
               select
               label="Type"
               value={alertType}
               onChange={(e) => setAlertType(e.target.value)}
-              variant="filled"
+              variant="outlined"
               size="small"
-              InputProps={{ disableUnderline: true }}
               sx={{
-                bgcolor: "#27272A",
-                borderRadius: "12px",
+                ...modalStyles.input,
                 minWidth: "100px",
-                "& .MuiInputBase-root": { color: "white" },
-                "& .MuiInputLabel-root": { color: "white", fontSize: "0.8rem" },
               }}
             >
               <MenuItem value="target">Target</MenuItem>
@@ -134,37 +118,16 @@ function AddAlertModal({ isOpen, onClose, symbol, instrument_token, ltp }) {
             </TextField>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ pt: 0.5, justifyContent: "flex-end" }}>
-          <Button
-            onClick={handleClose}
-            variant="text"
-            sx={{
-              color: "#EB455F",
-              borderRadius: "12px",
-              textTransform: "none",
-              fontWeight: "normal",
-              fontSize: "0.85rem",
-            }}
-          >
+        <DialogActions sx={modalStyles.actions}>
+          <Button onClick={handleClose} sx={modalStyles.secondaryButton}>
             Close
           </Button>
-          <Button
-            onClick={handleSubmit}
-            variant="contained"
-            sx={{
-              bgcolor: "#2DD4BF",
-              "&:hover": { bgcolor: "#26BFAE" },
-              color: "black",
-              borderRadius: "12px",
-              textTransform: "none",
-              fontWeight: "normal",
-              fontSize: "0.85rem",
-            }}
-          >
+          <Button onClick={handleSubmit} sx={modalStyles.primaryButton}>
             Add Alert
           </Button>
         </DialogActions>
       </Dialog>
+      <Toaster position="top-right" richColors />
     </>
   );
 }

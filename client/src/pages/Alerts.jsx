@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { DataContext } from "../utils/DataContext";
 import {
   Box,
@@ -31,26 +31,61 @@ export default function Alerts() {
   const { priceAlerts, liveData } = useContext(DataContext);
   const navigate = useNavigate();
   const theme = useTheme();
-  
+
   const [deletingId, setDeletingId] = useState(null);
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   const [chartData, setChartData] = useState(null);
+  const [cachedPrices, setCachedPrices] = useState({});
 
-  // Get current prices from liveData
+  // Update cached prices when liveData changes
+  useEffect(() => {
+    if (liveData && priceAlerts) {
+      // Create a new object to avoid direct state mutation
+      const newCachedPrices = { ...cachedPrices };
+
+      // Update only the prices that have changed in liveData
+      liveData.forEach((tickData) => {
+        if (tickData && tickData.instrument_token) {
+          newCachedPrices[tickData.instrument_token] = tickData.last_price;
+        }
+      });
+
+      // Only update state if there are changes
+      if (Object.keys(newCachedPrices).length > 0) {
+        setCachedPrices((prev) => ({ ...prev, ...newCachedPrices }));
+      }
+    }
+  }, [liveData]);
+
+  // Initialize cached prices when priceAlerts change
+  useEffect(() => {
+    if (priceAlerts && liveData) {
+      const newCachedPrices = { ...cachedPrices };
+
+      // Try to get initial prices from liveData
+      priceAlerts.forEach((alert) => {
+        const tickData = liveData.find(
+          (tick) => tick.instrument_token === alert.instrument_token
+        );
+
+        if (tickData && tickData.last_price) {
+          newCachedPrices[alert.instrument_token] = tickData.last_price;
+        }
+      });
+
+      setCachedPrices((prev) => ({ ...prev, ...newCachedPrices }));
+    }
+  }, [priceAlerts]);
+
+  // Get current price from cached prices instead of direct liveData lookup
   const getCurrentPrice = (instrumentToken) => {
-    if (!liveData) return null;
-    
-    const tickData = liveData.find(
-      (tick) => tick.instrument_token === instrumentToken
-    );
-    
-    return tickData ? tickData.last_price : null;
+    return cachedPrices[instrumentToken] || null;
   };
-  
+
   // Calculate percentage difference
   const calculateDifference = (alertPrice, currentPrice) => {
     if (!currentPrice) return null;
-    
+
     const difference = ((currentPrice - alertPrice) / alertPrice) * 100;
     return difference.toFixed(2);
   };
@@ -83,7 +118,7 @@ export default function Alerts() {
   const openChartModal = (symbol, instrumentToken) => {
     setChartData({
       symbol: symbol,
-      token: instrumentToken
+      token: instrumentToken,
     });
     handleOpenChartModal();
   };
@@ -91,8 +126,16 @@ export default function Alerts() {
   if (!priceAlerts || priceAlerts.length === 0) {
     return (
       <Box sx={{ p: 3 }}>
-        <Typography variant="h4" sx={{ mb: 3 }}>Price Alerts</Typography>
-        <Card sx={{ p: 4, textAlign: "center", backgroundColor: alpha(theme.palette.background.paper, 0.7) }}>
+        <Typography variant="h4" sx={{ mb: 3 }}>
+          Price Alerts
+        </Typography>
+        <Card
+          sx={{
+            p: 4,
+            textAlign: "center",
+            backgroundColor: alpha(theme.palette.background.paper, 0.7),
+          }}
+        >
           <Box sx={{ mb: 2 }}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -110,13 +153,16 @@ export default function Alerts() {
               <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
             </svg>
           </Box>
-          <Typography variant="h6" sx={{ mb: 1 }}>No Price Alerts</Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            You haven't set any price alerts yet. Add alerts from the watchlist to get notified when a stock reaches your target price.
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            No Price Alerts
           </Typography>
-          <Button 
-            variant="outlined" 
-            color="primary" 
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            You haven't set any price alerts yet. Add alerts from the watchlist
+            to get notified when a stock reaches your target price.
+          </Typography>
+          <Button
+            variant="outlined"
+            color="primary"
             onClick={() => navigate("/watchlist")}
           >
             Go to Watchlist
@@ -135,10 +181,18 @@ export default function Alerts() {
         symbol={chartData?.symbol}
         token={chartData?.token}
       />
-      
-      <Typography variant="h4" sx={{ mb: 3 }}>Price Alerts</Typography>
-      
-      <TableContainer component={Paper} sx={{ mb: 4, backgroundColor: alpha(theme.palette.background.paper, 0.7) }}>
+
+      <Typography variant="h4" sx={{ mb: 3 }}>
+        Price Alerts
+      </Typography>
+
+      <TableContainer
+        component={Paper}
+        sx={{
+          mb: 4,
+          backgroundColor: alpha(theme.palette.background.paper, 0.7),
+        }}
+      >
         <Table>
           <TableHead>
             <TableRow>
@@ -154,7 +208,7 @@ export default function Alerts() {
             {priceAlerts.map((alert) => {
               const currentPrice = getCurrentPrice(alert.instrument_token);
               const difference = calculateDifference(alert.price, currentPrice);
-              
+
               return (
                 <TableRow key={alert.id}>
                   <TableCell component="th" scope="row">
@@ -167,7 +221,8 @@ export default function Alerts() {
                       label={alert.alert_type === "sl" ? "Stop Loss" : "Target"}
                       size="small"
                       sx={{
-                        bgcolor: alert.alert_type === "sl" ? "#ef4444" : "#22c55e",
+                        bgcolor:
+                          alert.alert_type === "sl" ? "#ef4444" : "#22c55e",
                         color: "white",
                       }}
                     />
@@ -194,7 +249,8 @@ export default function Alerts() {
                         label={`${difference}%`}
                         size="small"
                         sx={{
-                          bgcolor: parseFloat(difference) >= 0 ? "#22c55e" : "#ef4444",
+                          bgcolor:
+                            parseFloat(difference) >= 0 ? "#22c55e" : "#ef4444",
                           color: "white",
                         }}
                       />
@@ -208,7 +264,9 @@ export default function Alerts() {
                     <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
                       <IconButton
                         color="primary"
-                        onClick={() => openChartModal(alert.symbol, alert.instrument_token)}
+                        onClick={() =>
+                          openChartModal(alert.symbol, alert.instrument_token)
+                        }
                         size="small"
                         sx={{ mr: 1 }}
                       >
@@ -230,13 +288,16 @@ export default function Alerts() {
           </TableBody>
         </Table>
       </TableContainer>
-      
-      <Alert severity="info" sx={{ mb: 3, backgroundColor: alpha(theme.palette.info.main, 0.1) }}>
+
+      <Alert
+        severity="info"
+        sx={{ mb: 3, backgroundColor: alpha(theme.palette.info.main, 0.1) }}
+      >
         <Typography variant="body2">
-          Price alerts will be triggered automatically when the price conditions are met. 
-          Click on the chart icon to view the stock chart.
+          Price alerts will be triggered automatically when the price conditions
+          are met. Click on the chart icon to view the stock chart.
         </Typography>
       </Alert>
     </Box>
   );
-} 
+}
