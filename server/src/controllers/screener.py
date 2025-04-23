@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 # If you have an auth file for user authentication:
 from auth import get_current_user
 
-from services import fetch_screener_data, run_vcp_screener, run_ipo_screener, run_weekly_vcp_screener
+from services import fetch_screener_data, run_vcp_screener, run_ipo_screener, run_weekly_vcp_screener, load_precomputed_ohlc, load_precomputed_weekly_ohlc
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -17,6 +17,7 @@ async def screen_vcp(user: dict = Depends(get_current_user)):
     Returns the most recently saved VCP screener results from the screener_results table as JSON.
     If there's no data, it will retry up to 5 times (1-second pause).
     If still empty, it will run_vcp_screener() to force generation, and then fetch again.
+    If still empty after forcing the screener, it will run it one more time.
     """
     try:
         max_tries = 5
@@ -24,6 +25,7 @@ async def screen_vcp(user: dict = Depends(get_current_user)):
             # Make the fetch call in a thread so we don't block the event loop
             data = await asyncio.to_thread(fetch_screener_data, "vcp")
             if data:  # If we got results, return them immediately
+                logger.info(f"Returning VCP screener data with {len(data)} results")
                 return JSONResponse(content=data)
 
             logger.debug(f"No VCP screener data found (attempt {attempt}/{max_tries}). Retrying in 1 second...")
@@ -31,11 +33,37 @@ async def screen_vcp(user: dict = Depends(get_current_user)):
 
         # If we still have no data, run the VCP screener to force generation
         logger.debug("No data after 5 tries. Forcing a run of 'run_vcp_screener()'.")
-        await asyncio.to_thread(run_vcp_screener)
+        success = await asyncio.to_thread(run_vcp_screener)
+        
+        if not success:
+            logger.error("VCP screener run failed. Will try one more time.")
+            # Try running it one more time immediately
+            success = await asyncio.to_thread(run_vcp_screener)
+            if not success:
+                logger.error("Second VCP screener run also failed.")
+                return JSONResponse(content={"error": "Failed to generate VCP screener data"}, status_code=500)
 
         # After forcing the screener, fetch one more time
         data = await asyncio.to_thread(fetch_screener_data, "vcp")
-        return JSONResponse(content=data)
+        if data:
+            logger.info(f"Returning VCP screener data with {len(data)} results after forced run")
+            return JSONResponse(content=data)
+            
+        # If still no data, run the screener one more time
+        logger.debug("No data after first run. Running VCP screener one more time.")
+        success = await asyncio.to_thread(run_vcp_screener)
+        if not success:
+            logger.error("Final VCP screener run failed.")
+            return JSONResponse(content={"error": "Failed to generate VCP screener data after multiple attempts"}, status_code=500)
+        
+        # Fetch data one final time
+        data = await asyncio.to_thread(fetch_screener_data, "vcp")
+        if data:
+            logger.info(f"Returning VCP screener data with {len(data)} results after second forced run")
+            return JSONResponse(content=data)
+        else:
+            logger.error("No VCP screener data found after multiple attempts")
+            return JSONResponse(content={"error": "No VCP screener data found after multiple attempts"}, status_code=404)
 
     except Exception as e:
         logger.error(f"Error in screen_vcp: {e}")
@@ -47,6 +75,7 @@ async def screen_weekly_vcp(user: dict = Depends(get_current_user)):
     Returns the most recently saved Weekly VCP screener results from the screener_results table as JSON.
     If there's no data, it will retry up to 5 times (1-second pause).
     If still empty, it will run_weekly_vcp_screener() to force generation, and then fetch again.
+    If still empty after forcing the screener, it will run it one more time.
     """
     try:
         max_tries = 5
@@ -54,6 +83,7 @@ async def screen_weekly_vcp(user: dict = Depends(get_current_user)):
             # Make the fetch call in a thread so we don't block the event loop
             data = await asyncio.to_thread(fetch_screener_data, "weekly_vcp")
             if data:  # If we got results, return them immediately
+                logger.info(f"Returning Weekly VCP screener data with {len(data)} results")
                 return JSONResponse(content=data)
 
             logger.debug(f"No Weekly VCP screener data found (attempt {attempt}/{max_tries}). Retrying in 1 second...")
@@ -61,11 +91,37 @@ async def screen_weekly_vcp(user: dict = Depends(get_current_user)):
 
         # If we still have no data, run the weekly VCP screener to force generation
         logger.debug("No data after 5 tries. Forcing a run of 'run_weekly_vcp_screener()'.")
-        await asyncio.to_thread(run_weekly_vcp_screener)
+        success = await asyncio.to_thread(run_weekly_vcp_screener)
+        
+        if not success:
+            logger.error("Weekly VCP screener run failed. Will try one more time.")
+            # Try running it one more time immediately
+            success = await asyncio.to_thread(run_weekly_vcp_screener)
+            if not success:
+                logger.error("Second Weekly VCP screener run also failed.")
+                return JSONResponse(content={"error": "Failed to generate Weekly VCP screener data"}, status_code=500)
 
         # After forcing the screener, fetch one more time
         data = await asyncio.to_thread(fetch_screener_data, "weekly_vcp")
-        return JSONResponse(content=data)
+        if data:
+            logger.info(f"Returning Weekly VCP screener data with {len(data)} results after forced run")
+            return JSONResponse(content=data)
+            
+        # If still no data, run the screener one more time
+        logger.debug("No data after first run. Running Weekly VCP screener one more time.")
+        success = await asyncio.to_thread(run_weekly_vcp_screener)
+        if not success:
+            logger.error("Final Weekly VCP screener run failed.")
+            return JSONResponse(content={"error": "Failed to generate Weekly VCP screener data after multiple attempts"}, status_code=500)
+        
+        # Fetch data one final time
+        data = await asyncio.to_thread(fetch_screener_data, "weekly_vcp")
+        if data:
+            logger.info(f"Returning Weekly VCP screener data with {len(data)} results after second forced run")
+            return JSONResponse(content=data)
+        else:
+            logger.error("No Weekly VCP screener data found after multiple attempts")
+            return JSONResponse(content={"error": "No Weekly VCP screener data found after multiple attempts"}, status_code=404)
 
     except Exception as e:
         logger.error(f"Error in screen_weekly_vcp: {e}")
@@ -77,12 +133,14 @@ async def screen_ipo(user: dict = Depends(get_current_user)):
     Returns the most recently saved IPO screener results from the screener_results table as JSON.
     If there's no data, it will retry up to 5 times (1-second pause).
     If still empty, it will run_ipo_screener() to force generation, and then fetch again.
+    If still empty after forcing the screener, it will run it one more time.
     """
     try:
         max_tries = 5
         for attempt in range(1, max_tries + 1):
             data = await asyncio.to_thread(fetch_screener_data, "ipo")
             if data:
+                logger.info(f"Returning IPO screener data with {len(data)} results")
                 return JSONResponse(content=data)
 
             logger.debug(f"No IPO screener data found (attempt {attempt}/{max_tries}). Retrying in 1 second...")
@@ -90,12 +148,90 @@ async def screen_ipo(user: dict = Depends(get_current_user)):
 
         # If no data after 5 tries, run the IPO screener forcibly
         logger.debug("No data after 5 tries. Forcing a run of 'run_ipo_screener()'.")
-        await asyncio.to_thread(run_ipo_screener)
+        success = await asyncio.to_thread(run_ipo_screener)
+        
+        if not success:
+            logger.error("IPO screener run failed. Will try one more time.")
+            # Try running it one more time immediately
+            success = await asyncio.to_thread(run_ipo_screener)
+            if not success:
+                logger.error("Second IPO screener run also failed.")
+                return JSONResponse(content={"error": "Failed to generate IPO screener data"}, status_code=500)
 
         # One final fetch after forcing the screener
         data = await asyncio.to_thread(fetch_screener_data, "ipo")
-        return JSONResponse(content=data)
+        if data:
+            logger.info(f"Returning IPO screener data with {len(data)} results after forced run")
+            return JSONResponse(content=data)
+            
+        # If still no data, run the screener one more time
+        logger.debug("No data after first run. Running IPO screener one more time.")
+        success = await asyncio.to_thread(run_ipo_screener)
+        if not success:
+            logger.error("Final IPO screener run failed.")
+            return JSONResponse(content={"error": "Failed to generate IPO screener data after multiple attempts"}, status_code=500)
+        
+        # Fetch data one final time
+        data = await asyncio.to_thread(fetch_screener_data, "ipo")
+        if data:
+            logger.info(f"Returning IPO screener data with {len(data)} results after second forced run")
+            return JSONResponse(content=data)
+        else:
+            logger.error("No IPO screener data found after multiple attempts")
+            return JSONResponse(content={"error": "No IPO screener data found after multiple attempts"}, status_code=404)
 
     except Exception as e:
         logger.error(f"Error in screen_ipo: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch IPO screener data")
+
+@router.get("/test_screener_data")
+async def test_screener_data(user: dict = Depends(get_current_user)):
+    """
+    Diagnostic endpoint to test OHLC data structure and screener functionality.
+    Returns some debug information about the loaded OHLC data.
+    """
+    try:
+        # Testing the regular OHLC data
+        logger.info("Loading OHLC data for diagnostics...")
+        regular_ohlc = await asyncio.to_thread(load_precomputed_ohlc)
+        
+        # Testing the weekly OHLC data
+        logger.info("Loading weekly OHLC data for diagnostics...")
+        weekly_ohlc = await asyncio.to_thread(load_precomputed_weekly_ohlc)
+        
+        # Collect diagnostics info
+        diagnostics = {
+            "regular_ohlc": {
+                "data_exists": not regular_ohlc.empty,
+                "row_count": len(regular_ohlc) if not regular_ohlc.empty else 0,
+                "column_count": len(regular_ohlc.columns) if not regular_ohlc.empty else 0,
+                "columns": list(regular_ohlc.columns) if not regular_ohlc.empty else [],
+                "unique_symbols": list(regular_ohlc['symbol'].unique())[:20] if not regular_ohlc.empty else [],
+                "symbol_count": len(regular_ohlc['symbol'].unique()) if not regular_ohlc.empty else 0,
+                "date_range": [
+                    regular_ohlc['date'].min().isoformat() if not regular_ohlc.empty else None,
+                    regular_ohlc['date'].max().isoformat() if not regular_ohlc.empty else None
+                ],
+                "has_IPO_segment": "IPO" in regular_ohlc['segment'].unique() if not regular_ohlc.empty else False,
+                "segments": list(regular_ohlc['segment'].unique()) if not regular_ohlc.empty else []
+            },
+            "weekly_ohlc": {
+                "data_exists": not weekly_ohlc.empty,
+                "row_count": len(weekly_ohlc) if not weekly_ohlc.empty else 0,
+                "column_count": len(weekly_ohlc.columns) if not weekly_ohlc.empty else 0,
+                "columns": list(weekly_ohlc.columns) if not weekly_ohlc.empty else [],
+                "unique_symbols": list(weekly_ohlc['symbol'].unique())[:20] if not weekly_ohlc.empty else [],
+                "symbol_count": len(weekly_ohlc['symbol'].unique()) if not weekly_ohlc.empty else 0,
+                "date_range": [
+                    weekly_ohlc['date'].min().isoformat() if not weekly_ohlc.empty else None,
+                    weekly_ohlc['date'].max().isoformat() if not weekly_ohlc.empty else None
+                ],
+                "has_IPO_segment": "IPO" in weekly_ohlc['segment'].unique() if not weekly_ohlc.empty else False,
+                "segments": list(weekly_ohlc['segment'].unique()) if not weekly_ohlc.empty else []
+            }
+        }
+        
+        return JSONResponse(content=diagnostics)
+    except Exception as e:
+        logger.error(f"Error in test_screener_data: {e}")
+        raise HTTPException(status_code=500, detail=f"Diagnostic test failed: {str(e)}")

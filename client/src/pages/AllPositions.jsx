@@ -273,37 +273,76 @@ function AllPositions() {
                               size="sm"
                               color="success"
                               variant="flat"
-                              className="flex-1 h-9 bg-green-500/20 hover:bg-green-500/30 text-green-500"
+                              className="min-w-[40px] h-9 bg-green-500/20 hover:bg-green-500/30 text-green-500"
                               onPress={() => {
                                 populatePositionData(row);
                                 handleOpenIncreaseModal();
                               }}
                             >
-                              Add
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M12 4.5v15m7.5-7.5h-15"
+                                />
+                              </svg>
                             </Button>
                             <Button
                               size="sm"
                               color="secondary"
                               variant="flat"
-                              className="min-w-[40px] h-9 px-3 bg-purple-500/20 hover:bg-purple-500/30 text-purple-500"
+                              className="min-w-[40px] h-9 bg-purple-500/20 hover:bg-purple-500/30 text-purple-500"
                               onPress={() => {
                                 populatePositionData(row);
                                 handleOpenReduceModal();
                               }}
                             >
-                              Re
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M15 12H9m3 3l3-3-3-3"
+                                />
+                              </svg>
                             </Button>
                             <Button
                               size="sm"
-                              color="danger"
+                              color="warning"
                               variant="flat"
-                              className="min-w-[40px] h-9 px-3 bg-red-500/20 hover:bg-red-500/30 text-red-500"
+                              className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
                               onPress={() => {
-                                populatePositionData(row);
-                                handleOpenSellModal();
+                                populateChartData(row);
+                                handleOpenChartModal();
                               }}
                             >
-                              Ex
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
+                                />
+                              </svg>
                             </Button>
                             <Button
                               size="sm"
@@ -326,7 +365,32 @@ function AllPositions() {
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
-                                  d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
+                                  d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
+                                />
+                              </svg>
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="danger"
+                              variant="flat"
+                              className="min-w-[40px] h-9 bg-red-500/20 hover:bg-red-500/30 text-red-500"
+                              onPress={() => {
+                                populatePositionData(row);
+                                handleOpenSellModal();
+                              }}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-5 h-5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M5 12h14"
                                 />
                               </svg>
                             </Button>
@@ -356,31 +420,33 @@ function AllPositions() {
                             </Button>
                           </>
                         )}
-                        <Button
-                          size="sm"
-                          color="warning"
-                          variant="flat"
-                          className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
-                          onPress={() => {
-                            populateChartData(row);
-                            handleOpenChartModal();
-                          }}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={1.5}
-                            stroke="currentColor"
-                            className="w-5 h-5"
+                        {userRole !== "admin" && (
+                          <Button
+                            size="sm"
+                            color="warning"
+                            variant="flat"
+                            className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
+                            onPress={() => {
+                              populateChartData(row);
+                              handleOpenChartModal();
+                            }}
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
-                            />
-                          </svg>
-                        </Button>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={1.5}
+                              stroke="currentColor"
+                              className="w-5 h-5"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
+                              />
+                            </svg>
+                          </Button>
+                        )}
                       </ButtonGroup>
                     </TableCell>
                   </TableRow>
@@ -405,91 +471,73 @@ function AllPositions() {
             return (
               <div
                 key={`mobile-position-${index}-${row.stock_name}`}
-                className="flex flex-col gap-3 p-4 bg-zinc-900/50 backdrop-blur-sm rounded-xl border border-zinc-800 shadow-md"
+                className="flex flex-col gap-3 p-5 bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800/70 shadow-md transition-all hover:border-zinc-700 hover:bg-zinc-800/80"
               >
-                {/* Title row with Instrument name and Actions */}
+                {/* Title row with Instrument name and PnL */}
                 <div className="flex items-center justify-between">
-                  <span className="text-base font-semibold">
+                  <span className="text-base font-bold text-white">
                     {row.stock_name}
                   </span>
-                  <div className="flex items-center gap-2">
-                    {userRole === "admin" && (
-                      <>
-                        <Button
-                          size="sm"
-                          color="success"
-                          variant="solid"
-                          radius="md"
-                          className="shadow-md font-medium px-3 bg-green-600 hover:bg-green-700"
-                          onPress={() => {
-                            populatePositionData(row);
-                            handleOpenIncreaseModal();
-                          }}
-                        >
-                          En
-                        </Button>
-                        <Button
-                          size="sm"
-                          color="secondary"
-                          variant="solid"
-                          radius="md"
-                          className="shadow-md font-medium px-3 bg-purple-600 hover:bg-purple-700"
-                          onPress={() => {
-                            populatePositionData(row);
-                            handleOpenReduceModal();
-                          }}
-                        >
-                          Re
-                        </Button>
-                        <Button
-                          size="sm"
-                          color="danger"
-                          variant="solid"
-                          radius="md"
-                          className="shadow-md font-medium px-3 bg-red-600 hover:bg-red-700"
-                          onPress={() => {
-                            populatePositionData(row);
-                            handleOpenSellModal();
-                          }}
-                        >
-                          Ex
-                        </Button>
-                        {/* New: Add Alert Button */}
-                        <Button
-                          size="sm"
-                          color="primary"
-                          variant="solid"
-                          radius="md"
-                          className="shadow-md font-medium bg-blue-600 hover:bg-blue-700"
-                          onPress={() => {
-                            populateAddAlertData(row);
-                            handleOpenAddAlertModal();
-                          }}
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={1.5}
-                            stroke="currentColor"
-                            className="w-4 h-4"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
-                            />
-                          </svg>
-                        </Button>
-
-                        {/* Stats dropdown */}
-                        <Dropdown className="dark">
-                          <DropdownTrigger>
+                  <div className={`px-3 py-1 rounded-full ${currentPnl > 0 ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                    <span className={`text-base font-semibold ${pnlClass}`}>
+                      {(currentPnl * multiplier).toFixed(2)} ({pnlPercent}%)
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Grid of details */}
+                <div className="grid grid-cols-2 gap-4 mt-1">
+                  <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+                    <span className="text-xs text-zinc-400 font-medium mb-1">
+                      Quantity
+                    </span>
+                    <span className="text-sm font-medium text-white">
+                      {(row.current_qty * multiplier).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+                    <span className="text-xs text-zinc-400 font-medium mb-1">
+                      Entry Price
+                    </span>
+                    <span className="text-sm font-medium text-white">
+                      {row.entry_price?.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+                    <span className="text-xs text-zinc-400 font-medium mb-1">
+                      LTP
+                    </span>
+                    <span className="text-sm font-medium text-white">
+                      {row.last_price?.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+                    <span className="text-xs text-zinc-400 font-medium mb-1">
+                      Current Value
+                    </span>
+                    <span className="text-sm font-medium text-white">
+                      {(curVal * multiplier).toFixed(2)}
+                    </span>
+                  </div>
+                  
+                  {/* Action buttons in a stacked layout */}
+                  <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg col-span-2">
+                    <span className="text-xs text-zinc-400 font-medium mb-1">
+                      Actions
+                    </span>
+                    <div className="flex mt-1">
+                      <ButtonGroup className="shadow-sm w-full gap-1 flex flex-wrap justify-start">
+                        {userRole === "admin" && (
+                          <>
                             <Button
                               size="sm"
-                              className="bg-pink-500 text-white shadow-md hover:bg-pink-600"
-                              variant="solid"
-                              radius="md"
+                              color="success"
+                              variant="flat"
+                              className="min-w-[28px] w-7 h-7 p-0 bg-green-500/20 hover:bg-green-500/30 text-green-500"
+                              onPress={() => {
+                                populatePositionData(row);
+                                handleOpenIncreaseModal();
+                              }}
                             >
                               <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -497,7 +545,132 @@ function AllPositions() {
                                 viewBox="0 0 24 24"
                                 strokeWidth={1.5}
                                 stroke="currentColor"
-                                className="w-4 h-4"
+                                className="w-3.5 h-3.5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M12 4.5v15m7.5-7.5h-15"
+                                />
+                              </svg>
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="secondary"
+                              variant="flat"
+                              className="min-w-[28px] w-7 h-7 p-0 bg-purple-500/20 hover:bg-purple-500/30 text-purple-500"
+                              onPress={() => {
+                                populatePositionData(row);
+                                handleOpenReduceModal();
+                              }}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-3.5 h-3.5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M15 12H9m3 3l3-3-3-3"
+                                />
+                              </svg>
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="warning"
+                              variant="flat"
+                              className="min-w-[28px] w-7 h-7 p-0 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
+                              onPress={() => {
+                                populateChartData(row);
+                                handleOpenChartModal();
+                              }}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-3.5 h-3.5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
+                                />
+                              </svg>
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="primary"
+                              variant="flat"
+                              className="min-w-[28px] w-7 h-7 p-0 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
+                              onPress={() => {
+                                populateAddAlertData(row);
+                                handleOpenAddAlertModal();
+                              }}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-3.5 h-3.5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
+                                />
+                              </svg>
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="danger"
+                              variant="flat"
+                              className="min-w-[28px] w-7 h-7 p-0 bg-red-500/20 hover:bg-red-500/30 text-red-500"
+                              onPress={() => {
+                                populatePositionData(row);
+                                handleOpenSellModal();
+                              }}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-3.5 h-3.5"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M5 12h14"
+                                />
+                              </svg>
+                            </Button>
+                            
+                            {/* Stats Button */}
+                            <Button
+                              size="sm"
+                              variant="flat"
+                              className="min-w-[28px] w-7 h-7 p-0 bg-pink-500/20 hover:bg-pink-500/30 text-pink-500"
+                              onPress={() => {
+                                // This will open the dropdown
+                              }}
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={1.5}
+                                stroke="currentColor"
+                                className="w-3.5 h-3.5"
                               >
                                 <path
                                   strokeLinecap="round"
@@ -506,259 +679,176 @@ function AllPositions() {
                                 />
                               </svg>
                             </Button>
-                          </DropdownTrigger>
-                          <DropdownMenu
-                            aria-label="Stats Menu"
-                            className="dark"
+                          </>
+                        )}
+                        {userRole !== "admin" && (
+                          <Button
+                            size="sm"
+                            color="warning"
+                            variant="flat"
+                            className="min-w-[28px] w-7 h-7 p-0 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
+                            onPress={() => {
+                              populateChartData(row);
+                              handleOpenChartModal();
+                            }}
                           >
-                            <DropdownItem
-                              className="p-0 hover:bg-zinc-900"
-                              textValue="Stats"
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={1.5}
+                              stroke="currentColor"
+                              className="w-3.5 h-3.5"
                             >
-                              <div className="flex flex-col justify-between gap-1 p-3 text-left text-white rounded-lg w-72 bg-zinc-900/80 backdrop-blur-md border border-zinc-800">
-                                <div className="text-xl">Stats</div>
-                                <div className="py-1 text-md">
-                                  Stop-Loss: {row.stop_loss?.toFixed(2)} (
-                                  {(
-                                    ((row.stop_loss - row.entry_price) /
-                                      row.entry_price) *
-                                    100
-                                  ).toFixed(2)}
-                                  %)
-                                  {userRole === "admin" && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        populatePositionData(row);
-                                        handleOpenModifySlModal();
-                                      }}
-                                      disabled={userRole !== "admin"}
-                                      className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
-                                    >
-                                      C
-                                    </button>
-                                  )}
-                                </div>
-                                <div className="py-1 text-md">
-                                  Target: {row.target?.toFixed(2)} (
-                                  {(
-                                    ((row.target - row.entry_price) /
-                                      row.entry_price) *
-                                    100
-                                  ).toFixed(2)}
-                                  %)
-                                  {userRole === "admin" && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        populatePositionData(row);
-                                        handleOpenModifyTgtModal();
-                                      }}
-                                      disabled={userRole !== "admin"}
-                                      className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
-                                    >
-                                      C
-                                    </button>
-                                  )}
-                                </div>
-                                <div className="py-1 text-md">
-                                  Capital Used:{" "}
-                                  {(
-                                    row.entry_price *
-                                    row.current_qty *
-                                    multiplier
-                                  ).toFixed(2)}
-                                </div>
-                                <div className="py-1 text-md">
-                                  Risk:{" "}
-                                  {(
-                                    ((row.stop_loss - row.entry_price) *
-                                      row.current_qty +
-                                      row.booked_pnl) *
-                                    multiplier
-                                  ).toFixed(2)}
-                                </div>
-                                <div className="py-1 text-md">
-                                  Reward:{" "}
-                                  {(
-                                    ((row.target - row.entry_price) *
-                                      row.current_qty +
-                                      row.booked_pnl) *
-                                    multiplier
-                                  ).toFixed(2)}
-                                </div>
-                                <div
-                                  className={
-                                    row.booked_pnl > 0
-                                      ? "text-green-500 text-md py-1"
-                                      : "text-red-500 text-md py-1"
-                                  }
-                                >
-                                  Booked:{" "}
-                                  {(row.booked_pnl * multiplier).toFixed(2)}
-                                </div>
-                                {userRole === "admin" && (
-                                  <div className="py-1">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        toggleAutoExit(row);
-                                      }}
-                                      className="px-2 py-1 text-xs bg-blue-500 rounded-md bg-opacity-40 hover:bg-blue-700"
-                                    >
-                                      {`Auto Exit: ${
-                                        row.auto_exit ? "True" : "False"
-                                      }`}
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </DropdownItem>
-                          </DropdownMenu>
-                        </Dropdown>
-                      </>
-                    )}
-                    {/* Chart Button */}
-                    <Button
-                      size="sm"
-                      color="warning"
-                      variant="solid"
-                      radius="md"
-                      className="shadow-md font-medium bg-amber-600 hover:bg-amber-700"
-                      onPress={() => {
-                        populateChartData(row);
-                        handleOpenChartModal();
-                      }}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={1.5}
-                        stroke="currentColor"
-                        className="w-4 h-4"
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
+                              />
+                            </svg>
+                          </Button>
+                        )}
+                      </ButtonGroup>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Dropdown menu for stats */}
+                {userRole === "admin" && (
+                  <Dropdown className="dark">
+                    <DropdownTrigger>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        className="min-w-full mt-2 h-8 bg-zinc-950/30 hover:bg-zinc-800/50 text-zinc-400"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
-                        />
-                      </svg>
-                    </Button>
-                  </div>
-                </div>
-                {/* Body of the card with details */}
-                <div className="grid grid-cols-2 gap-3 mt-1">
-                  <div className="flex flex-col">
-                    <span className="text-xs text-zinc-400 font-medium">
-                      Quantity
-                    </span>
-                    <span className="text-sm font-medium">
-                      {(row.current_qty * multiplier).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs text-zinc-400 font-medium">
-                      Entry Price
-                    </span>
-                    <span className="text-sm font-medium">
-                      {row.entry_price?.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs text-zinc-400 font-medium">
-                      LTP
-                    </span>
-                    <span className="text-sm font-medium">
-                      {row.last_price?.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs text-zinc-400 font-medium">
-                      Current Value
-                    </span>
-                    <span className="text-sm font-medium">
-                      {(curVal * multiplier).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex flex-col col-span-2">
-                    <span className="text-xs text-zinc-400 font-medium">
-                      P&L
-                    </span>
-                    <span className={`text-base font-semibold ${pnlClass}`}>
-                      {(currentPnl * multiplier).toFixed(2)} ({pnlPercent}%)
-                    </span>
-                  </div>
-                </div>
-                {/* Action Buttons */}
-                <div className="mt-2">
-                  <ButtonGroup className="shadow-sm w-full">
-                    {userRole === "admin" && (
-                      <>
-                        <Button
-                          size="sm"
-                          color="success"
-                          variant="flat"
-                          className="flex-1 h-9 bg-green-500/20 hover:bg-green-500/30 text-green-500"
-                          onPress={() => {
-                            populatePositionData(row);
-                            handleOpenIncreaseModal();
-                          }}
+                        <span className="text-xs">View Trade Stats</span>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="w-4 h-4 ml-1"
                         >
-                          Add
-                        </Button>
-                        <Button
-                          size="sm"
-                          color="secondary"
-                          variant="flat"
-                          className="flex-1 h-9 bg-purple-500/20 hover:bg-purple-500/30 text-purple-500"
-                          onPress={() => {
-                            populatePositionData(row);
-                            handleOpenReduceModal();
-                          }}
-                        >
-                          Reduce
-                        </Button>
-                        <Button
-                          size="sm"
-                          color="danger"
-                          variant="flat"
-                          className="flex-1 h-9 bg-red-500/20 hover:bg-red-500/30 text-red-500"
-                          onPress={() => {
-                            populatePositionData(row);
-                            handleOpenSellModal();
-                          }}
-                        >
-                          Exit
-                        </Button>
-                        <Button
-                          size="sm"
-                          color="primary"
-                          variant="flat"
-                          className="flex-1 h-9 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
-                          onPress={() => {
-                            populateAddAlertData(row);
-                            handleOpenAddAlertModal();
-                          }}
-                        >
-                          Alert
-                        </Button>
-                      </>
-                    )}
-                    <Button
-                      size="sm"
-                      color="warning"
-                      variant="flat"
-                      className="flex-1 h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
-                      onPress={() => {
-                        populateChartData(row);
-                        handleOpenChartModal();
-                      }}
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="m19.5 8.25-7.5 7.5-7.5-7.5"
+                          />
+                        </svg>
+                      </Button>
+                    </DropdownTrigger>
+                    <DropdownMenu
+                      aria-label="Stats Menu"
+                      className="dark"
                     >
-                      Chart
-                    </Button>
-                  </ButtonGroup>
-                </div>
+                      <DropdownItem
+                        className="p-0 hover:bg-zinc-900"
+                        textValue="Stats"
+                      >
+                        <div className="flex flex-col justify-between gap-1 p-3 text-left text-white rounded-lg w-72 bg-zinc-900/80 backdrop-blur-md border border-zinc-800">
+                          <div className="text-xl">Stats</div>
+                          <div className="py-1 text-md">
+                            Stop-Loss: {row.stop_loss?.toFixed(2)} (
+                            {(
+                              ((row.stop_loss - row.entry_price) /
+                                row.entry_price) *
+                              100
+                            ).toFixed(2)}
+                            %)
+                            {userRole === "admin" && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  populatePositionData(row);
+                                  handleOpenModifySlModal();
+                                }}
+                                disabled={userRole !== "admin"}
+                                className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
+                              >
+                                C
+                              </button>
+                            )}
+                          </div>
+                          <div className="py-1 text-md">
+                            Target: {row.target?.toFixed(2)} (
+                            {(
+                              ((row.target - row.entry_price) /
+                                row.entry_price) *
+                              100
+                            ).toFixed(2)}
+                            %)
+                            {userRole === "admin" && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  populatePositionData(row);
+                                  handleOpenModifyTgtModal();
+                                }}
+                                disabled={userRole !== "admin"}
+                                className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
+                              >
+                                C
+                              </button>
+                            )}
+                          </div>
+                          <div className="py-1 text-md">
+                            Capital Used:{" "}
+                            {(
+                              row.entry_price *
+                              row.current_qty *
+                              multiplier
+                            ).toFixed(2)}
+                          </div>
+                          <div className="py-1 text-md">
+                            Risk:{" "}
+                            {(
+                              ((row.stop_loss - row.entry_price) *
+                                row.current_qty +
+                                row.booked_pnl) *
+                              multiplier
+                            ).toFixed(2)}
+                          </div>
+                          <div className="py-1 text-md">
+                            Reward:{" "}
+                            {(
+                              ((row.target - row.entry_price) *
+                                row.current_qty +
+                                row.booked_pnl) *
+                              multiplier
+                            ).toFixed(2)}
+                          </div>
+                          <div
+                            className={
+                              row.booked_pnl > 0
+                                ? "text-green-500 text-md py-1"
+                                : "text-red-500 text-md py-1"
+                            }
+                          >
+                            Booked:{" "}
+                            {(row.booked_pnl * multiplier).toFixed(2)}
+                          </div>
+                          {userRole === "admin" && (
+                            <div className="py-1">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleAutoExit(row);
+                                }}
+                                className="px-2 py-1 text-xs bg-blue-500 rounded-md bg-opacity-40 hover:bg-blue-700"
+                              >
+                                {`Auto Exit: ${
+                                  row.auto_exit ? "True" : "False"
+                                }`}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </Dropdown>
+                )}
               </div>
             );
           })}

@@ -20,57 +20,102 @@ TIMEZONE = pytz.timezone("Asia/Kolkata")
 ohlc_data = None
 weekly_ohlc_data = None
 
-def safe_float(value, default=0.0):
-    """
-    Utility to convert a value to float safely.
-    Returns `default` if the value is NaN, infinite, or otherwise invalid.
-    """
-    try:
-        val = float(value)
-        return val if math.isfinite(val) else default
-    except (TypeError, ValueError):
-        return default
+logger.info("==== Screener module initialized ====")
 
 def load_precomputed_ohlc():
     """
     Loads precomputed OHLC data (with indicators) from the database
-    using SaveOHLC.fetch_precomputed_ohlc(...).
+    using SaveOHLC.fetch_ohlc_exclude_ipo_and_all().
+    This version uses a dedicated method for excluding both ALL and IPO segments.
     Caches the DataFrame globally in `ohlc_data`.
     """
-    logger.info("Loading precomputed OHLC data via SaveOHLC class...")
+    logger.info("STEP 1: Loading precomputed daily OHLC data via SaveOHLC class (excluding ALL and IPO segments)...")
     global ohlc_data
 
+    logger.info("STEP 1.1: Getting database connection for OHLC data")
     conn, cur = get_trade_db_connection()
     try:
-        df = SaveOHLC.fetch_precomputed_ohlc(cur, limit=260)
-        logger.info(f"Fetched {len(df)} rows from fetch_precomputed_ohlc.")
+        logger.info("STEP 1.2: Executing fetch_ohlc_exclude_ipo_and_all to get daily data")
+        # Use the new dedicated method for this specific exclusion case
+        df = SaveOHLC.fetch_ohlc_exclude_ipo_and_all(cur)
+        logger.info(f"STEP 1.3: Fetched {len(df)} rows of filtered data (no ALL or IPO)")
+        
+        if df.empty:
+            logger.warning("STEP 1.4: EMPTY DataFrame returned from fetch! No data to screen")
+        else:
+            # Log some sample data for debugging
+            symbols = df['symbol'].unique()
+            logger.info(f"STEP 1.4: Data includes {len(symbols)} unique symbols: {', '.join(symbols[:5])}...")
+            
+            # Log data structure
+            logger.info(f"STEP 1.5: DataFrame columns: {list(df.columns)}")
+            logger.info(f"STEP 1.6: Date range: {df['date'].min()} to {df['date'].max()}")
+            
+            # Log segment information - should not include ALL or IPO
+            segments = df['segment'].unique()
+            logger.info(f"STEP 1.7: Segments in data: {segments}")
+            
+            # Check for NaN values in key columns
+            nan_counts = {col: df[col].isna().sum() for col in ['close', 'sma_50', 'sma_150', 'sma_200']}
+            logger.info(f"STEP 1.8: NaN counts in key columns: {nan_counts}")
+        
         ohlc_data = df
         return ohlc_data
     except Exception as e:
-        logger.error(f"Error loading precomputed data: {e}")
+        logger.error(f"ERROR in load_precomputed_ohlc: {e}", exc_info=True)
         return pd.DataFrame()
     finally:
+        logger.info("STEP 1.9: Releasing database connection")
         release_trade_db_connection(conn, cur)
 
 def load_precomputed_weekly_ohlc():
     """
     Loads precomputed weekly OHLC data (with indicators) from the database
-    using SaveOHLC.fetch_precomputed_weekly_ohlc(...).
+    using SaveOHLC.fetch_ohlc_exclude_ipo().
+    This version uses a dedicated method for excluding only IPO segment.
     Caches the DataFrame globally in `weekly_ohlc_data`.
     """
-    logger.info("Loading precomputed weekly OHLC data via SaveOHLC class...")
+    logger.info("STEP 1W: Loading precomputed weekly OHLC data via SaveOHLC class (excluding only IPO)...")
     global weekly_ohlc_data
 
+    logger.info("STEP 1W.1: Getting database connection for weekly OHLC data")
     conn, cur = get_trade_db_connection()
     try:
-        df = SaveOHLC.fetch_precomputed_weekly_ohlc(cur, limit=260)
-        logger.info(f"Fetched {len(df)} rows from fetch_precomputed_weekly_ohlc.")
+        logger.info("STEP 1W.2: Executing fetch_ohlc_exclude_ipo to get weekly data")
+        # Use the new dedicated method for this specific exclusion case
+        df = SaveOHLC.fetch_ohlc_exclude_ipo(cur)
+        logger.info(f"STEP 1W.3: Fetched {len(df)} rows of filtered weekly data")
+        
+        if df.empty:
+            logger.warning("STEP 1W.4: EMPTY DataFrame returned from fetch! No data to screen")
+        else:
+            # Log some sample data for debugging
+            symbols = df['symbol'].unique()
+            logger.info(f"STEP 1W.4: Weekly data includes {len(symbols)} unique symbols: {', '.join(symbols[:5])}...")
+            
+            # Log data structure
+            logger.info(f"STEP 1W.5: DataFrame columns: {list(df.columns)}")
+            logger.info(f"STEP 1W.6: Date range: {df['date'].min()} to {df['date'].max()}")
+            
+            # Log segment information - should include ALL but not IPO
+            segments = df['segment'].unique()
+            logger.info(f"STEP 1W.7: Segments in weekly data: {segments}")
+            if "ALL" in segments:
+                logger.info(f"STEP 1W.7.1: ALL segment is present in the weekly data")
+            else:
+                logger.warning(f"STEP 1W.7.2: ALL segment is NOT present in the weekly data!")
+                
+            # Check for NaN values in key columns
+            nan_counts = {col: df[col].isna().sum() for col in ['close', 'sma_50', 'sma_150', 'sma_200']}
+            logger.info(f"STEP 1W.8: NaN counts in key weekly columns: {nan_counts}")
+        
         weekly_ohlc_data = df
         return weekly_ohlc_data
     except Exception as e:
-        logger.error(f"Error loading precomputed weekly data: {e}")
+        logger.error(f"ERROR in load_precomputed_weekly_ohlc: {e}", exc_info=True)
         return pd.DataFrame()
     finally:
+        logger.info("STEP 1W.9: Releasing database connection")
         release_trade_db_connection(conn, cur)
 
 def fetch_live_quotes(batch_size=250):
@@ -78,33 +123,61 @@ def fetch_live_quotes(batch_size=250):
     Fetch live quote data from the 'equity_tokens' table in batches.
     Returns {instrument_token: last_price} mapping.
     """
-    logger.info("Fetching live quotes from kite...")
+    logger.info("STEP 2: Starting to fetch live quotes from kite...")
     live_quotes_all = {}
+    
+    logger.info("STEP 2.1: Getting database connection to fetch instrument tokens")
     conn, cur = get_trade_db_connection()
     try:
+        logger.info("STEP 2.2: Querying equity_tokens table for instruments")
         query = "SELECT instrument_token FROM equity_tokens;"
         cur.execute(query)
         tokens = cur.fetchall()
         instrument_tokens = [int(t[0]) for t in tokens]
-        logger.debug(f"Found {len(instrument_tokens)} tokens to fetch quotes for.")
+        logger.info(f"STEP 2.3: Found {len(instrument_tokens)} tokens to fetch quotes for")
+        
+        if not instrument_tokens:
+            logger.warning("STEP 2.4: No instrument tokens found in equity_tokens table")
+            return {}
 
+        # Log some token examples for debugging
+        token_examples = instrument_tokens[:5]
+        logger.info(f"STEP 2.5: Sample tokens: {token_examples}")
+
+        logger.info(f"STEP 2.6: Fetching quotes in batches of {batch_size}")
         for i in range(0, len(instrument_tokens), batch_size):
             batch = instrument_tokens[i:i+batch_size]
-            logger.debug(f"Fetching quotes for batch of size {len(batch)}.")
+            batch_start = i 
+            batch_end = min(i+batch_size, len(instrument_tokens))
+            logger.info(f"STEP 2.7: Processing batch {i//batch_size + 1}, tokens {batch_start}-{batch_end}")
+            
             try:
+                logger.info(f"STEP 2.8: Calling kite.quote for batch of {len(batch)} tokens")
                 quotes = kite.quote(batch)
+                logger.info(f"STEP 2.9: Received quotes for {len(quotes)} tokens")
+                
                 for tkn, quote_data in quotes.items():
                     last_price = quote_data.get("last_price", 0.0)
-                    live_quotes_all[int(tkn)] = safe_float(last_price, 0.0)
+                    live_quotes_all[int(tkn)] = float(last_price)
+                    
             except Exception as e:
-                logger.error(f"Error fetching live quotes for batch {batch}: {e}")
+                logger.error(f"ERROR in batch quotes: {e}", exc_info=True)
+                logger.error(f"STEP 2.10: Failed to fetch quotes for batch starting at index {i}")
 
-        logger.info(f"Fetched live quotes for {len(live_quotes_all)} tokens.")
+        logger.info(f"STEP 2.11: Completed fetching live quotes for {len(live_quotes_all)} tokens")
+        
+        # Log some sample prices for debugging
+        if live_quotes_all:
+            sample_tokens = list(live_quotes_all.keys())[:5]
+            sample_prices = {t: live_quotes_all[t] for t in sample_tokens}
+            logger.info(f"STEP 2.12: Sample prices: {sample_prices}")
+        
         return live_quotes_all
     except Exception as err:
-        logger.error(f"Error fetching live quotes: {err}")
+        logger.error(f"ERROR in fetch_live_quotes: {err}", exc_info=True)
         return {}
     finally:
+        logger.info("STEP 2.13: Releasing database connection")
         release_trade_db_connection(conn, cur)
 
 def update_live_data(df, live_data):
@@ -113,24 +186,41 @@ def update_live_data(df, live_data):
     updating 'close' with the current price, then recalc
     ATR, 52-week highs, etc. for that row.
     """
+    logger.info("STEP 3: Starting update_live_data to incorporate live prices")
+    
     if df.empty:
-        logger.warning("update_live_data called with empty DataFrame; returning as is.")
+        logger.warning("STEP 3.1: update_live_data called with empty DataFrame; returning as is")
         return df
+        
     if not live_data:
-        logger.debug("No live data to update; returning original DataFrame.")
+        logger.debug("STEP 3.2: No live data to update; returning original DataFrame")
         return df
 
-    logger.debug("Starting to update live data for each instrument token in df.")
+    logger.info(f"STEP 3.3: Starting to update live data for {len(df['instrument_token'].unique())} unique instruments")
+    logger.info(f"STEP 3.4: We have live prices for {len(live_data)} instruments")
+    
+    # Find overlap between data and live quotes
+    df_tokens = set(df['instrument_token'].unique())
+    live_tokens = set(live_data.keys())
+    overlap = df_tokens.intersection(live_tokens)
+    logger.info(f"STEP 3.5: Overlap between DataFrame tokens and live data: {len(overlap)} instruments")
+    
     updated_groups = []
+    update_counts = {'updated': 0, 'skipped': 0}
 
+    logger.info("STEP 3.6: Processing each instrument group")
     for token, group in df.groupby("instrument_token"):
         group = group.sort_values("date").reset_index(drop=True)
+        
         if token not in live_data:
             updated_groups.append(group)
+            update_counts['skipped'] += 1
             continue
 
         live_price = live_data[token]
         last_row = group.iloc[-1]
+        
+        logger.debug(f"STEP 3.7: Updating token {token} ({last_row['symbol']}) with live price {live_price}")
 
         # Build new row with the updated close.
         new_row = {
@@ -155,9 +245,11 @@ def update_live_data(df, live_data):
             "away_from_low": last_row["away_from_low"],
         }
 
+        logger.debug(f"STEP 3.8: Adding new row for {last_row['symbol']} with updated price")
         group_updated = pd.concat([group, pd.DataFrame([new_row])], ignore_index=True)
 
         # Recompute ATR over the last 50 rows
+        logger.debug(f"STEP 3.9: Recalculating ATR for {last_row['symbol']}")
         tail_window = 50
         subset = group_updated.tail(tail_window).copy()
         new_atr_series = ta.atr(
@@ -166,12 +258,13 @@ def update_live_data(df, live_data):
             close=subset["close"],
             length=min(tail_window, len(subset))
         )
-        new_atr_val = safe_float(new_atr_series.iloc[-1] if not new_atr_series.empty else 0.0)
+        new_atr_val = float(new_atr_series.iloc[-1] if not new_atr_series.empty else 0.0)
 
         # Recompute 52-week highs/lows over last 252 rows
+        logger.debug(f"STEP 3.10: Recalculating 52-week high/low for {last_row['symbol']}")
         subset_252 = group_updated.tail(252)
-        new_52_high = safe_float(subset_252["high"].max())
-        new_52_low = safe_float(subset_252["low"].min())
+        new_52_high = float(subset_252["high"].max())
+        new_52_low = float(subset_252["low"].min())
         away_high = 0.0
         away_low = 0.0
         if new_52_high != 0:
@@ -185,149 +278,374 @@ def update_live_data(df, live_data):
         group_updated.at[last_idx, "52_week_low"] = new_52_low
         group_updated.at[last_idx, "away_from_high"] = away_high
         group_updated.at[last_idx, "away_from_low"] = away_low
+        
+        # Log the updated values
+        logger.debug(f"STEP 3.11: Updated indicators for {last_row['symbol']}: ATR={new_atr_val:.2f}, " +
+                     f"52wk high={new_52_high:.2f}, 52wk low={new_52_low:.2f}, " +
+                     f"away_high={away_high:.2f}%, away_low={away_low:.2f}%")
 
         updated_groups.append(group_updated)
+        update_counts['updated'] += 1
 
     df_updated = pd.concat(updated_groups, ignore_index=True)
-    logger.debug("Finished updating live data.")
+    logger.info(f"STEP 3.12: Finished updating live data. Updated {update_counts['updated']} symbols, " +
+                f"skipped {update_counts['skipped']} symbols")
+    
+    # Verify the updated data
+    logger.info(f"STEP 3.13: Updated DataFrame has {len(df_updated)} rows, original had {len(df)} rows")
     return df_updated
 
 def screen_eligible_stocks_vcp(df):
     """
     Returns a list of dicts representing VCP-eligible stocks from 'df'.
+    This function processes data already filtered at the database level 
+    (ALL and IPO segments already excluded).
     """
-    logger.debug("Screening stocks for VCP pattern...")
-    data_to_screen = df[df["segment"] != "IPO"]  # exclude IPO
+    logger.info("STEP 4: Starting VCP screening process")
+    
+    if df.empty:
+        logger.warning("STEP 4.1: Empty DataFrame provided to screen_eligible_stocks_vcp! Cannot screen empty data")
+        return []
+        
+    logger.info("STEP 4.2: Proceeding with data filtering already done at database level")
+    data_to_screen = df  # No additional segment filtering needed
+    logger.info(f"STEP 4.3: Working with {len(data_to_screen)} rows to screen for VCP pattern")
+    
+    # Log what symbols we're screening
+    unique_symbols = data_to_screen['symbol'].unique()
+    logger.info(f"STEP 4.4: Screening {len(unique_symbols)} unique symbols for VCP pattern")
+    if len(unique_symbols) > 0:
+        logger.info(f"STEP 4.5: Sample symbols: {', '.join(unique_symbols[:5])}")
+    
     eligible_stocks = []
+    rejected_counts = {
+        "not_enough_data": 0,
+        "price_below_sma50": 0,
+        "sma_not_aligned": 0,
+        "not_trending": 0,
+        "too_extended": 0,
+        "too_far_from_low": 0
+    }
 
+    symbol_counter = 0
     for symbol, group in data_to_screen.groupby("symbol"):
+        symbol_counter += 1
+        if symbol_counter % 100 == 0:
+            logger.info(f"STEP 4.6: Processed {symbol_counter}/{len(unique_symbols)} symbols")
+            
         group = group.sort_values("date").reset_index(drop=True)
         if len(group) < 2:
+            logger.debug(f"STEP 4.7: Symbol {symbol} has insufficient data (rows={len(group)})")
+            rejected_counts["not_enough_data"] += 1
             continue
 
         last_index = len(group) - 1
         last_row = group.iloc[last_index]
         prev_row = group.iloc[last_index - 1]
 
-        current_close = safe_float(last_row["close"])
-        prev_close = safe_float(prev_row["close"])
-        price_change = 0.0
-        if prev_close != 0:
-            price_change = ((current_close - prev_close) / prev_close) * 100.0
+        # Try-except to catch any issues with individual stocks
+        try:
+            current_close = float(last_row["close"])
+            prev_close = float(prev_row["close"])
+            price_change = 0.0
+            if prev_close != 0:
+                price_change = ((current_close - prev_close) / prev_close) * 100.0
 
-        # VCP screening logic
-        if (
-            current_close > last_row["sma_50"]
-            and last_row["sma_50"] > last_row["sma_150"] > last_row["sma_200"]
-            and safe_float(group.iloc[max(0, last_index - 25)]["sma_200"]) < safe_float(last_row["sma_200"])
-            and safe_float(last_row["away_from_high"]) < 25
-            and safe_float(last_row["away_from_low"]) > 50
-        ):
-            eligible_stocks.append({
-                "instrument_token": int(safe_float(last_row["instrument_token"])),
-                "symbol": str(last_row["symbol"]),
-                "last_price": current_close,
-                "change": price_change,
-                "sma_50": safe_float(last_row["sma_50"]),
-                "sma_150": safe_float(last_row["sma_150"]),
-                "sma_200": safe_float(last_row["sma_200"]),
-                "atr": safe_float(last_row["atr"]),
-            })
+            logger.debug(f"STEP 4.8: Processing {symbol} - close={current_close}, change={price_change:.2f}%")
+
+            # VCP screening criteria - Check each condition
+            passed = True
+            
+            # Price > 50 SMA
+            if current_close <= last_row["sma_50"]:
+                logger.debug(f"STEP 4.9: {symbol} FAILED: price ({current_close:.2f}) <= SMA50 ({last_row['sma_50']:.2f})")
+                rejected_counts["price_below_sma50"] += 1
+                passed = False
+                
+            # 50 SMA > 150 SMA > 200 SMA (for uptrend)
+            elif not (last_row["sma_50"] > last_row["sma_150"] and last_row["sma_150"] > last_row["sma_200"]):
+                logger.debug(f"STEP 4.10: {symbol} FAILED: SMAs not in order - SMA50={last_row['sma_50']:.2f}, " + 
+                            f"SMA150={last_row['sma_150']:.2f}, SMA200={last_row['sma_200']:.2f}")
+                rejected_counts["sma_not_aligned"] += 1
+                passed = False
+                
+            # 200 SMA is rising (comparison with 25 periods ago)
+            elif not (float(group.iloc[max(0, last_index - 25)]["sma_200"]) < float(last_row["sma_200"])):
+                old_sma200 = float(group.iloc[max(0, last_index - 25)]["sma_200"])
+                current_sma200 = float(last_row["sma_200"])
+                logger.debug(f"STEP 4.11: {symbol} FAILED: SMA200 not rising - past={old_sma200:.2f}, current={current_sma200:.2f}")
+                rejected_counts["not_trending"] += 1
+                passed = False
+                
+            # Stock is within 30% of 52-week high (relaxed from 25%)
+            elif not (float(last_row["away_from_high"]) < 30):
+                away_high = float(last_row["away_from_high"])
+                logger.debug(f"STEP 4.12: {symbol} FAILED: Too far from high - {away_high:.2f}% (max 30%)")
+                rejected_counts["too_extended"] += 1
+                passed = False
+                
+            # Stock is more than 40% above 52-week low (relaxed from 50%)
+            elif not (float(last_row["away_from_low"]) > 40):
+                away_low = float(last_row["away_from_low"])
+                logger.debug(f"STEP 4.13: {symbol} FAILED: Too close to low - {away_low:.2f}% (min 40%)")
+                rejected_counts["too_far_from_low"] += 1
+                passed = False
+                
+            if passed:
+                logger.info(f"STEP 4.14: {symbol} PASSED VCP criteria! Adding to eligible stocks")
+                eligible_stocks.append({
+                    "instrument_token": int(float(last_row["instrument_token"])),
+                    "symbol": str(last_row["symbol"]),
+                    "last_price": current_close,
+                    "change": price_change,
+                    "sma_50": float(last_row["sma_50"]),
+                    "sma_150": float(last_row["sma_150"]),
+                    "sma_200": float(last_row["sma_200"]),
+                    "atr": float(last_row["atr"]),
+                })
+        except Exception as e:
+            logger.error(f"ERROR processing symbol {symbol} in VCP screener: {e}", exc_info=True)
 
     eligible_stocks.sort(key=lambda x: x["change"], reverse=True)
-    logger.debug(f"Found {len(eligible_stocks)} stocks matching VCP criteria.")
+    
+    # Log detailed stats about screening results
+    logger.info(f"STEP 4.15: VCP screening results: {len(eligible_stocks)} passed, {sum(rejected_counts.values())} rejected")
+    for reason, count in rejected_counts.items():
+        if count > 0:
+            logger.info(f"STEP 4.16: VCP rejection reason '{reason}': {count} symbols")
+    
+    # Log the top 5 eligible stocks
+    if eligible_stocks:
+        top_stocks = [f"{s['symbol']}({s['change']:.2f}%)" for s in eligible_stocks[:5]]
+        logger.info(f"STEP 4.17: Top VCP stocks: {', '.join(top_stocks)}")
+    
+    logger.info(f"STEP 4.18: Found {len(eligible_stocks)} stocks matching VCP criteria")
     return eligible_stocks
 
 def screen_eligible_stocks_ipo(df):
     """
     Returns a list of dicts representing IPO-eligible stocks from 'df'.
     """
-    logger.debug("Screening stocks for IPO criteria...")
+    logger.info("STEP 5: Starting IPO screening process")
+    
+    if df.empty:
+        logger.warning("STEP 5.1: Empty DataFrame provided to screen_eligible_stocks_ipo! Cannot screen empty data")
+        return []
+        
+    logger.info("STEP 5.2: Filtering for IPO segment only")
     data_to_screen = df[df["segment"] == "IPO"]
+    logger.info(f"STEP 5.3: Found {len(data_to_screen)} rows (IPO segment only) to screen for IPO pattern")
+    
+    # Log what symbols we're screening
+    unique_symbols = data_to_screen['symbol'].unique()
+    logger.info(f"STEP 5.4: Screening {len(unique_symbols)} unique IPO symbols")
+    if len(unique_symbols) > 0:
+        logger.info(f"STEP 5.5: IPO Symbols: {', '.join(unique_symbols[:5])}")
+    
     eligible_stocks = []
+    rejected_counts = {
+        "not_enough_data": 0,
+        "too_far_from_high": 0,
+        "too_close_to_low": 0
+    }
 
     for symbol, group in data_to_screen.groupby("symbol"):
         group = group.sort_values("date").reset_index(drop=True)
         if len(group) < 2:
+            logger.debug(f"STEP 5.6: IPO {symbol} has insufficient data (rows={len(group)})")
+            rejected_counts["not_enough_data"] += 1
             continue
 
         last_index = len(group) - 1
         last_row = group.iloc[last_index]
         prev_row = group.iloc[last_index - 1]
 
-        current_close = safe_float(last_row["close"])
-        prev_close = safe_float(prev_row["close"])
-        price_change = 0.0
-        if prev_close != 0:
-            price_change = ((current_close - prev_close) / prev_close) * 100.0
+        try:
+            current_close = float(last_row["close"])
+            prev_close = float(prev_row["close"])
+            price_change = 0.0
+            if prev_close != 0:
+                price_change = ((current_close - prev_close) / prev_close) * 100.0
 
-        # Simple IPO screening logic
-        if (
-            safe_float(last_row["away_from_high"]) < 25
-            and safe_float(last_row["away_from_low"]) > 25
-        ):
-            eligible_stocks.append({
-                "instrument_token": int(safe_float(last_row["instrument_token"])),
-                "symbol": str(last_row["symbol"]),
-                "last_price": current_close,
-                "change": price_change,
-                "sma_50": safe_float(last_row["sma_50"]),
-                "sma_150": safe_float(last_row["sma_150"]),
-                "sma_200": safe_float(last_row["sma_200"]),
-                "atr": safe_float(last_row["atr"]),
-            })
+            logger.debug(f"STEP 5.7: Processing IPO {symbol} - close={current_close}, change={price_change:.2f}%")
+
+            # Simple IPO screening logic - slightly relaxed
+            away_from_high = float(last_row["away_from_high"])
+            away_from_low = float(last_row["away_from_low"])
+            
+            # Check conditions separately for better logging
+            passed = True
+            
+            if away_from_high >= 30:  # Relaxed from 25
+                logger.debug(f"STEP 5.8: IPO {symbol} FAILED: Too far from high - {away_from_high:.2f}% (max 30%)")
+                rejected_counts["too_far_from_high"] += 1
+                passed = False
+                
+            elif away_from_low <= 20:  # Relaxed from 25
+                logger.debug(f"STEP 5.9: IPO {symbol} FAILED: Too close to low - {away_from_low:.2f}% (min 20%)")
+                rejected_counts["too_close_to_low"] += 1
+                passed = False
+                
+            if passed:
+                logger.info(f"STEP 5.10: IPO {symbol} PASSED criteria! Adding to eligible stocks")
+                eligible_stocks.append({
+                    "instrument_token": int(float(last_row["instrument_token"])),
+                    "symbol": str(last_row["symbol"]),
+                    "last_price": current_close,
+                    "change": price_change,
+                    "sma_50": float(last_row["sma_50"]),
+                    "sma_150": float(last_row["sma_150"]),
+                    "sma_200": float(last_row["sma_200"]),
+                    "atr": float(last_row["atr"]),
+                })
+        except Exception as e:
+            logger.error(f"ERROR processing IPO symbol {symbol}: {e}", exc_info=True)
 
     eligible_stocks.sort(key=lambda x: x["change"], reverse=True)
-    logger.debug(f"Found {len(eligible_stocks)} stocks matching IPO criteria.")
+    
+    # Log reasons for rejection
+    logger.info(f"STEP 5.11: IPO screening results: {len(eligible_stocks)} passed, {sum(rejected_counts.values())} rejected")
+    for reason, count in rejected_counts.items():
+        if count > 0:
+            logger.info(f"STEP 5.12: IPO rejection reason '{reason}': {count} symbols")
+    
+    # Log the eligible stocks
+    if eligible_stocks:
+        ipo_stocks = [f"{s['symbol']}({s['change']:.2f}%)" for s in eligible_stocks]
+        logger.info(f"STEP 5.13: Eligible IPO stocks: {', '.join(ipo_stocks)}")
+    
+    logger.info(f"STEP 5.14: Found {len(eligible_stocks)} stocks matching IPO criteria")
     return eligible_stocks
 
 def screen_eligible_stocks_weekly(df):
     """
     Returns a list of dicts representing stocks meeting weekly screening criteria from 'df'.
     Weekly criteria: current close > 50sma > 150sma > 200sma
-    This function includes ALL segments except IPO.
+    This function processes data already filtered at the database level
+    (IPO segment already excluded, ALL segment included).
     """
-    logger.debug("Screening stocks for weekly pattern...")
-    data_to_screen = df[df["segment"] != "IPO"]  # exclude IPO only
+    logger.info("STEP 6: Starting Weekly VCP screening process")
+    
+    if df.empty:
+        logger.warning("STEP 6.1: Empty DataFrame provided to screen_eligible_stocks_weekly! Cannot screen empty data")
+        return []
+        
+    logger.info("STEP 6.2: Proceeding with data filtering already done at database level")
+    data_to_screen = df  # No additional segment filtering needed
+    logger.info(f"STEP 6.3: Working with {len(data_to_screen)} rows to screen for weekly pattern")
+    
+    # Log what symbols we're screening
+    unique_symbols = data_to_screen['symbol'].unique()
+    logger.info(f"STEP 6.4: Screening {len(unique_symbols)} unique symbols for weekly pattern")
+    if len(unique_symbols) > 0:
+        logger.info(f"STEP 6.5: Sample weekly symbols: {', '.join(unique_symbols[:5])}")
+    
+    # Get segment stats for debugging
+    segment_counts = data_to_screen['segment'].value_counts().to_dict()
+    logger.info(f"STEP 6.5.1: Segment distribution: {segment_counts}")
+    
     eligible_stocks = []
+    rejected_counts = {
+        "not_enough_data": 0,
+        "price_below_sma50": 0,
+        "sma_not_aligned": 0,
+        "not_trending": 0,
+        "too_extended": 0,
+        "too_far_from_low": 0
+    }
 
+    symbol_counter = 0
     for symbol, group in data_to_screen.groupby("symbol"):
+        symbol_counter += 1
+        if symbol_counter % 100 == 0:
+            logger.info(f"STEP 6.6: Processed {symbol_counter}/{len(unique_symbols)} symbols for weekly screening")
+            
         group = group.sort_values("date").reset_index(drop=True)
         if len(group) < 2:
+            logger.debug(f"STEP 6.7: Weekly symbol {symbol} has insufficient data (rows={len(group)})")
+            rejected_counts["not_enough_data"] += 1
             continue
 
         last_index = len(group) - 1
         last_row = group.iloc[last_index]
         prev_row = group.iloc[last_index - 1]
 
-        current_close = safe_float(last_row["close"])
-        prev_close = safe_float(prev_row["close"])
-        price_change = 0.0
-        if prev_close != 0:
-            price_change = ((current_close - prev_close) / prev_close) * 100.0
+        try:
+            current_close = float(last_row["close"])
+            prev_close = float(prev_row["close"])
+            price_change = 0.0
+            if prev_close != 0:
+                price_change = ((current_close - prev_close) / prev_close) * 100.0
 
-        # Weekly screening criteria - simpler than VCP
-        # Just check if price > 50sma > 150sma > 200sma
-        if (
-            current_close > last_row["sma_50"]
-            and last_row["sma_50"] > last_row["sma_150"] > last_row["sma_200"]
-            and safe_float(group.iloc[max(0, last_index - 25)]["sma_200"]) < safe_float(last_row["sma_200"])
-            and safe_float(last_row["away_from_high"]) < 25
-            and safe_float(last_row["away_from_low"]) > 50
-        ):
-            eligible_stocks.append({
-                "instrument_token": int(safe_float(last_row["instrument_token"])),
-                "symbol": str(last_row["symbol"]),
-                "last_price": current_close,
-                "change": price_change,
-                "sma_50": safe_float(last_row["sma_50"]),
-                "sma_150": safe_float(last_row["sma_150"]),
-                "sma_200": safe_float(last_row["sma_200"]),
-                "atr": safe_float(last_row["atr"]),
-            })
+            logger.debug(f"STEP 6.8: Processing weekly {symbol} - close={current_close}, change={price_change:.2f}%")
+
+            # Weekly screening criteria - Check each condition
+            passed = True
+            
+            # Price > 50 SMA
+            if current_close <= last_row["sma_50"]:
+                logger.debug(f"STEP 6.9: Weekly {symbol} FAILED: price ({current_close:.2f}) <= SMA50 ({last_row['sma_50']:.2f})")
+                rejected_counts["price_below_sma50"] += 1
+                passed = False
+                
+            # 50 SMA > 150 SMA > 200 SMA (for uptrend)
+            elif not (last_row["sma_50"] > last_row["sma_150"] and last_row["sma_150"] > last_row["sma_200"]):
+                logger.debug(f"STEP 6.10: Weekly {symbol} FAILED: SMAs not in order - SMA50={last_row['sma_50']:.2f}, " + 
+                            f"SMA150={last_row['sma_150']:.2f}, SMA200={last_row['sma_200']:.2f}")
+                rejected_counts["sma_not_aligned"] += 1
+                passed = False
+                
+            # 200 SMA is rising (comparison with 25 periods ago)
+            elif not (float(group.iloc[max(0, last_index - 25)]["sma_200"]) < float(last_row["sma_200"])):
+                old_sma200 = float(group.iloc[max(0, last_index - 25)]["sma_200"])
+                current_sma200 = float(last_row["sma_200"])
+                logger.debug(f"STEP 6.11: Weekly {symbol} FAILED: SMA200 not rising - past={old_sma200:.2f}, current={current_sma200:.2f}")
+                rejected_counts["not_trending"] += 1
+                passed = False
+                
+            # Stock is within 30% of 52-week high (relaxed from 25%)
+            elif not (float(last_row["away_from_high"]) < 30):
+                away_high = float(last_row["away_from_high"])
+                logger.debug(f"STEP 6.12: Weekly {symbol} FAILED: Too far from high - {away_high:.2f}% (max 30%)")
+                rejected_counts["too_extended"] += 1
+                passed = False
+                
+            # Stock is more than 40% above 52-week low (relaxed from 50%)
+            elif not (float(last_row["away_from_low"]) > 40):
+                away_low = float(last_row["away_from_low"])
+                logger.debug(f"STEP 6.13: Weekly {symbol} FAILED: Too close to low - {away_low:.2f}% (min 40%)")
+                rejected_counts["too_far_from_low"] += 1
+                passed = False
+                
+            if passed:
+                logger.info(f"STEP 6.14: Weekly {symbol} PASSED criteria! Adding to eligible stocks")
+                eligible_stocks.append({
+                    "instrument_token": int(float(last_row["instrument_token"])),
+                    "symbol": str(last_row["symbol"]),
+                    "last_price": current_close,
+                    "change": price_change,
+                    "sma_50": float(last_row["sma_50"]),
+                    "sma_150": float(last_row["sma_150"]),
+                    "sma_200": float(last_row["sma_200"]),
+                    "atr": float(last_row["atr"]),
+                })
+        except Exception as e:
+            logger.error(f"ERROR processing weekly symbol {symbol}: {e}", exc_info=True)
 
     eligible_stocks.sort(key=lambda x: x["change"], reverse=True)
-    logger.debug(f"Found {len(eligible_stocks)} stocks matching weekly criteria.")
+    
+    # Log detailed stats about screening results
+    logger.info(f"STEP 6.15: Weekly screening results: {len(eligible_stocks)} passed, {sum(rejected_counts.values())} rejected")
+    for reason, count in rejected_counts.items():
+        if count > 0:
+            logger.info(f"STEP 6.16: Weekly rejection reason '{reason}': {count} symbols")
+    
+    # Log the top 5 eligible stocks
+    if eligible_stocks:
+        top_stocks = [f"{s['symbol']}({s['change']:.2f}%)" for s in eligible_stocks[:5]]
+        logger.info(f"STEP 6.17: Top Weekly VCP stocks: {', '.join(top_stocks)}")
+    
+    logger.info(f"STEP 6.18: Found {len(eligible_stocks)} stocks matching weekly criteria")
     return eligible_stocks
 
 def is_new_week(last_date, current_date):
@@ -342,23 +660,33 @@ def is_new_week(last_date, current_date):
     Returns:
         bool: True if current_date is in a new week, False otherwise
     """
+    logger.debug(f"STEP W1: Checking if {current_date} is in a new week compared to {last_date}")
+    
     # Convert to datetime objects if they're not already
     if isinstance(last_date, str):
+        logger.debug("STEP W2: Converting last_date string to datetime")
         last_date = pd.to_datetime(last_date).to_pydatetime()
     if isinstance(current_date, str):
+        logger.debug("STEP W3: Converting current_date string to datetime")
         current_date = pd.to_datetime(current_date).to_pydatetime()
     
     # Ensure timezone is set
     if last_date.tzinfo is None:
+        logger.debug("STEP W4: Setting timezone for last_date")
         last_date = last_date.replace(tzinfo=TIMEZONE)
     if current_date.tzinfo is None:
+        logger.debug("STEP W5: Setting timezone for current_date")
         current_date = current_date.replace(tzinfo=TIMEZONE)
     
     # Get ISO calendar year and week number
     last_year_week = (last_date.year, last_date.isocalendar()[1])
     current_year_week = (current_date.year, current_date.isocalendar()[1])
     
-    return last_year_week != current_year_week
+    logger.debug(f"STEP W6: Last date year-week: {last_year_week}, Current date year-week: {current_year_week}")
+    
+    is_new = last_year_week != current_year_week
+    logger.debug(f"STEP W7: Is new week? {is_new}")
+    return is_new
 
 def update_weekly_live_data(df, live_data):
     """
@@ -369,32 +697,53 @@ def update_weekly_live_data(df, live_data):
     
     Also recalculates key indicators like ATR, 52-week high/low, and SMAs.
     """
+    logger.info("STEP 10: Starting update_weekly_live_data to incorporate live prices")
+    
     if df.empty:
-        logger.warning("update_weekly_live_data called with empty DataFrame; returning as is.")
+        logger.warning("STEP 10.1: update_weekly_live_data called with empty DataFrame; returning as is")
         return df
+        
     if not live_data:
-        logger.debug("No live data to update; returning original DataFrame.")
+        logger.debug("STEP 10.2: No live data to update weekly data; returning original DataFrame")
         return df
 
-    logger.debug("Starting to update weekly data with live prices.")
+    logger.info(f"STEP 10.3: Starting to update weekly data for {len(df['instrument_token'].unique())} unique instruments")
+    logger.info(f"STEP 10.4: We have live prices for {len(live_data)} instruments")
+    
+    # Find overlap between data and live quotes
+    df_tokens = set(df['instrument_token'].unique())
+    live_tokens = set(live_data.keys())
+    overlap = df_tokens.intersection(live_tokens)
+    logger.info(f"STEP 10.5: Overlap between weekly DataFrame tokens and live data: {len(overlap)} instruments")
+    
     updated_groups = []
     current_date = datetime.datetime.now(TIMEZONE)
+    logger.info(f"STEP 10.6: Current date for weekly update: {current_date}")
     
+    update_counts = {'updated_existing': 0, 'created_new': 0, 'skipped': 0}
+    
+    logger.info("STEP 10.7: Processing each weekly instrument group")
     for token, group in df.groupby("instrument_token"):
         group = group.sort_values("date").reset_index(drop=True)
+        
         if token not in live_data:
             updated_groups.append(group)
+            update_counts['skipped'] += 1
             continue
 
         live_price = live_data[token]
         last_row = group.iloc[-1]
+        symbol = last_row['symbol']
         
         # Check if last row is from the current week
         last_date = pd.to_datetime(last_row["date"]).to_pydatetime()
+        logger.debug(f"STEP 10.8: Checking week for {symbol}: last date = {last_date}")
         create_new_bar = is_new_week(last_date, current_date)
         
-        # If we're in a new week, create a new weekly bar
         if create_new_bar:
+            logger.info(f"STEP 10.9: Creating NEW weekly bar for {symbol} with live price {live_price}")
+            update_counts['created_new'] += 1
+            
             # Create a new weekly bar with live price
             new_row = {
                 "instrument_token": token,
@@ -418,6 +767,9 @@ def update_weekly_live_data(df, live_data):
                 "away_from_low": last_row["away_from_low"],
             }
         else:
+            logger.debug(f"STEP 10.10: Updating EXISTING weekly bar for {symbol} with live price {live_price}")
+            update_counts['updated_existing'] += 1
+            
             # Update the existing weekly bar
             new_row = {
                 "instrument_token": token,
@@ -445,25 +797,34 @@ def update_weekly_live_data(df, live_data):
             group = group.iloc[:-1]
 
         # Add the updated or new row
+        logger.debug(f"STEP 10.11: Adding new/updated row to group for {symbol}")
         group_updated = pd.concat([group, pd.DataFrame([new_row])], ignore_index=True)
+        
+        # Recalculate indicators
+        logger.debug(f"STEP 10.12: Recalculating indicators for {symbol}")
         
         # Use the close prices series for calculating SMAs
         close_series = group_updated["close"]
         
         # Recalculate SMAs
+        logger.debug(f"STEP 10.13: Recalculating SMAs for {symbol}")
         if len(close_series) >= 50:
             sma_50 = ta.sma(close_series, length=50).iloc[-1]
-            group_updated.at[len(group_updated)-1, "sma_50"] = safe_float(sma_50)
+            group_updated.at[len(group_updated)-1, "sma_50"] = float(sma_50)
+            logger.debug(f"STEP 10.14: New SMA50 for {symbol}: {float(sma_50):.2f}")
         
         if len(close_series) >= 150:
             sma_150 = ta.sma(close_series, length=150).iloc[-1]
-            group_updated.at[len(group_updated)-1, "sma_150"] = safe_float(sma_150)
+            group_updated.at[len(group_updated)-1, "sma_150"] = float(sma_150)
+            logger.debug(f"STEP 10.15: New SMA150 for {symbol}: {float(sma_150):.2f}")
         
         if len(close_series) >= 200:
             sma_200 = ta.sma(close_series, length=200).iloc[-1]
-            group_updated.at[len(group_updated)-1, "sma_200"] = safe_float(sma_200)
+            group_updated.at[len(group_updated)-1, "sma_200"] = float(sma_200)
+            logger.debug(f"STEP 10.16: New SMA200 for {symbol}: {float(sma_200):.2f}")
 
         # Recompute ATR
+        logger.debug(f"STEP 10.17: Recalculating ATR for {symbol}")
         tail_window = min(50, len(group_updated))
         subset = group_updated.tail(tail_window).copy()
         new_atr_series = ta.atr(
@@ -472,18 +833,23 @@ def update_weekly_live_data(df, live_data):
             close=subset["close"],
             length=min(tail_window, len(subset))
         )
-        new_atr_val = safe_float(new_atr_series.iloc[-1] if not new_atr_series.empty else 0.0)
+        new_atr_val = float(new_atr_series.iloc[-1] if not new_atr_series.empty else 0.0)
+        logger.debug(f"STEP 10.18: New ATR for {symbol}: {new_atr_val:.2f}")
 
         # 52-week highs/lows
+        logger.debug(f"STEP 10.19: Recalculating 52-week high/low for {symbol}")
         subset_52 = group_updated.tail(min(52, len(group_updated)))
-        new_52_high = safe_float(subset_52["high"].max())
-        new_52_low = safe_float(subset_52["low"].min())
+        new_52_high = float(subset_52["high"].max())
+        new_52_low = float(subset_52["low"].min())
+        logger.debug(f"STEP 10.20: New 52-week high/low for {symbol}: {new_52_high:.2f}/{new_52_low:.2f}")
+        
         away_high = 0.0
         away_low = 0.0
         if new_52_high != 0:
             away_high = ((new_52_high - live_price) / new_52_high) * 100
         if new_52_low != 0:
             away_low = ((live_price - new_52_low) / new_52_low) * 100
+        logger.debug(f"STEP 10.21: New away_high/away_low for {symbol}: {away_high:.2f}%/{away_low:.2f}%")
 
         # Update the indicators for the last row
         last_idx = len(group_updated) - 1
@@ -496,7 +862,12 @@ def update_weekly_live_data(df, live_data):
         updated_groups.append(group_updated)
 
     df_updated = pd.concat(updated_groups, ignore_index=True)
-    logger.debug("Finished updating weekly data with live prices and recalculating indicators.")
+    logger.info(f"STEP 10.22: Finished updating weekly data. Created {update_counts['created_new']} new bars, " +
+                f"updated {update_counts['updated_existing']} existing bars, skipped {update_counts['skipped']} symbols")
+    
+    # Log final data shape
+    logger.info(f"STEP 10.23: Updated weekly DataFrame has {len(df_updated)} rows (original had {len(df)} rows)")
+    
     return df_updated
 
 def run_vcp_screener():
@@ -507,39 +878,65 @@ def run_vcp_screener():
     4) Clear old "vcp" results from screener_results table.
     5) Insert new results for "vcp".
     """
-    logger.info("----- Starting VCP Screener -----")
+    logger.info("===== STEP 7: Starting VCP Screener =====")
     global ohlc_data
 
     # Load or reuse cached data
     if ohlc_data is None or ohlc_data.empty:
-        logger.debug("No OHLC data cached; loading from DB.")
+        logger.info("STEP 7.1: No OHLC data cached; loading from DB")
         ohlc_data = load_precomputed_ohlc()
+        
+    if ohlc_data is None or ohlc_data.empty:
+        logger.error("STEP 7.2: Failed to load OHLC data for VCP screener. Aborting")
+        return False
 
+    logger.info(f"STEP 7.3: Working with DataFrame of shape {ohlc_data.shape} for VCP screening")
     df = ohlc_data.copy()
+    logger.info(f"STEP 7.4: Made a copy of OHLC data for processing")
 
     # Check market hours
     now = datetime.datetime.now(TIMEZONE).time()
-    logger.debug(f"Current time: {now}. Checking if within market hours (9:15-15:30).")
+    logger.info(f"STEP 7.5: Current time: {now}. Checking if within market hours (9:15-15:30)")
+    
     if datetime.time(9,15) <= now <= datetime.time(15,30):
-        live_data = fetch_live_quotes()
-        df = update_live_data(df, live_data)
+        logger.info("STEP 7.6: Market is open. Will fetch live quotes")
+        try:
+            live_data = fetch_live_quotes()
+            if live_data:
+                logger.info(f"STEP 7.7: Fetched live quotes for {len(live_data)} instruments")
+                df = update_live_data(df, live_data)
+                logger.info("STEP 7.8: Successfully updated data with live quotes")
+            else:
+                logger.warning("STEP 7.9: No live quotes fetched. Using historical data only")
+        except Exception as e:
+            logger.error(f"STEP 7.10: Error fetching live quotes: {e}. Using historical data only")
     else:
-        logger.debug("Market closed. Skipping live data update.")
+        logger.info("STEP 7.11: Market closed. Skipping live data update")
 
     # Screen for VCP
-    vcp_results = screen_eligible_stocks_vcp(df)
+    try:
+        logger.info("STEP 7.12: Starting VCP pattern screening")
+        vcp_results = screen_eligible_stocks_vcp(df)
+        logger.info(f"STEP 7.13: VCP screening returned {len(vcp_results)} eligible stocks")
+    except Exception as e:
+        logger.error(f"STEP 7.14: Error during VCP screening: {e}", exc_info=True)
+        return False
 
     # Save results
-    logger.debug("Connecting to DB to save VCP screener results.")
+    logger.info("STEP 7.15: Connecting to DB to save VCP screener results")
     conn, cur = get_trade_db_connection()
     try:
         # CLEAR old VCP results
-        logger.debug("Deleting old 'vcp' screener results.")
+        logger.info("STEP 7.16: Deleting old 'vcp' screener results")
         ScreenerResult.delete_all_by_screener(cur, "vcp")
+        logger.info("STEP 7.17: Old VCP results deleted successfully")
 
         # INSERT new VCP results
-        logger.debug(f"Inserting {len(vcp_results)} new VCP results.")
-        for stock in vcp_results:
+        logger.info(f"STEP 7.18: Inserting {len(vcp_results)} new VCP results")
+        for i, stock in enumerate(vcp_results):
+            if i < 5 or i % 50 == 0:  # Log first 5 and then every 50th
+                logger.info(f"STEP 7.19: Inserting VCP result {i+1}/{len(vcp_results)}: {stock['symbol']}")
+                
             rec = ScreenerResult(
                 screener_name="vcp",
                 instrument_token=stock["instrument_token"],
@@ -553,14 +950,19 @@ def run_vcp_screener():
             )
             rec.save(cur)
 
+        logger.info("STEP 7.20: Committing VCP screener results to database")
         conn.commit()
-        logger.info(f"[VCP Screener] Successfully saved {len(vcp_results)} results.")
+        logger.info(f"STEP 7.21: [VCP Screener] Successfully saved {len(vcp_results)} results")
+        return True
     except Exception as e:
-        logger.error(f"Error in run_vcp_screener: {e}")
+        logger.error(f"STEP 7.22: Error in run_vcp_screener: {e}", exc_info=True)
+        logger.info("STEP 7.23: Rolling back database transaction")
         conn.rollback()
+        return False
     finally:
+        logger.info("STEP 7.24: Releasing database connection")
         release_trade_db_connection(conn, cur)
-    logger.info("----- Finished VCP Screener -----")
+        logger.info("===== STEP 7.25: Finished VCP Screener =====")
 
 def run_ipo_screener():
     """
@@ -570,39 +972,64 @@ def run_ipo_screener():
     4) Clear old "ipo" results from screener_results table.
     5) Insert new results for "ipo".
     """
-    logger.info("----- Starting IPO Screener -----")
+    logger.info("===== STEP 8: Starting IPO Screener =====")
     global ohlc_data
 
     # Load or reuse cached data
     if ohlc_data is None or ohlc_data.empty:
-        logger.debug("No OHLC data cached; loading from DB.")
+        logger.info("STEP 8.1: No OHLC data cached; loading from DB")
         ohlc_data = load_precomputed_ohlc()
+        
+    if ohlc_data is None or ohlc_data.empty:
+        logger.error("STEP 8.2: Failed to load OHLC data for IPO screener. Aborting")
+        return False
 
+    logger.info(f"STEP 8.3: Working with DataFrame of shape {ohlc_data.shape} for IPO screening")
     df = ohlc_data.copy()
+    logger.info(f"STEP 8.4: Made a copy of OHLC data for processing")
 
     # Check market hours
     now = datetime.datetime.now(TIMEZONE).time()
-    logger.debug(f"Current time: {now}. Checking if within market hours (9:15-15:30).")
+    logger.info(f"STEP 8.5: Current time: {now}. Checking if within market hours (9:15-15:30)")
+    
     if datetime.time(9,15) <= now <= datetime.time(15,30):
-        live_data = fetch_live_quotes()
-        df = update_live_data(df, live_data)
+        logger.info("STEP 8.6: Market is open. Will fetch live quotes")
+        try:
+            live_data = fetch_live_quotes()
+            if live_data:
+                logger.info(f"STEP 8.7: Fetched live quotes for {len(live_data)} instruments")
+                df = update_live_data(df, live_data)
+                logger.info("STEP 8.8: Successfully updated data with live quotes")
+            else:
+                logger.warning("STEP 8.9: No live quotes fetched. Using historical data only")
+        except Exception as e:
+            logger.error(f"STEP 8.10: Error fetching live quotes: {e}. Using historical data only")
     else:
-        logger.debug("Market closed. Skipping live data update.")
+        logger.info("STEP 8.11: Market closed. Skipping live data update")
 
     # Screen for IPO
-    ipo_results = screen_eligible_stocks_ipo(df)
+    try:
+        logger.info("STEP 8.12: Starting IPO screening")
+        ipo_results = screen_eligible_stocks_ipo(df)
+        logger.info(f"STEP 8.13: IPO screening returned {len(ipo_results)} eligible stocks")
+    except Exception as e:
+        logger.error(f"STEP 8.14: Error during IPO screening: {e}", exc_info=True)
+        return False
 
     # Save results
-    logger.debug("Connecting to DB to save IPO screener results.")
+    logger.info("STEP 8.15: Connecting to DB to save IPO screener results")
     conn, cur = get_trade_db_connection()
     try:
         # CLEAR old IPO results
-        logger.debug("Deleting old 'ipo' screener results.")
+        logger.info("STEP 8.16: Deleting old 'ipo' screener results")
         ScreenerResult.delete_all_by_screener(cur, "ipo")
+        logger.info("STEP 8.17: Old IPO results deleted successfully")
 
         # INSERT new IPO results
-        logger.debug(f"Inserting {len(ipo_results)} new IPO results.")
-        for stock in ipo_results:
+        logger.info(f"STEP 8.18: Inserting {len(ipo_results)} new IPO results")
+        for i, stock in enumerate(ipo_results):
+            logger.info(f"STEP 8.19: Inserting IPO result {i+1}/{len(ipo_results)}: {stock['symbol']}")
+                
             rec = ScreenerResult(
                 screener_name="ipo",
                 instrument_token=stock["instrument_token"],
@@ -616,14 +1043,19 @@ def run_ipo_screener():
             )
             rec.save(cur)
 
+        logger.info("STEP 8.20: Committing IPO screener results to database")
         conn.commit()
-        logger.info(f"[IPO Screener] Successfully saved {len(ipo_results)} results.")
+        logger.info(f"STEP 8.21: [IPO Screener] Successfully saved {len(ipo_results)} results")
+        return True
     except Exception as e:
-        logger.error(f"Error in run_ipo_screener: {e}")
+        logger.error(f"STEP 8.22: Error in run_ipo_screener: {e}", exc_info=True)
+        logger.info("STEP 8.23: Rolling back database transaction")
         conn.rollback()
+        return False
     finally:
+        logger.info("STEP 8.24: Releasing database connection")
         release_trade_db_connection(conn, cur)
-    logger.info("----- Finished IPO Screener -----")
+        logger.info("===== STEP 8.25: Finished IPO Screener =====")
 
 def run_weekly_vcp_screener():
     """
@@ -635,40 +1067,66 @@ def run_weekly_vcp_screener():
     
     NOTE: Unlike the daily VCP screener, this includes ALL segments except IPOs.
     """
-    logger.info("----- Starting Weekly Screener -----")
+    logger.info("===== STEP 9: Starting Weekly Screener =====")
     global weekly_ohlc_data
 
     # Load or reuse cached data
     if weekly_ohlc_data is None or weekly_ohlc_data.empty:
-        logger.debug("No weekly OHLC data cached; loading from DB.")
+        logger.info("STEP 9.1: No weekly OHLC data cached; loading from DB")
         weekly_ohlc_data = load_precomputed_weekly_ohlc()
+        
+    if weekly_ohlc_data is None or weekly_ohlc_data.empty:
+        logger.error("STEP 9.2: Failed to load weekly OHLC data for weekly screener. Aborting")
+        return False
 
+    logger.info(f"STEP 9.3: Working with DataFrame of shape {weekly_ohlc_data.shape} for weekly screening")
     df = weekly_ohlc_data.copy()
+    logger.info(f"STEP 9.4: Made a copy of weekly OHLC data for processing")
 
     # Check market hours
     now = datetime.datetime.now(TIMEZONE).time()
-    logger.debug(f"Current time: {now}. Checking if within market hours (9:15-15:30).")
+    logger.info(f"STEP 9.5: Current time: {now}. Checking if within market hours (9:15-15:30)")
+    
     if datetime.time(9,15) <= now <= datetime.time(15,30):
-        live_data = fetch_live_quotes()
-        # Use the weekly-specific update function
-        df = update_weekly_live_data(df, live_data)
+        logger.info("STEP 9.6: Market is open. Will fetch live quotes")
+        try:
+            live_data = fetch_live_quotes()
+            if live_data:
+                logger.info(f"STEP 9.7: Fetched live quotes for {len(live_data)} instruments")
+                # Use the weekly-specific update function
+                df = update_weekly_live_data(df, live_data)
+                logger.info("STEP 9.8: Successfully updated weekly data with live quotes")
+            else:
+                logger.warning("STEP 9.9: No live quotes fetched. Using historical data only")
+        except Exception as e:
+            logger.error(f"STEP 9.10: Error fetching live quotes: {e}. Using historical data only")
     else:
-        logger.debug("Market closed. Skipping live data update.")
+        logger.info("STEP 9.11: Market closed. Skipping live data update")
 
-    # Screen for weekly pattern using weekly data and criteria
-    weekly_results = screen_eligible_stocks_weekly(df)
+    # Screen for weekly pattern
+    try:
+        logger.info("STEP 9.12: Starting weekly pattern screening")
+        weekly_results = screen_eligible_stocks_weekly(df)
+        logger.info(f"STEP 9.13: Weekly screening returned {len(weekly_results)} eligible stocks")
+    except Exception as e:
+        logger.error(f"STEP 9.14: Error during weekly screening: {e}", exc_info=True)
+        return False
 
     # Save results
-    logger.debug("Connecting to DB to save Weekly screener results.")
+    logger.info("STEP 9.15: Connecting to DB to save Weekly screener results")
     conn, cur = get_trade_db_connection()
     try:
         # CLEAR old Weekly results
-        logger.debug("Deleting old 'weekly_vcp' screener results.")
+        logger.info("STEP 9.16: Deleting old 'weekly_vcp' screener results")
         ScreenerResult.delete_all_by_screener(cur, "weekly_vcp")
+        logger.info("STEP 9.17: Old weekly_vcp results deleted successfully")
 
         # INSERT new Weekly results
-        logger.debug(f"Inserting {len(weekly_results)} new Weekly results.")
-        for stock in weekly_results:
+        logger.info(f"STEP 9.18: Inserting {len(weekly_results)} new Weekly results")
+        for i, stock in enumerate(weekly_results):
+            if i < 5 or i % 50 == 0:  # Log first 5 and then every 50th
+                logger.info(f"STEP 9.19: Inserting weekly result {i+1}/{len(weekly_results)}: {stock['symbol']}")
+                
             rec = ScreenerResult(
                 screener_name="weekly_vcp",
                 instrument_token=stock["instrument_token"],
@@ -682,11 +1140,16 @@ def run_weekly_vcp_screener():
             )
             rec.save(cur)
 
+        logger.info("STEP 9.20: Committing weekly screener results to database")
         conn.commit()
-        logger.info(f"[Weekly Screener] Successfully saved {len(weekly_results)} results.")
+        logger.info(f"STEP 9.21: [Weekly Screener] Successfully saved {len(weekly_results)} results")
+        return True
     except Exception as e:
-        logger.error(f"Error in run_weekly_vcp_screener: {e}")
+        logger.error(f"STEP 9.22: Error in run_weekly_vcp_screener: {e}", exc_info=True)
+        logger.info("STEP 9.23: Rolling back database transaction")
         conn.rollback()
+        return False
     finally:
+        logger.info("STEP 9.24: Releasing database connection")
         release_trade_db_connection(conn, cur)
-    logger.info("----- Finished Weekly Screener -----")
+        logger.info("===== STEP 9.25: Finished Weekly Screener =====")

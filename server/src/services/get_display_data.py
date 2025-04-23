@@ -222,9 +222,16 @@ def fetch_screener_data(screener_name: str) -> list:
     Returns a list of dicts suitable for JSON response,
     sorted in descending order by 'change'.
     """
+    logger.info(f"Fetching screener data for {screener_name}")
     conn, cur = get_db_connection()
     try:
         rows = ScreenerResult.fetch_by_screener(cur, screener_name)
+        logger.info(f"Retrieved {len(rows)} rows for screener: {screener_name}")
+        
+        if not rows:
+            logger.warning(f"No data found in screener_results for {screener_name}")
+            return []
+            
         data = []
         for row in rows:
             # row is (screener_name, instrument_token, symbol,
@@ -245,7 +252,12 @@ def fetch_screener_data(screener_name: str) -> list:
 
         # Sort the 'data' list in descending order by "change"
         data.sort(key=lambda x: x["change"], reverse=True)
-
+        
+        # Log some of the results
+        if data:
+            symbols = ", ".join([item["symbol"] for item in data[:5]])
+            logger.info(f"Returning {len(data)} results for {screener_name}. First few symbols: {symbols}...")
+        
         return data
 
     except Exception as e:

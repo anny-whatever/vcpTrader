@@ -406,12 +406,103 @@ function Screener() {
           <TableCell>{atrPercent}</TableCell>
           <TableCell>
             <ButtonGroup size="sm" variant="flat" className="rounded-lg">
-              {userRole === "admin" || userRole === "trader" ? (
+              {userRole === "admin" && (
+                <>
+                  <NextUIButton
+                    color="success"
+                    variant="flat"
+                    className="min-w-[40px] h-9 bg-green-500/20 hover:bg-green-500/30 text-green-500"
+                    onPress={() => handleBuyAction(row)}
+                    isDisabled={userRole !== "admin"}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 4.5v15m7.5-7.5h-15"
+                      />
+                    </svg>
+                  </NextUIButton>
+                  <NextUIButton
+                    color="danger"
+                    variant="flat"
+                    className="min-w-[40px] h-9 bg-red-500/20 hover:bg-red-500/30 text-red-500"
+                    onPress={() => handleSellAction(row)}
+                    isDisabled={userRole !== "admin"}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 12h14"
+                      />
+                    </svg>
+                  </NextUIButton>
+                  <NextUIButton
+                    color="warning"
+                    variant="flat"
+                    className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
+                    onPress={() => handleChartAction(row, index)}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
+                      />
+                    </svg>
+                  </NextUIButton>
+                  <NextUIButton
+                    color="primary"
+                    variant="flat"
+                    className="min-w-[40px] h-9 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
+                    onPress={() => handleAlertAction(row)}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
+                      />
+                    </svg>
+                  </NextUIButton>
+                </>
+              )}
+              {userRole !== "admin" && (
                 <NextUIButton
-                  color="success"
+                  size="sm"
+                  color="warning"
                   variant="flat"
-                  className="min-w-[40px] h-9 bg-green-500/20 hover:bg-green-500/30 text-green-500"
-                  onPress={() => handleBuyAction(row)}
+                  className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
+                  onPress={() => handleChartAction(row, index)}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -424,76 +515,11 @@ function Screener() {
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M12 4.5v15m7.5-7.5h-15"
+                      d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
                     />
                   </svg>
                 </NextUIButton>
-              ) : null}
-              {userRole === "admin" || userRole === "trader" ? (
-                <NextUIButton
-                  color="danger"
-                  variant="flat"
-                  className="min-w-[40px] h-9 bg-red-500/20 hover:bg-red-500/30 text-red-500"
-                  onPress={() => handleSellAction(row)}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-5 h-5"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M5 12h14"
-                    />
-                  </svg>
-                </NextUIButton>
-              ) : null}
-              <NextUIButton
-                color="warning"
-                variant="flat"
-                className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
-                onPress={() => handleChartAction(row, index)}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="w-5 h-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
-                  />
-                </svg>
-              </NextUIButton>
-              <NextUIButton
-                color="primary"
-                variant="flat"
-                className="min-w-[40px] h-9 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
-                onPress={() => handleAlertAction(row)}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                  className="w-5 h-5"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
-                  />
-                </svg>
-              </NextUIButton>
+              )}
             </ButtonGroup>
           </TableCell>
         </TableRow>
@@ -519,38 +545,126 @@ function Screener() {
       return (
         <div
           key={`${row.symbol}-mobile-${index}`}
-          className="flex flex-col gap-3 p-4 bg-zinc-900 rounded-xl border border-zinc-800 shadow-md"
+          className="flex flex-col gap-3 p-5 bg-zinc-900/80 backdrop-blur-sm rounded-xl border border-zinc-800/70 shadow-md transition-all hover:border-zinc-700 hover:bg-zinc-800/80"
         >
           <div className="flex items-center justify-between">
-            <span className="text-base font-semibold">{row.symbol}</span>
-            <ButtonGroup className="shadow-sm">
-              {userRole === "admin" && (
-                <>
+            <span className="text-base font-bold text-white">{row.symbol}</span>
+            <div className={`px-3 py-1 rounded-full ${row.change > 0 ? "bg-green-500/10" : "bg-red-500/10"}`}>
+              <span className={`text-base font-semibold ${colorClass}`}>
+                {row.change > 0 ? "+" : ""}
+                {row.change?.toFixed(2)}%
+              </span>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4 mt-1">
+            <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+              <span className="text-xs text-zinc-400 font-medium mb-1">
+                Last Price
+              </span>
+              <span className="text-sm font-medium text-white">
+                {row.last_price?.toFixed(2)}
+              </span>
+            </div>
+            <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+              <span className="text-xs text-zinc-400 font-medium mb-1">
+                Change
+              </span>
+              <span className={`text-sm font-medium ${colorClass}`}>
+                {row.change?.toFixed(2)}%
+              </span>
+            </div>
+            <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+              <span className="text-xs text-zinc-400 font-medium mb-1">
+                ATR %
+              </span>
+              <span className="text-sm font-medium text-white">
+                {atrPercent}
+              </span>
+            </div>
+            <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+              <span className="text-xs text-zinc-400 font-medium mb-1">
+                Actions
+              </span>
+              <div className="flex mt-1">
+                <ButtonGroup className="shadow-sm gap-1 flex flex-wrap">
+                  {userRole === "admin" && (
+                    <>
+                      <NextUIButton
+                        size="sm"
+                        color="success"
+                        variant="flat"
+                        className="min-w-[28px] w-7 h-7 p-0 bg-green-500/20 hover:bg-green-500/30 text-green-500"
+                        onPress={() => handleBuyAction(row)}
+                        isDisabled={userRole !== "admin"}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="w-3.5 h-3.5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M12 4.5v15m7.5-7.5h-15"
+                          />
+                        </svg>
+                      </NextUIButton>
+                      <NextUIButton
+                        size="sm"
+                        color="danger"
+                        variant="flat"
+                        className="min-w-[28px] w-7 h-7 p-0 bg-red-500/20 hover:bg-red-500/30 text-red-500"
+                        onPress={() => handleSellAction(row)}
+                        isDisabled={userRole !== "admin"}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="w-3.5 h-3.5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 12h14"
+                          />
+                        </svg>
+                      </NextUIButton>
+                    </>
+                  )}
                   <NextUIButton
                     size="sm"
-                    color="success"
+                    color="warning"
                     variant="flat"
-                    className="min-w-[40px] h-9 px-3 bg-green-500/20 hover:bg-green-500/30 text-green-500"
-                    onPress={() => handleBuyAction(row)}
-                    isDisabled={userRole !== "admin"}
+                    className="min-w-[28px] w-7 h-7 p-0 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
+                    onPress={() => handleChartAction(row, index)}
                   >
-                    En
-                  </NextUIButton>
-                  <NextUIButton
-                    size="sm"
-                    color="danger"
-                    variant="flat"
-                    className="min-w-[40px] h-9 px-3 bg-red-500/20 hover:bg-red-500/30 text-red-500"
-                    onPress={() => handleSellAction(row)}
-                    isDisabled={userRole !== "admin"}
-                  >
-                    Ex
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-3.5 h-3.5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
+                      />
+                    </svg>
                   </NextUIButton>
                   <NextUIButton
                     size="sm"
                     color="primary"
                     variant="flat"
-                    className="min-w-[40px] h-9 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
+                    className="min-w-[28px] w-7 h-7 p-0 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
                     onPress={() => handleAlertAction(row)}
                   >
                     <svg
@@ -559,44 +673,17 @@ function Screener() {
                       viewBox="0 0 24 24"
                       strokeWidth={1.5}
                       stroke="currentColor"
-                      className="w-5 h-5"
+                      className="w-3.5 h-3.5"
                     >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"
+                        d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
                       />
                     </svg>
                   </NextUIButton>
-                </>
-              )}
-              <NextUIButton
-                size="sm"
-                className="bg-blue-600 text-white hover:bg-blue-700 min-w-[40px]"
-                onPress={() => handleChartAction(row, index)}
-              >
-                Chart
-              </NextUIButton>
-            </ButtonGroup>
-          </div>
-          <div className="grid grid-cols-2 gap-3 mt-1">
-            <div className="flex flex-col">
-              <span className="text-xs text-zinc-400 font-medium">
-                Last Price
-              </span>
-              <span className={`text-sm font-medium ${colorClass}`}>
-                {row.last_price?.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs text-zinc-400 font-medium">Change</span>
-              <span className={`text-sm font-medium ${colorClass}`}>
-                {row.change?.toFixed(2)} %
-              </span>
-            </div>
-            <div className="flex flex-col col-span-2">
-              <span className="text-xs text-zinc-400 font-medium">ATR %</span>
-              <span className="text-sm font-medium">{atrPercent}</span>
+                </ButtonGroup>
+              </div>
             </div>
           </div>
         </div>

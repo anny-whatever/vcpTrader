@@ -11,7 +11,7 @@ from .get_ohlc import get_equity_ohlc_data_loop
 from .place_buy import buy_order_execute
 from .place_exit import sell_order_execute
 from .place_adjust import adjust_order_execute
-from .get_screener import run_vcp_screener, run_ipo_screener, load_precomputed_ohlc, run_weekly_vcp_screener
+from .get_screener import run_vcp_screener, run_ipo_screener, run_weekly_vcp_screener, fetch_live_quotes, load_precomputed_ohlc, load_precomputed_weekly_ohlc
 from .manage_risk_pool import (
     update_risk_pool_on_increase,
     update_risk_pool_on_decrease,
@@ -47,6 +47,9 @@ from .process_ticks import save_tradable_ticks, save_nontradable_ticks
 from .resample_indices import calculate_ohlcv_15min, calculate_ohlcv_5min, calculate_ohlcv_1min
 from .get_fno_list import get_instrument_fno
 from .get_option_chain import generate_option_chain_nifty, filter_expiry_dates, generate_option_chain_bank_nifty, generate_option_chain_fin_nifty
+
+# Re-export these new methods from SaveOHLC for broader use
+from models.save_ohlc import SaveOHLC
 
 __all__ = [
     "get_instrument_indices",

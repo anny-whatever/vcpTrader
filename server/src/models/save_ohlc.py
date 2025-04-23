@@ -194,124 +194,98 @@ class SaveOHLC:
             raise e
 
     @classmethod
-    def fetch_precomputed_ohlc(cls, cur, limit=200):
+    def fetch_precomputed_ohlc(cls, cur, limit=200, exclude_segments=None):
         """
-        Fast retrieval of the last `limit` rows per symbol from the ohlc table,
-        including precomputed columns (sma_50, sma_150, sma_200, atr, "52_week_high", etc.).
+        DEPRECATED - Use fetch_ohlc_exclude_ipo(), fetch_ohlc_exclude_all_segment(), 
+        or fetch_ohlc_exclude_ipo_and_all() instead.
         
-        Uses a window function to partition by symbol and order by date descending.
-        Returns a pandas DataFrame with the combined results.
+        This method is kept for backward compatibility.
+        By default, it excludes both IPO and ALL segments.
         """
-        logger.info(f"Fetching up to {limit} rows of precomputed OHLC+Indicators per symbol from DB...")
-
-        query = """
-            SELECT 
-            instrument_token,
-            symbol,
-            interval,
-            date,
-            open,
-            high,
-            low,
-            close,
-            volume,
-            segment,
-            sma_50,
-            sma_150,
-            sma_200,
-            atr,
-            "52_week_high",
-            "52_week_low",
-            away_from_high,
-            away_from_low
-        FROM ohlc
-        WHERE segment != 'ALL'
-        AND date >= NOW() - INTERVAL '333 days';
-        """
-
-        try:
-            # Use parameterized query to safely pass the limit
-            cur.execute(query)
-            rows = cur.fetchall()
-            logger.info(f"Fetched processed OHLC+Indicators data for {len(rows)} symbols.")
-            if not rows:
-                logger.warning("No rows returned from fetch_precomputed_ohlc. Returning empty DataFrame.")
-                return pd.DataFrame(columns=[
-                    "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
-                    "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
-                    "52_week_low", "away_from_high", "away_from_low"
-                ])
-
-            # Convert to DataFrame
-            columns = [
-                "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
-                "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
-                "52_week_low", "away_from_high", "away_from_low"
-            ]
-            df = pd.DataFrame(rows, columns=columns)
-
-            # Convert all numeric columns in one vectorized step
-            float_cols = [
-                "open", "high", "low", "close", "volume",
-                "sma_50", "sma_150", "sma_200", "atr",
-                "52_week_high", "52_week_low", "away_from_high", "away_from_low"
-            ]
-            df[float_cols] = df[float_cols].apply(pd.to_numeric, errors='coerce').fillna(0.0)
-
-            # Parse the date column with inferred format for speed
-            df["date"] = pd.to_datetime(df["date"], errors='coerce')
-
-            # Replace infinite values in one go
-            df.replace({float('inf'): 0.0, float('-inf'): 0.0}, inplace=True)
-
-            logger.info(f"Constructed DataFrame with {len(df)} rows of precomputed OHLC data.")
-            return df
-        except Exception as e:
-            logger.error(f"Error in fetch_precomputed_ohlc: {e}", exc_info=True)
-            raise e
+        logger.warning("fetch_precomputed_ohlc is deprecated. Use fetch_ohlc_exclude_ipo_and_all() instead.")
+        return cls.fetch_ohlc_exclude_ipo_and_all(cur)
 
     @classmethod
-    def fetch_precomputed_weekly_ohlc(cls, cur, limit=200):
+    def fetch_precomputed_weekly_ohlc(cls, cur, limit=200, exclude_segments=None, include_segments=None):
         """
-        Fast retrieval of the last `limit` rows per symbol from the ohlc table with 'week' interval,
-        including precomputed columns (sma_50, sma_150, sma_200, atr, "52_week_high", etc.).
+        DEPRECATED - Use fetch_ohlc_exclude_ipo() instead.
         
-        Returns a pandas DataFrame with the combined results.
+        This method is kept for backward compatibility.
+        By default, it excludes only IPO segment.
         """
-        logger.info(f"Fetching up to {limit} rows of precomputed weekly OHLC+Indicators per symbol from DB...")
+        logger.warning("fetch_precomputed_weekly_ohlc is deprecated. Use fetch_ohlc_exclude_ipo() instead.")
+        return cls.fetch_ohlc_exclude_ipo(cur)
 
+    @classmethod
+    def fetch_precomputed_ohlc_without_segments(cls, cur, exclude_segments=None, limit=200):
+        """
+        DEPRECATED - Use fetch_ohlc_exclude_ipo(), fetch_ohlc_exclude_all_segment(), 
+        or fetch_ohlc_exclude_ipo_and_all() instead.
+        
+        This method is kept for backward compatibility.
+        By default, it excludes both IPO and ALL segments.
+        """
+        logger.warning("fetch_precomputed_ohlc_without_segments is deprecated. Use fetch_ohlc_exclude_ipo_and_all() instead.")
+        return cls.fetch_ohlc_exclude_ipo_and_all(cur)
+
+    @classmethod
+    def fetch_precomputed_weekly_ohlc_with_filtering(cls, cur, include_segments=None, exclude_segments=None, limit=200):
+        """
+        DEPRECATED - Use fetch_ohlc_exclude_ipo() instead.
+        
+        This method is kept for backward compatibility.
+        By default, it excludes only IPO segment.
+        """
+        logger.warning("fetch_precomputed_weekly_ohlc_with_filtering is deprecated. Use fetch_ohlc_exclude_ipo() instead.")
+        return cls.fetch_ohlc_exclude_ipo(cur)
+
+    @classmethod
+    def fetch_ohlc_exclude_ipo(cls, cur):
+        """
+        Fetch precomputed OHLC data excluding only IPO segment.
+        
+        Args:
+            cur: Database cursor
+            
+        Returns:
+            DataFrame with OHLC data excluding the IPO segment
+        """
+        logger.info("Fetching OHLC data excluding IPO segment")
+        
         query = """
             SELECT 
-            instrument_token,
-            symbol,
-            interval,
-            date,
-            open,
-            high,
-            low,
-            close,
-            volume,
-            segment,
-            sma_50,
-            sma_150,
-            sma_200,
-            atr,
-            "52_week_high",
-            "52_week_low",
-            away_from_high,
-            away_from_low
-        FROM ohlc
-        WHERE interval = 'week'
-        AND date >= NOW() - INTERVAL '1000 days';
+                instrument_token,
+                symbol,
+                interval,
+                date,
+                open,
+                high,
+                low,
+                close,
+                volume,
+                segment,
+                sma_50,
+                sma_150,
+                sma_200,
+                atr,
+                "52_week_high",
+                "52_week_low",
+                away_from_high,
+                away_from_low
+            FROM ohlc
+            WHERE interval = 'day'
+            AND date >= NOW() - INTERVAL '365 days'
+            AND segment != 'IPO'
+            ORDER BY date DESC
         """
-
+        
         try:
-            # Use parameterized query to safely pass the limit
             cur.execute(query)
             rows = cur.fetchall()
-            logger.info(f"Fetched processed weekly OHLC+Indicators data for {len(rows)} symbols.")
+            logger.info(f"Fetched {len(rows)} OHLC rows excluding IPO segment")
+            
             if not rows:
-                logger.warning("No rows returned from fetch_precomputed_weekly_ohlc. Returning empty DataFrame.")
+                logger.warning("No rows returned. Returning empty DataFrame.")
                 return pd.DataFrame(columns=[
                     "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
                     "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
@@ -340,9 +314,198 @@ class SaveOHLC:
             # Replace infinite values in one go
             df.replace({float('inf'): 0.0, float('-inf'): 0.0}, inplace=True)
 
-            logger.info(f"Constructed DataFrame with {len(df)} rows of precomputed weekly OHLC data.")
+            # Log summary statistics for debugging
+            logger.info(f"Constructed DataFrame with {len(df)} rows excluding IPO segment")
+            symbols = df['symbol'].unique()
+            logger.info(f"DataFrame contains {len(symbols)} unique symbols")
+            
             return df
         except Exception as e:
-            logger.error(f"Error in fetch_precomputed_weekly_ohlc: {e}", exc_info=True)
-            raise e
+            logger.error(f"Error in fetch_ohlc_exclude_ipo: {e}", exc_info=True)
+            logger.error("Returning empty DataFrame due to error")
+            return pd.DataFrame(columns=[
+                "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
+                "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                "52_week_low", "away_from_high", "away_from_low"
+            ])
+
+    @classmethod
+    def fetch_ohlc_exclude_all_segment(cls, cur):
+        """
+        Fetch precomputed OHLC data excluding only ALL segment.
+        
+        Args:
+            cur: Database cursor
+            
+        Returns:
+            DataFrame with OHLC data excluding the ALL segment
+        """
+        logger.info("Fetching OHLC data excluding ALL segment")
+        
+        query = """
+            SELECT 
+                instrument_token,
+                symbol,
+                interval,
+                date,
+                open,
+                high,
+                low,
+                close,
+                volume,
+                segment,
+                sma_50,
+                sma_150,
+                sma_200,
+                atr,
+                "52_week_high",
+                "52_week_low",
+                away_from_high,
+                away_from_low
+            FROM ohlc
+            WHERE interval = 'day'
+            AND date >= NOW() - INTERVAL '365 days'
+            AND segment != 'ALL'
+            ORDER BY date DESC
+        """
+        
+        try:
+            cur.execute(query)
+            rows = cur.fetchall()
+            logger.info(f"Fetched {len(rows)} OHLC rows excluding ALL segment")
+            
+            if not rows:
+                logger.warning("No rows returned. Returning empty DataFrame.")
+                return pd.DataFrame(columns=[
+                    "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
+                    "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                    "52_week_low", "away_from_high", "away_from_low"
+                ])
+
+            # Convert to DataFrame
+            columns = [
+                "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
+                "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                "52_week_low", "away_from_high", "away_from_low"
+            ]
+            df = pd.DataFrame(rows, columns=columns)
+
+            # Convert all numeric columns in one vectorized step
+            float_cols = [
+                "open", "high", "low", "close", "volume",
+                "sma_50", "sma_150", "sma_200", "atr",
+                "52_week_high", "52_week_low", "away_from_high", "away_from_low"
+            ]
+            df[float_cols] = df[float_cols].apply(pd.to_numeric, errors='coerce').fillna(0.0)
+
+            # Parse the date column with inferred format for speed
+            df["date"] = pd.to_datetime(df["date"], errors='coerce')
+
+            # Replace infinite values in one go
+            df.replace({float('inf'): 0.0, float('-inf'): 0.0}, inplace=True)
+
+            # Log summary statistics for debugging
+            logger.info(f"Constructed DataFrame with {len(df)} rows excluding ALL segment")
+            symbols = df['symbol'].unique()
+            logger.info(f"DataFrame contains {len(symbols)} unique symbols")
+            
+            return df
+        except Exception as e:
+            logger.error(f"Error in fetch_ohlc_exclude_all_segment: {e}", exc_info=True)
+            logger.error("Returning empty DataFrame due to error")
+            return pd.DataFrame(columns=[
+                "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
+                "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                "52_week_low", "away_from_high", "away_from_low"
+            ])
+
+    @classmethod
+    def fetch_ohlc_exclude_ipo_and_all(cls, cur):
+        """
+        Fetch precomputed OHLC data excluding both IPO and ALL segments.
+        
+        Args:
+            cur: Database cursor
+            
+        Returns:
+            DataFrame with OHLC data excluding both IPO and ALL segments
+        """
+        logger.info("Fetching OHLC data excluding both IPO and ALL segments")
+        
+        query = """
+            SELECT 
+                instrument_token,
+                symbol,
+                interval,
+                date,
+                open,
+                high,
+                low,
+                close,
+                volume,
+                segment,
+                sma_50,
+                sma_150,
+                sma_200,
+                atr,
+                "52_week_high",
+                "52_week_low",
+                away_from_high,
+                away_from_low
+            FROM ohlc
+            WHERE interval = 'day'
+            AND date >= NOW() - INTERVAL '365 days'
+            AND segment NOT IN ('IPO', 'ALL')
+            ORDER BY date DESC
+        """
+        
+        try:
+            cur.execute(query)
+            rows = cur.fetchall()
+            logger.info(f"Fetched {len(rows)} OHLC rows excluding both IPO and ALL segments")
+            
+            if not rows:
+                logger.warning("No rows returned. Returning empty DataFrame.")
+                return pd.DataFrame(columns=[
+                    "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
+                    "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                    "52_week_low", "away_from_high", "away_from_low"
+                ])
+
+            # Convert to DataFrame
+            columns = [
+                "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
+                "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                "52_week_low", "away_from_high", "away_from_low"
+            ]
+            df = pd.DataFrame(rows, columns=columns)
+
+            # Convert all numeric columns in one vectorized step
+            float_cols = [
+                "open", "high", "low", "close", "volume",
+                "sma_50", "sma_150", "sma_200", "atr",
+                "52_week_high", "52_week_low", "away_from_high", "away_from_low"
+            ]
+            df[float_cols] = df[float_cols].apply(pd.to_numeric, errors='coerce').fillna(0.0)
+
+            # Parse the date column with inferred format for speed
+            df["date"] = pd.to_datetime(df["date"], errors='coerce')
+
+            # Replace infinite values in one go
+            df.replace({float('inf'): 0.0, float('-inf'): 0.0}, inplace=True)
+
+            # Log summary statistics for debugging
+            logger.info(f"Constructed DataFrame with {len(df)} rows excluding both IPO and ALL segments")
+            symbols = df['symbol'].unique()
+            logger.info(f"DataFrame contains {len(symbols)} unique symbols")
+            
+            return df
+        except Exception as e:
+            logger.error(f"Error in fetch_ohlc_exclude_ipo_and_all: {e}", exc_info=True)
+            logger.error("Returning empty DataFrame due to error")
+            return pd.DataFrame(columns=[
+                "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
+                "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                "52_week_low", "away_from_high", "away_from_low"
+            ])
 
