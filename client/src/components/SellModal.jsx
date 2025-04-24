@@ -83,7 +83,7 @@ function SellModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol }) {
           </Button>
         </DialogActions>
       </Dialog>
-      <Toaster position="top-right" richColors />
+      
     </>
   );
 }

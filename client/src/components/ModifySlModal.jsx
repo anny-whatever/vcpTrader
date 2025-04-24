@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -6,6 +6,8 @@ import {
   DialogActions,
   Button,
   TextField,
+  Switch,
+  FormControlLabel,
   Box,
   Typography,
 } from "@mui/material";
@@ -14,8 +16,34 @@ import { Toaster, toast } from "sonner";
 import { PlayToastSound, PlayErrorSound } from "../utils/PlaySound";
 import modalStyles from "./ui/ModalStyles";
 
-function ModifySlModal({ isOpen, onClose, symbol, currentSl }) {
+function ModifySlModal({ isOpen, onClose, symbol, currentEntryPrice, currentSl }) {
   const [newSl, setNewSl] = useState(currentSl || "");
+  const [usePercentage, setUsePercentage] = useState(false);
+  const [percentageValue, setPercentageValue] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Calculate and update SL when entry price or percentage changes
+  useEffect(() => {
+    if (!isEditing && usePercentage && percentageValue && currentEntryPrice) {
+      // Calculate SL based on percentage below entry price
+      const percentage = parseFloat(percentageValue) / 100;
+      const calculatedSL = currentEntryPrice * (1 - percentage);
+      setNewSl(calculatedSL.toFixed(2));
+    }
+  }, [usePercentage, percentageValue, currentEntryPrice, isEditing]);
+
+  // Update percentage when absolute value changes
+  useEffect(() => {
+    if (!isEditing && !usePercentage || !newSl || !currentEntryPrice) return;
+    
+    const slValue = parseFloat(newSl);
+    const entryPrice = parseFloat(currentEntryPrice);
+    const percentageDiff = ((entryPrice - slValue) / entryPrice) * 100;
+    
+    if (!isNaN(percentageDiff)) {
+      setPercentageValue(Math.round(percentageDiff));
+    }
+  }, [newSl, currentEntryPrice, usePercentage, isEditing]);
 
   const handleModifySl = async () => {
     try {
@@ -25,7 +53,7 @@ function ModifySlModal({ isOpen, onClose, symbol, currentSl }) {
       }
 
       const response = await api.get(
-        `/api/order/modifysl?symbol=${symbol}&sl=${newSl}`
+        `/api/order/change_sl?symbol=${symbol}&sl=${newSl}`
       );
       PlayToastSound();
       toast.success(
@@ -43,6 +71,39 @@ function ModifySlModal({ isOpen, onClose, symbol, currentSl }) {
   const handleClose = () => {
     onClose();
     setNewSl(currentSl || "");
+    setPercentageValue("");
+    setUsePercentage(false);
+  };
+
+  const handlePercentageChange = (e) => {
+    setIsEditing(true);
+    const value = e.target.value;
+    // Store percentage as integer (no decimals)
+    setPercentageValue(value);
+    
+    if (currentEntryPrice && value) {
+      const percentage = parseInt(value, 10) / 100;
+      const calculatedSL = currentEntryPrice * (1 - percentage);
+      setNewSl(calculatedSL.toFixed(2));
+    }
+    setIsEditing(false);
+  };
+
+  const handleAbsoluteChange = (e) => {
+    setIsEditing(true);
+    const value = e.target.value;
+    setNewSl(value);
+    
+    if (usePercentage && currentEntryPrice && value) {
+      const slValue = parseFloat(value);
+      const entryPrice = parseFloat(currentEntryPrice);
+      const percentageDiff = ((entryPrice - slValue) / entryPrice) * 100;
+      
+      if (!isNaN(percentageDiff)) {
+        setPercentageValue(Math.round(percentageDiff));
+      }
+    }
+    setIsEditing(false);
   };
 
   return (
@@ -69,19 +130,73 @@ function ModifySlModal({ isOpen, onClose, symbol, currentSl }) {
             }}
           >
             <Typography variant="body2" sx={{ color: "#f4f4f5" }}>
-              Current Stop Loss: {currentSl || "Not set"}
+              Current Entry: {currentEntryPrice ? currentEntryPrice.toFixed(2) : "Not set"}
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#f4f4f5" }}>
+              Current SL: {currentSl || "Not set"}
             </Typography>
           </Box>
-          <TextField
-            label="New Stop Loss"
-            type="number"
-            value={newSl}
-            onChange={(e) => setNewSl(e.target.value)}
-            variant="outlined"
-            size="small"
-            fullWidth
-            sx={modalStyles.input}
-          />
+          
+          <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+            <Typography variant="body2" sx={{ mr: 1, color: "#f4f4f5" }}>
+              Stop Loss
+            </Typography>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={usePercentage}
+                  onChange={(e) => setUsePercentage(e.target.checked)}
+                  color="primary"
+                  size="small"
+                />
+              }
+              label="Use Percentage"
+              sx={{
+                m: 0,
+                ".MuiFormControlLabel-label": {
+                  fontSize: "0.85rem",
+                  color: "#a1a1aa",
+                },
+              }}
+            />
+          </Box>
+          
+          {usePercentage ? (
+            <TextField
+              label="SL Percentage (%)"
+              type="number"
+              value={percentageValue}
+              onChange={handlePercentageChange}
+              variant="outlined"
+              size="small"
+              fullWidth
+              sx={modalStyles.input}
+              InputProps={{
+                inputProps: { 
+                  min: 0, 
+                  max: 100,
+                  step: 1
+                }
+              }}
+            />
+          ) : (
+            <TextField
+              label="Absolute Stop Loss"
+              type="number"
+              value={newSl}
+              onChange={handleAbsoluteChange}
+              variant="outlined"
+              size="small"
+              fullWidth
+              sx={modalStyles.input}
+            />
+          )}
+          
+          {usePercentage && newSl && (
+            <Typography variant="body2" sx={{ mt: 1, color: "#f4f4f5", fontSize: "0.85rem" }}>
+              Calculated SL: {newSl} ({percentageValue}%)
+            </Typography>
+          )}
         </DialogContent>
         <DialogActions sx={modalStyles.actions}>
           <Button onClick={handleClose} sx={modalStyles.secondaryButton}>
@@ -98,7 +213,6 @@ function ModifySlModal({ isOpen, onClose, symbol, currentSl }) {
           </Button>
         </DialogActions>
       </Dialog>
-      <Toaster position="top-right" richColors />
     </>
   );
 }

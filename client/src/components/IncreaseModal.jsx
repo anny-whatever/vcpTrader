@@ -182,7 +182,7 @@ function IncreaseModal({
           </Button>
         </DialogActions>
       </Dialog>
-      <Toaster position="top-right" richColors />
+      
     </>
   );
 }

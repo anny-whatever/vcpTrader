@@ -207,7 +207,7 @@ function AllPositions() {
               Total Risk
             </span>
             <span className="mt-1 text-xl text-zinc-200 font-semibold">
-              {(riskpool?.total_risk * multiplier || 0).toFixed(2)}
+              {((riskpool?.available_risk + riskpool?.used_risk) * multiplier || 0).toFixed(2)}
             </span>
           </div>
         </div>
@@ -266,7 +266,7 @@ function AllPositions() {
                       {(currentPnl * multiplier).toFixed(2)} ({pnlPercent}%)
                     </TableCell>
                     <TableCell>
-                      <ButtonGroup className="shadow-lg w-full">
+                      <ButtonGroup className="w-full">
                         {userRole === "admin" && (
                           <>
                             <Button
@@ -315,7 +315,7 @@ function AllPositions() {
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
-                                  d="M15 12H9m3 3l3-3-3-3"
+                                  d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3"
                                 />
                               </svg>
                             </Button>
@@ -395,29 +395,135 @@ function AllPositions() {
                               </svg>
                             </Button>
 
-                            <Button
-                              size="sm"
-                              variant="flat"
-                              className="min-w-[40px] h-9 bg-pink-500/20 hover:bg-pink-500/30 text-pink-500"
-                              onPress={() => {
-                                // This will open the dropdown
-                              }}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-5 h-5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
-                                />
-                              </svg>
-                            </Button>
+                            <Dropdown className="dark">
+                              <DropdownTrigger>
+                                <Button
+                                  size="sm"
+                                  variant="flat"
+                                  className="min-w-[40px] h-9 bg-pink-500/20 hover:bg-pink-500/30 text-pink-500"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={1.5}
+                                    stroke="currentColor"
+                                    className="w-5 h-5"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+                                    />
+                                  </svg>
+                                </Button>
+                              </DropdownTrigger>
+                              <DropdownMenu aria-label="Trade Stats" className="dark">
+                                <DropdownItem
+                                  className="p-0 hover:bg-zinc-900"
+                                  textValue="Stats"
+                                >
+                                  <div className="flex flex-col justify-between gap-1 p-3 text-left text-white rounded-lg w-72 bg-zinc-900/80 backdrop-blur-md border border-zinc-800">
+                                    <div className="text-xl">Stats</div>
+                                    <div className="py-1 text-md">
+                                      Stop-Loss: {row.stop_loss?.toFixed(2)} (
+                                      {(
+                                        ((row.stop_loss - row.entry_price) /
+                                          row.entry_price) *
+                                        100
+                                      ).toFixed(2)}
+                                      %)
+                                      {userRole === "admin" && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            populatePositionData(row);
+                                            handleOpenModifySlModal();
+                                          }}
+                                          disabled={userRole !== "admin"}
+                                          className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
+                                        >
+                                          C
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="py-1 text-md">
+                                      Target: {row.target?.toFixed(2)} (
+                                      {(
+                                        ((row.target - row.entry_price) /
+                                          row.entry_price) *
+                                        100
+                                      ).toFixed(2)}
+                                      %)
+                                      {userRole === "admin" && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            populatePositionData(row);
+                                            handleOpenModifyTgtModal();
+                                          }}
+                                          disabled={userRole !== "admin"}
+                                          className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
+                                        >
+                                          C
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="py-1 text-md">
+                                      Capital Used:{" "}
+                                      {(
+                                        row.entry_price *
+                                        row.current_qty *
+                                        multiplier
+                                      ).toFixed(2)}
+                                    </div>
+                                    <div className="py-1 text-md">
+                                      Risk:{" "}
+                                      {(
+                                        ((row.stop_loss - row.entry_price) *
+                                          row.current_qty +
+                                          row.booked_pnl) *
+                                        multiplier
+                                      ).toFixed(2)}
+                                    </div>
+                                    <div className="py-1 text-md">
+                                      Reward:{" "}
+                                      {(
+                                        ((row.target - row.entry_price) *
+                                          row.current_qty +
+                                          row.booked_pnl) *
+                                        multiplier
+                                      ).toFixed(2)}
+                                    </div>
+                                    <div
+                                      className={
+                                        row.booked_pnl > 0
+                                          ? "text-green-500 text-md py-1"
+                                          : "text-red-500 text-md py-1"
+                                      }
+                                    >
+                                      Booked:{" "}
+                                      {(row.booked_pnl * multiplier).toFixed(2)}
+                                    </div>
+                                    {userRole === "admin" && (
+                                      <div className="py-1">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleAutoExit(row);
+                                          }}
+                                          className="px-2 py-1 text-xs bg-blue-500 rounded-md bg-opacity-40 hover:bg-blue-700"
+                                        >
+                                          {`Auto Exit: ${
+                                            row.auto_exit ? "True" : "False"
+                                          }`}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </DropdownItem>
+                              </DropdownMenu>
+                            </Dropdown>
                           </>
                         )}
                         {userRole !== "admin" && (
@@ -526,7 +632,7 @@ function AllPositions() {
                       Actions
                     </span>
                     <div className="flex mt-1">
-                      <ButtonGroup className="shadow-sm w-full gap-1 flex flex-wrap justify-start">
+                      <ButtonGroup className="w-full gap-1 flex flex-wrap justify-start">
                         {userRole === "admin" && (
                           <>
                             <Button
@@ -575,7 +681,7 @@ function AllPositions() {
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
-                                  d="M15 12H9m3 3l3-3-3-3"
+                                  d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3"
                                 />
                               </svg>
                             </Button>
@@ -601,8 +707,8 @@ function AllPositions() {
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
                                   d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
-                                />
-                              </svg>
+                              />
+                            </svg>
                             </Button>
                             <Button
                               size="sm"
@@ -656,29 +762,135 @@ function AllPositions() {
                             </Button>
                             
                             {/* Stats Button */}
-                            <Button
-                              size="sm"
-                              variant="flat"
-                              className="min-w-[28px] w-7 h-7 p-0 bg-pink-500/20 hover:bg-pink-500/30 text-pink-500"
-                              onPress={() => {
-                                // This will open the dropdown
-                              }}
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                strokeWidth={1.5}
-                                stroke="currentColor"
-                                className="w-3.5 h-3.5"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
-                                />
-                              </svg>
-                            </Button>
+                            <Dropdown className="dark">
+                              <DropdownTrigger>
+                                <Button
+                                  size="sm"
+                                  variant="flat"
+                                  className="min-w-[28px] w-7 h-7 p-0 bg-pink-500/20 hover:bg-pink-500/30 text-pink-500"
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    strokeWidth={1.5}
+                                    stroke="currentColor"
+                                    className="w-3.5 h-3.5"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+                                    />
+                                  </svg>
+                                </Button>
+                              </DropdownTrigger>
+                              <DropdownMenu aria-label="Trade Stats" className="dark">
+                                <DropdownItem
+                                  className="p-0 hover:bg-zinc-900"
+                                  textValue="Stats"
+                                >
+                                  <div className="flex flex-col justify-between gap-1 p-3 text-left text-white rounded-lg w-60 bg-zinc-900/80 backdrop-blur-md border border-zinc-800">
+                                    <div className="text-xl">Stats</div>
+                                    <div className="py-1 text-md">
+                                      Stop-Loss: {row.stop_loss?.toFixed(2)} (
+                                      {(
+                                        ((row.stop_loss - row.entry_price) /
+                                          row.entry_price) *
+                                        100
+                                      ).toFixed(2)}
+                                      %)
+                                      {userRole === "admin" && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            populatePositionData(row);
+                                            handleOpenModifySlModal();
+                                          }}
+                                          disabled={userRole !== "admin"}
+                                          className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
+                                        >
+                                          C
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="py-1 text-md">
+                                      Target: {row.target?.toFixed(2)} (
+                                      {(
+                                        ((row.target - row.entry_price) /
+                                          row.entry_price) *
+                                        100
+                                      ).toFixed(2)}
+                                      %)
+                                      {userRole === "admin" && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            populatePositionData(row);
+                                            handleOpenModifyTgtModal();
+                                          }}
+                                          disabled={userRole !== "admin"}
+                                          className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
+                                        >
+                                          C
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="py-1 text-md">
+                                      Capital Used:{" "}
+                                      {(
+                                        row.entry_price *
+                                        row.current_qty *
+                                        multiplier
+                                      ).toFixed(2)}
+                                    </div>
+                                    <div className="py-1 text-md">
+                                      Risk:{" "}
+                                      {(
+                                        ((row.stop_loss - row.entry_price) *
+                                          row.current_qty +
+                                          row.booked_pnl) *
+                                        multiplier
+                                      ).toFixed(2)}
+                                    </div>
+                                    <div className="py-1 text-md">
+                                      Reward:{" "}
+                                      {(
+                                        ((row.target - row.entry_price) *
+                                          row.current_qty +
+                                          row.booked_pnl) *
+                                        multiplier
+                                      ).toFixed(2)}
+                                    </div>
+                                    <div
+                                      className={
+                                        row.booked_pnl > 0
+                                          ? "text-green-500 text-md py-1"
+                                          : "text-red-500 text-md py-1"
+                                      }
+                                    >
+                                      Booked:{" "}
+                                      {(row.booked_pnl * multiplier).toFixed(2)}
+                                    </div>
+                                    {userRole === "admin" && (
+                                      <div className="py-1">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toggleAutoExit(row);
+                                          }}
+                                          className="px-2 py-1 text-xs bg-blue-500 rounded-md bg-opacity-40 hover:bg-blue-700"
+                                        >
+                                          {`Auto Exit: ${
+                                            row.auto_exit ? "True" : "False"
+                                          }`}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </DropdownItem>
+                              </DropdownMenu>
+                            </Dropdown>
                           </>
                         )}
                         {userRole !== "admin" && (
@@ -712,143 +924,6 @@ function AllPositions() {
                     </div>
                   </div>
                 </div>
-                
-                {/* Dropdown menu for stats */}
-                {userRole === "admin" && (
-                  <Dropdown className="dark">
-                    <DropdownTrigger>
-                      <Button
-                        size="sm"
-                        variant="flat"
-                        className="min-w-full mt-2 h-8 bg-zinc-950/30 hover:bg-zinc-800/50 text-zinc-400"
-                      >
-                        <span className="text-xs">View Trade Stats</span>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth={1.5}
-                          stroke="currentColor"
-                          className="w-4 h-4 ml-1"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="m19.5 8.25-7.5 7.5-7.5-7.5"
-                          />
-                        </svg>
-                      </Button>
-                    </DropdownTrigger>
-                    <DropdownMenu
-                      aria-label="Stats Menu"
-                      className="dark"
-                    >
-                      <DropdownItem
-                        className="p-0 hover:bg-zinc-900"
-                        textValue="Stats"
-                      >
-                        <div className="flex flex-col justify-between gap-1 p-3 text-left text-white rounded-lg w-72 bg-zinc-900/80 backdrop-blur-md border border-zinc-800">
-                          <div className="text-xl">Stats</div>
-                          <div className="py-1 text-md">
-                            Stop-Loss: {row.stop_loss?.toFixed(2)} (
-                            {(
-                              ((row.stop_loss - row.entry_price) /
-                                row.entry_price) *
-                              100
-                            ).toFixed(2)}
-                            %)
-                            {userRole === "admin" && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  populatePositionData(row);
-                                  handleOpenModifySlModal();
-                                }}
-                                disabled={userRole !== "admin"}
-                                className="px-2 py-1 ml-2 text-xs bg-red-500 rounded-md bg-opacity-40 hover:bg-red-700"
-                              >
-                                C
-                              </button>
-                            )}
-                          </div>
-                          <div className="py-1 text-md">
-                            Target: {row.target?.toFixed(2)} (
-                            {(
-                              ((row.target - row.entry_price) /
-                                row.entry_price) *
-                              100
-                            ).toFixed(2)}
-                            %)
-                            {userRole === "admin" && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  populatePositionData(row);
-                                  handleOpenModifyTgtModal();
-                                }}
-                                disabled={userRole !== "admin"}
-                                className="px-2 py-1 ml-2 text-xs bg-green-500 rounded-md bg-opacity-40 hover:bg-green-700"
-                              >
-                                C
-                              </button>
-                            )}
-                          </div>
-                          <div className="py-1 text-md">
-                            Capital Used:{" "}
-                            {(
-                              row.entry_price *
-                              row.current_qty *
-                              multiplier
-                            ).toFixed(2)}
-                          </div>
-                          <div className="py-1 text-md">
-                            Risk:{" "}
-                            {(
-                              ((row.stop_loss - row.entry_price) *
-                                row.current_qty +
-                                row.booked_pnl) *
-                              multiplier
-                            ).toFixed(2)}
-                          </div>
-                          <div className="py-1 text-md">
-                            Reward:{" "}
-                            {(
-                              ((row.target - row.entry_price) *
-                                row.current_qty +
-                                row.booked_pnl) *
-                              multiplier
-                            ).toFixed(2)}
-                          </div>
-                          <div
-                            className={
-                              row.booked_pnl > 0
-                                ? "text-green-500 text-md py-1"
-                                : "text-red-500 text-md py-1"
-                            }
-                          >
-                            Booked:{" "}
-                            {(row.booked_pnl * multiplier).toFixed(2)}
-                          </div>
-                          {userRole === "admin" && (
-                            <div className="py-1">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleAutoExit(row);
-                                }}
-                                className="px-2 py-1 text-xs bg-blue-500 rounded-md bg-opacity-40 hover:bg-blue-700"
-                              >
-                                {`Auto Exit: ${
-                                  row.auto_exit ? "True" : "False"
-                                }`}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </DropdownItem>
-                    </DropdownMenu>
-                  </Dropdown>
-                )}
               </div>
             );
           })}
@@ -884,6 +959,7 @@ function AllPositions() {
           onClose={handleCloseModifySlModal}
           symbol={positionData?.stock_name}
           currentEntryPrice={positionData?.entry_price}
+          currentSl={positionData?.stop_loss}
           AvailableRisk={riskpool?.available_risk}
           UsedRisk={riskpool?.used_risk}
         />
@@ -892,6 +968,7 @@ function AllPositions() {
           onClose={handleCloseModifyTgtModal}
           symbol={positionData?.stock_name}
           currentEntryPrice={positionData?.entry_price}
+          currentTarget={positionData?.target}
           AvailableRisk={riskpool?.available_risk}
           UsedRisk={riskpool?.used_risk}
         />

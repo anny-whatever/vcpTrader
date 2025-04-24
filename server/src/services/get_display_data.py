@@ -3,6 +3,8 @@ import pytz
 from datetime import datetime, time
 import pandas as pd
 import pandas_ta as ta
+import math
+import numpy as np
 from db import get_db_connection, close_db_connection
 from models import PriceAlert, AlertMessage, RiskPool, SaveTradeDetails, SaveHistoricalTradeDetails, SaveOHLC, ScreenerResult
 from controllers import kite  # Assumes you have a kite module for live quotes
@@ -17,6 +19,8 @@ def safe_float(value, default=0.0):
     Safely converts a value to float, returning a default if conversion fails.
     """
     try:
+        if value is None or (isinstance(value, float) and (math.isnan(value) or math.isinf(value))):
+            return default
         return float(value)
     except (TypeError, ValueError):
         return default
@@ -164,12 +168,10 @@ def get_combined_ohlc(instrument_token, symbol, interval='day'):
                 df['sma_50'] = ta.sma(df['close'], length=min(50, len(df)))
                 df['sma_150'] = ta.sma(df['close'], length=min(150, len(df)))
                 df['sma_200'] = ta.sma(df['close'], length=min(200, len(df)))
-                import numpy as np
                 for col in ['sma_50', 'sma_150', 'sma_200']:
                     df[col] = df[col].replace([np.inf, -np.inf], np.nan)
                     df[col] = df[col].fillna(0)
                     df[col] = np.around(df[col], decimals=2)
-                import math
                 df = df.map(lambda x: 0 if isinstance(x, float) and not math.isfinite(x) else x)
                 logger.info(f"get_combined_ohlc: returning {len(df)} rows of {interval} data")
                 return df.to_dict(orient="records")
@@ -241,12 +243,12 @@ def fetch_screener_data(screener_name: str) -> list:
                 "screener_name": row[0],
                 "instrument_token": row[1],
                 "symbol": row[2],
-                "last_price": row[3],
-                "change": row[4],   # rename from 'change_pct' to 'change'
-                "sma_50": row[5],
-                "sma_150": row[6],
-                "sma_200": row[7],
-                "atr": row[8],
+                "last_price": safe_float(row[3]),
+                "change": safe_float(row[4]),   # rename from 'change_pct' to 'change'
+                "sma_50": safe_float(row[5]),
+                "sma_150": safe_float(row[6]),
+                "sma_200": safe_float(row[7]),
+                "atr": safe_float(row[8]),
                 "run_time": row[9].isoformat() if row[9] else None
             })
 

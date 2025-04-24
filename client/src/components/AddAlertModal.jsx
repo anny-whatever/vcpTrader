@@ -127,7 +127,7 @@ function AddAlertModal({ isOpen, onClose, symbol, instrument_token, ltp }) {
           </Button>
         </DialogActions>
       </Dialog>
-      <Toaster position="top-right" richColors />
+      
     </>
   );
 }

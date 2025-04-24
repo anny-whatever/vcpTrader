@@ -102,7 +102,7 @@ function ReduceModal({ isOpen, onClose, symbol, qty }) {
           </Button>
         </DialogActions>
       </Dialog>
-      <Toaster position="top-right" richColors />
+      
     </>
   );
 }

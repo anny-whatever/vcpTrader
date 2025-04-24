@@ -172,7 +172,7 @@ function BuyModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol, ltp }) {
           </Button>
         </DialogActions>
       </Dialog>
-      <Toaster position="top-right" richColors />
+      
     </>
   );
 }
