@@ -273,7 +273,7 @@ function AllPositions() {
                               size="sm"
                               color="success"
                               variant="flat"
-                              className="min-w-[40px] h-9 bg-green-500/20 hover:bg-green-500/30 text-green-500"
+                              className="min-w-[40px] h-9 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-500"
                               onPress={() => {
                                 populatePositionData(row);
                                 handleOpenIncreaseModal();
@@ -290,13 +290,13 @@ function AllPositions() {
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
-                                  d="M12 4.5v15m7.5-7.5h-15"
+                                  d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18"
                                 />
                               </svg>
                             </Button>
                             <Button
                               size="sm"
-                              color="secondary"
+                              color="purple"
                               variant="flat"
                               className="min-w-[40px] h-9 bg-purple-500/20 hover:bg-purple-500/30 text-purple-500"
                               onPress={() => {
@@ -639,7 +639,7 @@ function AllPositions() {
                               size="sm"
                               color="success"
                               variant="flat"
-                              className="min-w-[28px] w-7 h-7 p-0 bg-green-500/20 hover:bg-green-500/30 text-green-500"
+                              className="min-w-[28px] w-7 h-7 p-0 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-500"
                               onPress={() => {
                                 populatePositionData(row);
                                 handleOpenIncreaseModal();
@@ -656,13 +656,13 @@ function AllPositions() {
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
-                                  d="M12 4.5v15m7.5-7.5h-15"
+                                  d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18"
                                 />
                               </svg>
                             </Button>
                             <Button
                               size="sm"
-                              color="secondary"
+                              color="purple"
                               variant="flat"
                               className="min-w-[28px] w-7 h-7 p-0 bg-purple-500/20 hover:bg-purple-500/30 text-purple-500"
                               onPress={() => {
