@@ -361,9 +361,6 @@ function ChartModal({
   // 3. Real-Time Updates via .update() on the last candle
   // --------------------------------------------
   useEffect(() => {
-    // Only apply live updates to daily charts
-    if (interval !== "day") return;
-
     if (
       !liveData ||
       !liveData.length ||
