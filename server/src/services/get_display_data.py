@@ -121,19 +121,13 @@ def get_combined_ohlc(instrument_token, symbol, interval='day'):
         now = datetime.now(TIMEZONE)
         today_date = now.date()
         
-        # Handle live data updates
-        if combined_data and MARKET_OPEN <= now.time() <= MARKET_CLOSE:
+        # Only add today's data for daily charts if market is open
+        if interval == 'day' and combined_data:
+            last_historical_date = pd.to_datetime(combined_data[-1]['date']).astimezone(TIMEZONE).date()
+            if last_historical_date < today_date and MARKET_OPEN <= now.time() <= MARKET_CLOSE:
                 try:
-                # Fetch the current price for the instrument
                     quote = kite.quote(instrument_token)[str(instrument_token)]
-                last_price = quote.get('last_price', 0)
-                
-                if interval == 'day':
-                    # For daily charts - Add today's data if missing
-                    last_historical_date = pd.to_datetime(combined_data[-1]['date']).astimezone(TIMEZONE).date()
-                    if last_historical_date < today_date:
-                        # Create a new daily candle for today
-                        logger.info(f'Adding new daily candle for {symbol} with price {last_price}')
+                    logger.info(f'quote: {quote}')
                     ohlc = quote.get('ohlc', {})
                     if ohlc:
                         today_entry = {
@@ -144,54 +138,10 @@ def get_combined_ohlc(instrument_token, symbol, interval='day'):
                             'open': ohlc.get('open', 0),
                             'high': ohlc.get('high', 0),
                             'low': ohlc.get('low', 0),
-                                'close': last_price,
+                            'close': quote.get('last_price', 0),
                             'volume': quote.get('volume_today', 0)
                         }
                         combined_data.append(today_entry)
-                
-                elif interval == 'week':
-                    # For weekly charts - Update last candle or create new based on week
-                    last_row = combined_data[-1]
-                    last_date = pd.to_datetime(last_row['date']).to_pydatetime()
-                    
-                    # Import is_new_week from get_screener for consistency
-                    from services.get_screener import is_new_week
-                    
-                    # Check if we need to create a new weekly candle or update existing
-                    create_new_candle = is_new_week(last_date, now)
-                    
-                    if create_new_candle:
-                        # Create a new weekly candle
-                        logger.info(f'Creating NEW weekly candle for {symbol} with price {last_price}')
-                        new_weekly_entry = {
-                            'instrument_token': instrument_token,
-                            'symbol': symbol,
-                            'interval': 'week',
-                            'date': now,
-                            'open': last_price,  # For a new candle, open = current price
-                            'high': last_price,
-                            'low': last_price,
-                            'close': last_price,
-                            'volume': 0,
-                            # Copy indicator values from previous candle as starting point
-                            'sma_50': last_row.get('sma_50', 0),
-                            'sma_150': last_row.get('sma_150', 0),
-                            'sma_200': last_row.get('sma_200', 0),
-                            'atr': last_row.get('atr', 0),
-                            '52_week_high': last_row.get('52_week_high', 0),
-                            '52_week_low': last_row.get('52_week_low', 0),
-                            'away_from_high': last_row.get('away_from_high', 0),
-                            'away_from_low': last_row.get('away_from_low', 0)
-                        }
-                        combined_data.append(new_weekly_entry)
-                    else:
-                        # Update the existing weekly candle
-                        logger.info(f'Updating EXISTING weekly candle for {symbol} with price {last_price}')
-                        last_row['high'] = max(last_row['high'], last_price)
-                        last_row['low'] = min(last_row['low'], last_price)
-                        last_row['close'] = last_price
-                        # Note: we keep the original open price
-                
                 except Exception as e:
                     logger.error(f"Error fetching live data for {symbol}: {e}")
                     
