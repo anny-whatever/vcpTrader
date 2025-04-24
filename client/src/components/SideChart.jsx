@@ -8,7 +8,7 @@ import {
   LineSeries,
   HistogramSeries,
 } from "lightweight-charts";
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, ToggleButtonGroup, ToggleButton } from "@mui/material";
 import { Spinner } from "@nextui-org/react";
 
 function SideChart({ symbol, token }) {
@@ -17,6 +17,7 @@ function SideChart({ symbol, token }) {
   const [liveChange, setLiveChange] = useState(null);
   const [OHLC, setOHLC] = useState(null);
   const [livePrice, setLivePrice] = useState(null);
+  const [interval, setInterval] = useState("day");
   const chartContainerRef = useRef();
 
   // References for chart objects (for real-time updates)
@@ -36,10 +37,21 @@ function SideChart({ symbol, token }) {
   // 1. Helper function to open TradingView chart
   // --------------------------------------------
   const openChart = (symbol) => {
+    const timeframe = interval === "week" ? "&timeframe=W" : "";
     window.open(
-      `https://www.tradingview.com/chart/?symbol=NSE:${symbol}`,
+      `https://www.tradingview.com/chart/?symbol=NSE:${symbol}${timeframe}`,
       "_blank"
     );
+  };
+
+  // Handle interval change
+  const handleIntervalChange = (event, newInterval) => {
+    if (newInterval !== null && newInterval !== interval) {
+      if (chartRef.current) {
+        chartRef.current._isChangingInterval = true;
+      }
+      setInterval(newInterval);
+    }
   };
 
   // --------------------------------------------
@@ -53,7 +65,7 @@ function SideChart({ symbol, token }) {
       setOHLC(null);
       setLivePrice(null);
       const response = await api.get(
-        `/api/data/chartdata?token=${token}&symbol=${symbol}`
+        `/api/data/chartdata?token=${token}&symbol=${symbol}&interval=${interval}`
       );
 
       // Transform your data to the structure needed by Lightweight Charts
@@ -80,7 +92,7 @@ function SideChart({ symbol, token }) {
       getChartData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol, token]);
+  }, [symbol, token, interval]);
 
   // --------------------------------------------
   // 3. Create Chart and Set Initial Data
@@ -88,6 +100,53 @@ function SideChart({ symbol, token }) {
   useEffect(() => {
     if (!chartData || !chartData.length) return;
     if (!chartContainerRef.current) return;
+
+    if (chartRef.current && !chartRef.current._isChangingInterval) {
+      barSeriesRef.current.setData(chartData);
+      const volumeData = chartData.map((item) => ({
+        time: item.time,
+        value: item.volume,
+      }));
+      volumeSeriesRef.current.setData(volumeData);
+      const sma50Data = chartData.map((item) => ({
+        time: item.time,
+        value: item.sma_50,
+      }));
+      const sma150Data = chartData.map((item) => ({
+        time: item.time,
+        value: item.sma_150,
+      }));
+      const sma200Data = chartData.map((item) => ({
+        time: item.time,
+        value: item.sma_200,
+      }));
+      ma50SeriesRef.current.setData(sma50Data);
+      ma150SeriesRef.current.setData(sma150Data);
+      ma200SeriesRef.current.setData(sma200Data);
+      lastCandleRef.current = chartData[chartData.length - 1];
+
+      if (chartData.length > 75) {
+        const fromIdx = chartData.length - 75;
+        chartRef.current.timeScale().setVisibleRange({
+          from: chartData[fromIdx].time,
+          to: chartData[chartData.length - 1].time,
+        });
+      } else {
+        chartRef.current.timeScale().fitContent();
+      }
+
+      return;
+    }
+    
+    if (chartRef.current) {
+      chartRef.current.remove();
+      chartRef.current = null;
+      barSeriesRef.current = null;
+      volumeSeriesRef.current = null;
+      ma50SeriesRef.current = null;
+      ma150SeriesRef.current = null;
+      ma200SeriesRef.current = null;
+    }
 
     const container = chartContainerRef.current;
     const getDimensions = () => ({
@@ -234,7 +293,6 @@ function SideChart({ symbol, token }) {
     if (!tick) return;
 
     // Extract the new price, volume, SMAs from the real-time feed
-    // (Adjust the property names if your feed is different)
     const newPrice = tick.last_price;
     const newVolume = tick.volume_traded;
     const newSma50 = tick.sma_50;
@@ -251,7 +309,7 @@ function SideChart({ symbol, token }) {
       close: newPrice,
       high: Math.max(lastCandleRef.current.high, newPrice),
       low: Math.min(lastCandleRef.current.low, newPrice),
-      volume: newVolume,
+      volume: interval === 'day' ? newVolume : lastCandleRef.current.volume,
     };
 
     // If the feed includes updated SMA values, update them too
@@ -276,7 +334,29 @@ function SideChart({ symbol, token }) {
       time: updatedCandle.time,
       value: updatedCandle.volume,
     });
-  }, [liveData, chartData, token]);
+    
+    // Update SMA lines if available
+    if (newSma50 !== undefined) {
+      ma50SeriesRef.current.update({
+        time: updatedCandle.time,
+        value: newSma50,
+      });
+    }
+    
+    if (newSma150 !== undefined) {
+      ma150SeriesRef.current.update({
+        time: updatedCandle.time,
+        value: newSma150,
+      });
+    }
+    
+    if (newSma200 !== undefined) {
+      ma200SeriesRef.current.update({
+        time: updatedCandle.time,
+        value: newSma200,
+      });
+    }
+  }, [liveData, chartData, token, interval]);
 
   // --------------------------------------------
   // 5. UI / Return
@@ -375,41 +455,39 @@ function SideChart({ symbol, token }) {
         </div>
       </div>
 
-      {/* Full Chart Button (top-right corner) */}
-      <button
-        onClick={() => openChart(symbol)}
+      {/* Interval Toggle Buttons (top-right corner) */}
+      <div
         style={{
           position: "absolute",
           top: "8px",
           right: "8px",
           zIndex: 10,
-          backgroundColor: "rgba(39, 39, 42, 0.8)", // zinc-800 with transparency
-          color: "#fff",
-          padding: "8px 12px",
-          borderRadius: "6px",
-          border: "1px solid #3f3f46", // zinc-700
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
         }}
       >
-        <span>Open in TradingView</span>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={1.5}
-          stroke="currentColor"
-          className="size-5"
+        <ToggleButtonGroup
+          value={interval}
+          exclusive
+          onChange={handleIntervalChange}
+          size="small"
+          sx={{
+          backgroundColor: "rgba(39, 39, 42, 0.8)", // zinc-800 with transparency
+          border: "1px solid #3f3f46", // zinc-700
+            borderRadius: "6px",
+            "& .MuiToggleButton-root": {
+              color: "#ffffff80",
+              fontSize: "0.75rem",
+              padding: "4px 8px",
+              "&.Mui-selected": {
+                backgroundColor: "#3f3f46", // zinc-700
+                color: "#ffffff",
+              },
+            },
+          }}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
-          />
-        </svg>
-      </button>
+          <ToggleButton value="day">D</ToggleButton>
+          <ToggleButton value="week">W</ToggleButton>
+        </ToggleButtonGroup>
+      </div>
     </Box>
   );
 }

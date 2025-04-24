@@ -211,24 +211,25 @@ def get_scheduler():
             id="run_vcp_screener_job_part3"
         )
         
+        # Weekly VCP screener jobs => runs less frequently (every 5 minutes)
         scheduler.add_job(
             run_weekly_vcp_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='9', minute='15-59'),
-            max_instances=3,
+            CronTrigger(day_of_week='mon-fri', hour='9', minute='15,20,25,30,35,40,45,50,55'),
+            max_instances=2,
             replace_existing=False,
             id="run_weekly_vcp_screener_job_part1"
         )
         scheduler.add_job(
             run_weekly_vcp_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='10-14', minute='*'),
-            max_instances=3,
+            CronTrigger(day_of_week='mon-fri', hour='10-14', minute='0,5,10,15,20,25,30,35,40,45,50,55'),
+            max_instances=2,
             replace_existing=False,
             id="run_weekly_vcp_screener_job_part2"
         )
         scheduler.add_job(
             run_weekly_vcp_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='15', minute='0-30'),
-            max_instances=3,
+            CronTrigger(day_of_week='mon-fri', hour='15', minute='0,5,10,15,20,25,30'),
+            max_instances=2,
             replace_existing=False,
             id="run_weekly_vcp_screener_job_part3"
         )

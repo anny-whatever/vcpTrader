@@ -293,9 +293,6 @@ function ChartModal({
   // 3. Real-Time Updates via .update() on the last candle
   // --------------------------------------------
   useEffect(() => {
-    // Only apply live updates to daily charts
-    if (interval !== "day") return;
-
     if (
       !liveData ||
       !liveData.length ||
@@ -326,14 +323,16 @@ function ChartModal({
     setOHLC(tick.ohlc);
     setLivePrice(newPrice);
 
-    // Update the last candle
+    // Update the last candle (works for both daily and weekly)
     const updatedCandle = {
       ...lastCandleRef.current,
       close: newPrice,
       high: Math.max(lastCandleRef.current.high, newPrice),
       low: Math.min(lastCandleRef.current.low, newPrice),
-      volume: newVolume,
+      volume: interval === 'day' ? newVolume : lastCandleRef.current.volume,
     };
+    
+    // Update technical indicators if available
     if (newSma50 !== undefined) {
       updatedCandle.sma_50 = newSma50;
     }
@@ -346,12 +345,38 @@ function ChartModal({
 
     // Save the updated candle and update the chart using .update()
     lastCandleRef.current = updatedCandle;
+    
+    // Update the bar series with the updated candle
     barSeriesRef.current.update(updatedCandle);
+    
+    // Update volume series
     volumeSeriesRef.current.update({
       time: updatedCandle.time,
       value: updatedCandle.volume,
     });
-  }, [liveData, chartData, token]);
+    
+    // Update SMA lines if available
+    if (newSma50 !== undefined) {
+      ma50SeriesRef.current.update({
+        time: updatedCandle.time,
+        value: newSma50,
+      });
+    }
+    
+    if (newSma150 !== undefined) {
+      ma150SeriesRef.current.update({
+        time: updatedCandle.time,
+        value: newSma150,
+      });
+    }
+    
+    if (newSma200 !== undefined) {
+      ma200SeriesRef.current.update({
+        time: updatedCandle.time,
+        value: newSma200,
+      });
+    }
+  }, [liveData, chartData, token, interval]);
 
   // Listen for keyboard navigation
   useEffect(() => {

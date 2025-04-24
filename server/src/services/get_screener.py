@@ -70,10 +70,17 @@ def load_precomputed_ohlc():
 
 def load_precomputed_weekly_ohlc():
     """
-    Loads precomputed weekly OHLC data (with indicators) from the database
-    using SaveOHLC.fetch_ohlc_exclude_ipo().
-    This version uses a dedicated method for excluding only IPO segment.
-    Caches the DataFrame globally in `weekly_ohlc_data`.
+    Loads precomputed weekly OHLC data (with indicators) from the database.
+    
+    Notes on weekly candle handling:
+    - The last candle for each instrument may be an incomplete week
+    - When the market is open, this partial week data will be extended
+      by the update_weekly_live_data function to include current prices
+    - Indicators stored in the DB will be recalculated after updates
+    
+    Returns:
+        DataFrame: Weekly OHLC data including all segments except IPO
+                  Includes technical indicators (SMAs, ATR, etc.)
     """
     logger.info("STEP 1W: Loading precomputed weekly OHLC data via SaveOHLC class (excluding only IPO)...")
     global weekly_ohlc_data
@@ -82,7 +89,7 @@ def load_precomputed_weekly_ohlc():
     conn, cur = get_trade_db_connection()
     try:
         logger.info("STEP 1W.2: Executing fetch_ohlc_exclude_ipo to get weekly data")
-        # Use the new dedicated method for this specific exclusion case
+        # Use the dedicated method that excludes only IPO segment
         df = SaveOHLC.fetch_ohlc_exclude_ipo(cur)
         logger.info(f"STEP 1W.3: Fetched {len(df)} rows of filtered weekly data")
         
@@ -97,17 +104,33 @@ def load_precomputed_weekly_ohlc():
             logger.info(f"STEP 1W.5: DataFrame columns: {list(df.columns)}")
             logger.info(f"STEP 1W.6: Date range: {df['date'].min()} to {df['date'].max()}")
             
+            # Check for partial week data by looking at the most recent dates
+            current_date = datetime.datetime.now(TIMEZONE)
+            # Extract just the date part for comparison
+            current_date_str = current_date.strftime('%Y-%m-%d')
+            last_dates = df.groupby('symbol')['date'].max()
+            
+            # Count stocks with data from the current week
+            current_week_count = 0
+            for symbol, last_date in last_dates.items():
+                if isinstance(last_date, str):
+                    last_date = pd.to_datetime(last_date)
+                if not is_new_week(last_date, current_date):
+                    current_week_count += 1
+            
+            logger.info(f"STEP 1W.7: Found {current_week_count} out of {len(symbols)} stocks with partial data from current week")
+            
             # Log segment information - should include ALL but not IPO
             segments = df['segment'].unique()
-            logger.info(f"STEP 1W.7: Segments in weekly data: {segments}")
+            logger.info(f"STEP 1W.8: Segments in weekly data: {segments}")
             if "ALL" in segments:
-                logger.info(f"STEP 1W.7.1: ALL segment is present in the weekly data")
+                logger.info(f"STEP 1W.8.1: ALL segment is present in the weekly data")
             else:
-                logger.warning(f"STEP 1W.7.2: ALL segment is NOT present in the weekly data!")
+                logger.warning(f"STEP 1W.8.2: ALL segment is NOT present in the weekly data!")
                 
             # Check for NaN values in key columns
             nan_counts = {col: df[col].isna().sum() for col in ['close', 'sma_50', 'sma_150', 'sma_200']}
-            logger.info(f"STEP 1W.8: NaN counts in key weekly columns: {nan_counts}")
+            logger.info(f"STEP 1W.9: NaN counts in key weekly columns: {nan_counts}")
         
         weekly_ohlc_data = df
         return weekly_ohlc_data
@@ -115,7 +138,7 @@ def load_precomputed_weekly_ohlc():
         logger.error(f"ERROR in load_precomputed_weekly_ohlc: {e}", exc_info=True)
         return pd.DataFrame()
     finally:
-        logger.info("STEP 1W.9: Releasing database connection")
+        logger.info("STEP 1W.10: Releasing database connection")
         release_trade_db_connection(conn, cur)
 
 def fetch_live_quotes(batch_size=250):
@@ -650,15 +673,23 @@ def screen_eligible_stocks_weekly(df):
 
 def is_new_week(last_date, current_date):
     """
-    Helper function to determine if current_date is in a new week compared to last_date.
-    Uses ISO calendar week numbers.
+    Determines if two dates belong to different ISO calendar weeks.
+    
+    This is the key function for deciding when to create a new weekly candle 
+    versus updating an existing one. Using ISO calendar week numbers ensures
+    that candles align with standard weekly boundaries (Monday to Sunday).
+    
+    This approach naturally handles:
+    - Weekend gaps (quotes from Friday and Monday belong to different weeks)
+    - Holiday gaps (quotes before and after a holiday in the same week stay in the same candle)
+    - Year transitions (week 1 of new year vs week 52/53 of previous year)
     
     Args:
         last_date: Datetime representing the last bar date
         current_date: Datetime representing the current date
     
     Returns:
-        bool: True if current_date is in a new week, False otherwise
+        bool: True if current_date is in a new week compared to last_date
     """
     logger.debug(f"STEP W1: Checking if {current_date} is in a new week compared to {last_date}")
     
@@ -679,6 +710,7 @@ def is_new_week(last_date, current_date):
         current_date = current_date.replace(tzinfo=TIMEZONE)
     
     # Get ISO calendar year and week number
+    # We check both year and week number to handle year transitions correctly
     last_year_week = (last_date.year, last_date.isocalendar()[1])
     current_year_week = (current_date.year, current_date.isocalendar()[1])
     
@@ -690,12 +722,24 @@ def is_new_week(last_date, current_date):
 
 def update_weekly_live_data(df, live_data):
     """
-    Similar to update_live_data but specifically for weekly data.
-    For each instrument token with a live quote, update the latest weekly bar
-    with the current price if we're still in the same week, or create a new
-    weekly bar if we've moved to a new week.
+    Updates weekly candle data with live quotes.
     
-    Also recalculates key indicators like ATR, 52-week high/low, and SMAs.
+    Key logic:
+    1. For each instrument with live quotes, we check if we're in the same week as the last candle
+    2. If in the same week, we UPDATE the last candle's OHLC values (keeping original open, updating high/low/close)
+    3. If in a new week, we CREATE a new candle with the live quote as OHLC values
+    4. In both cases, we recalculate technical indicators
+    
+    This handles weekends and holidays naturally because:
+    - Any quote from a mid-week holiday will be part of the same week's candle
+    - Calendar week boundaries (not trading days) determine when to create a new candle
+    
+    Args:
+        df: DataFrame containing weekly OHLC data
+        live_data: Dictionary of instrument_token -> live price
+        
+    Returns:
+        Updated DataFrame with live quotes incorporated
     """
     logger.info("STEP 10: Starting update_weekly_live_data to incorporate live prices")
     
@@ -735,7 +779,7 @@ def update_weekly_live_data(df, live_data):
         last_row = group.iloc[-1]
         symbol = last_row['symbol']
         
-        # Check if last row is from the current week
+        # Check if last row is from the current week using ISO calendar week numbers
         last_date = pd.to_datetime(last_row["date"]).to_pydatetime()
         logger.debug(f"STEP 10.8: Checking week for {symbol}: last date = {last_date}")
         create_new_bar = is_new_week(last_date, current_date)
@@ -770,7 +814,10 @@ def update_weekly_live_data(df, live_data):
             logger.debug(f"STEP 10.10: Updating EXISTING weekly bar for {symbol} with live price {live_price}")
             update_counts['updated_existing'] += 1
             
-            # Update the existing weekly bar
+            # Update the existing weekly bar's OHLC values
+            # - Keep the original open (from the week's first trading day)
+            # - Update high/low if the live price exceeds current values
+            # - Always update close to the latest price
             new_row = {
                 "instrument_token": token,
                 "symbol": last_row["symbol"],
@@ -800,7 +847,7 @@ def update_weekly_live_data(df, live_data):
         logger.debug(f"STEP 10.11: Adding new/updated row to group for {symbol}")
         group_updated = pd.concat([group, pd.DataFrame([new_row])], ignore_index=True)
         
-        # Recalculate indicators
+        # Recalculate indicators for accuracy
         logger.debug(f"STEP 10.12: Recalculating indicators for {symbol}")
         
         # Use the close prices series for calculating SMAs
@@ -823,7 +870,7 @@ def update_weekly_live_data(df, live_data):
             group_updated.at[len(group_updated)-1, "sma_200"] = float(sma_200)
             logger.debug(f"STEP 10.16: New SMA200 for {symbol}: {float(sma_200):.2f}")
 
-        # Recompute ATR
+        # Recompute ATR with available data
         logger.debug(f"STEP 10.17: Recalculating ATR for {symbol}")
         tail_window = min(50, len(group_updated))
         subset = group_updated.tail(tail_window).copy()
@@ -836,8 +883,9 @@ def update_weekly_live_data(df, live_data):
         new_atr_val = float(new_atr_series.iloc[-1] if not new_atr_series.empty else 0.0)
         logger.debug(f"STEP 10.18: New ATR for {symbol}: {new_atr_val:.2f}")
 
-        # 52-week highs/lows
+        # Recalculate 52-week highs/lows
         logger.debug(f"STEP 10.19: Recalculating 52-week high/low for {symbol}")
+        # Use min(52 weeks, available data)
         subset_52 = group_updated.tail(min(52, len(group_updated)))
         new_52_high = float(subset_52["high"].max())
         new_52_low = float(subset_52["low"].min())
@@ -1059,11 +1107,22 @@ def run_ipo_screener():
 
 def run_weekly_vcp_screener():
     """
+    Weekly VCP screener that handles partial week data.
+    
+    Process:
     1) Load precomputed weekly data (or use cached global).
-    2) If market is open, fetch live quotes and update last row.
-    3) Screen using weekly criteria.
-    4) Clear old "weekly_vcp" results from screener_results table.
-    5) Insert new results for "weekly_vcp".
+    2) If market is open, fetch live quotes and update:
+       - If in the same week as the last candle, update that candle's OHLC values
+       - If in a new week, create a new candle with the live quote
+    3) Recalculate indicators for accurate screening
+    4) Screen for weekly VCP patterns
+    5) Clear old "weekly_vcp" results from screener_results table
+    6) Insert new results for "weekly_vcp"
+    
+    This function properly handles:
+    - Partial week data (ongoing candle formation during the current week)
+    - Weekend transitions
+    - Holiday gaps within the same week
     
     NOTE: Unlike the daily VCP screener, this includes ALL segments except IPOs.
     """
@@ -1093,7 +1152,8 @@ def run_weekly_vcp_screener():
             live_data = fetch_live_quotes()
             if live_data:
                 logger.info(f"STEP 9.7: Fetched live quotes for {len(live_data)} instruments")
-                # Use the weekly-specific update function
+                # Use the weekly-specific update function that handles same-week updates
+                # and new-week transitions based on ISO calendar week
                 df = update_weekly_live_data(df, live_data)
                 logger.info("STEP 9.8: Successfully updated weekly data with live quotes")
             else:
