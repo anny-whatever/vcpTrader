@@ -30,6 +30,8 @@ import {
   HistogramSeries,
 } from "lightweight-charts";
 import { DataContext } from "../utils/DataContext";
+import { AuthContext } from "../utils/AuthContext";
+import { jwtDecode } from "jwt-decode";
 import { Spinner } from "@nextui-org/react";
 import { toast } from "sonner";
 import { PlayToastSound, PlayErrorSound } from "../utils/PlaySound";
@@ -42,7 +44,7 @@ function ChartModal({
   isOpen,
   onClose,
   symbol,
-  token,
+  token: instrumentToken,
   onPrevious,
   onNext,
   hasNext,
@@ -50,6 +52,7 @@ function ChartModal({
   onAddAlert,
 }) {
   const { liveData, priceAlerts, positions } = useContext(DataContext);
+  const { token } = useContext(AuthContext);
   const [chartData, setChartData] = useState(null);
   const [liveChange, setLiveChange] = useState(null);
   const [OHLC, setOHLC] = useState(null);
@@ -86,6 +89,21 @@ function ChartModal({
   const [isIncreaseModalOpen, setIsIncreaseModalOpen] = useState(false);
   const [isReduceModalOpen, setIsReduceModalOpen] = useState(false);
   const [isExitLoading, setIsExitLoading] = useState(false);
+
+  // Add multiplier logic
+  let multiplier = 1;
+  let userRole = "";
+  if (token) {
+    try {
+      const decoded = jwtDecode(token);
+      userRole = decoded.role || "";
+      if (userRole !== "admin") {
+        multiplier = 25;
+      }
+    } catch (error) {
+      console.error("Failed to decode token:", error);
+    }
+  }
 
   // Calculate live P&L for the position if it exists
   const calculateLivePnL = () => {
@@ -130,14 +148,14 @@ function ChartModal({
   // 1. Fetch Chart Data from the backend
   // --------------------------------------------
   const getChartData = async () => {
-    if (!symbol || !token) return;
+    if (!symbol || !instrumentToken) return;
     try {
       setChartData(null);
       setLiveChange(null);
       setOHLC(null);
       setLivePrice(null);
       const response = await api.get(
-        `/api/data/chartdata?token=${token}&symbol=${symbol}&interval=${interval}`
+        `/api/data/chartdata?token=${instrumentToken}&symbol=${symbol}&interval=${interval}`
       );
       const transformedData = response.data.map((item) => ({
         time: item.date.split("T")[0],
@@ -172,7 +190,7 @@ function ChartModal({
       getChartData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, symbol, token, interval]); // Add interval as dependency
+  }, [isOpen, symbol, instrumentToken, interval]); // Add interval as dependency
 
   // --------------------------------------------
   // 2. Create the chart (or update series if already created)
@@ -377,7 +395,7 @@ function ChartModal({
     }
 
     // Find the tick for this token
-    const tick = liveData.find((t) => t.instrument_token === token);
+    const tick = liveData.find((t) => t.instrument_token === instrumentToken);
     if (!tick) return;
 
     // Extract the new values from the real-time feed
@@ -416,7 +434,7 @@ function ChartModal({
       time: updatedCandle.time,
       value: updatedCandle.volume,
     });
-  }, [liveData, chartData, token]);
+  }, [liveData, chartData, instrumentToken]);
 
   // Listen for keyboard navigation
   useEffect(() => {
@@ -724,7 +742,7 @@ function ChartModal({
                         No alerts set for this stock
                       </Typography>
                       <Button
-                        onClick={() => onAddAlert(symbol, token, livePrice)}
+                        onClick={() => onAddAlert(symbol, instrumentToken, livePrice)}
                         variant="outlined"
                         size="small"
                         sx={{
@@ -761,13 +779,13 @@ function ChartModal({
                       <Box>
                         <Typography sx={{ color: '#a1a1aa', fontSize: '0.7rem' }}>Quantity</Typography>
                         <Typography sx={{ fontSize: '0.85rem', fontWeight: 500 }}>
-                          {symbolPosition.current_qty}
+                          {symbolPosition.current_qty * multiplier}
                         </Typography>
                       </Box>
                       <Box>
                         <Typography sx={{ color: '#a1a1aa', fontSize: '0.7rem' }}>Capital Used</Typography>
                         <Typography sx={{ fontSize: '0.85rem', fontWeight: 500 }}>
-                          ₹{(symbolPosition.entry_price * symbolPosition.current_qty).toFixed(2)}
+                          ₹{(symbolPosition.entry_price * symbolPosition.current_qty * multiplier).toFixed(2)}
                         </Typography>
                       </Box>
                       <Box>
@@ -777,7 +795,7 @@ function ChartModal({
                           fontWeight: 500,
                           color: livePnL.pnl >= 0 ? '#22c55e' : '#ef4444'
                         }}>
-                          ₹{livePnL.pnl.toFixed(2)}
+                          ₹{(livePnL.pnl * multiplier).toFixed(2)}
                         </Typography>
                       </Box>
                       <Box>
@@ -831,112 +849,116 @@ function ChartModal({
                   
                   <Divider sx={{ borderColor: '#27272a', my: 1.5 }} />
                   
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      sx={{
-                        color: "#ef4444",
-                        borderColor: "#7f1d1d",
-                        fontSize: "0.7rem",
-                        py: 0.5,
-                        minWidth: 0,
-                        flex: "1 0 auto",
-                        textTransform: "none",
-                        "&:hover": {
-                          borderColor: "#b91c1c",
-                          bgcolor: "rgba(239, 68, 68, 0.1)",
-                        },
-                      }}
-                      onClick={handleExitPosition}
-                      disabled={isExitLoading}
-                    >
-                      Exit
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      sx={{
-                        color: "#10b981",
-                        borderColor: "#064e3b",
-                        fontSize: "0.7rem",
-                        py: 0.5,
-                        minWidth: 0,
-                        flex: "1 0 auto",
-                        textTransform: "none",
-                        "&:hover": {
-                          borderColor: "#047857",
-                          bgcolor: "rgba(16, 185, 129, 0.1)",
-                        },
-                      }}
-                      onClick={handleOpenIncreaseModal}
-                    >
-                      Add
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      sx={{
-                        color: "#f59e0b",
-                        borderColor: "#78350f",
-                        fontSize: "0.7rem",
-                        py: 0.5,
-                        minWidth: 0,
-                        flex: "1 0 auto",
-                        textTransform: "none",
-                        "&:hover": {
-                          borderColor: "#92400e",
-                          bgcolor: "rgba(245, 158, 11, 0.1)",
-                        },
-                      }}
-                      onClick={handleOpenReduceModal}
-                    >
-                      Reduce
-                    </Button>
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      sx={{
-                        color: "#3b82f6",
-                        borderColor: "#1e3a8a",
-                        fontSize: "0.7rem",
-                        py: 0.5,
-                        minWidth: 0,
-                        flex: "1 0 auto",
-                        textTransform: "none",
-                        "&:hover": {
-                          borderColor: "#1d4ed8",
-                          bgcolor: "rgba(59, 130, 246, 0.1)",
-                        },
-                      }}
-                      onClick={handleOpenModifySlModal}
-                    >
-                      Modify SL
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      sx={{
-                        color: "#8b5cf6",
-                        borderColor: "#4c1d95",
-                        fontSize: "0.7rem",
-                        py: 0.5,
-                        minWidth: 0,
-                        flex: "1 0 auto",
-                        textTransform: "none",
-                        "&:hover": {
-                          borderColor: "#6d28d9",
-                          bgcolor: "rgba(139, 92, 246, 0.1)",
-                        },
-                      }}
-                      onClick={handleOpenModifyTgtModal}
-                    >
-                      Modify Target
-                    </Button>
-                  </Box>
+                  {userRole === "admin" && (
+                    <>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          sx={{
+                            color: "#ef4444",
+                            borderColor: "#7f1d1d",
+                            fontSize: "0.7rem",
+                            py: 0.5,
+                            minWidth: 0,
+                            flex: "1 0 auto",
+                            textTransform: "none",
+                            "&:hover": {
+                              borderColor: "#b91c1c",
+                              bgcolor: "rgba(239, 68, 68, 0.1)",
+                            },
+                          }}
+                          onClick={handleExitPosition}
+                          disabled={isExitLoading}
+                        >
+                          Exit
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          sx={{
+                            color: "#10b981",
+                            borderColor: "#064e3b",
+                            fontSize: "0.7rem",
+                            py: 0.5,
+                            minWidth: 0,
+                            flex: "1 0 auto",
+                            textTransform: "none",
+                            "&:hover": {
+                              borderColor: "#047857",
+                              bgcolor: "rgba(16, 185, 129, 0.1)",
+                            },
+                          }}
+                          onClick={handleOpenIncreaseModal}
+                        >
+                          Add
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          sx={{
+                            color: "#f59e0b",
+                            borderColor: "#78350f",
+                            fontSize: "0.7rem",
+                            py: 0.5,
+                            minWidth: 0,
+                            flex: "1 0 auto",
+                            textTransform: "none",
+                            "&:hover": {
+                              borderColor: "#92400e",
+                              bgcolor: "rgba(245, 158, 11, 0.1)",
+                            },
+                          }}
+                          onClick={handleOpenReduceModal}
+                        >
+                          Reduce
+                        </Button>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          sx={{
+                            color: "#3b82f6",
+                            borderColor: "#1e3a8a",
+                            fontSize: "0.7rem",
+                            py: 0.5,
+                            minWidth: 0,
+                            flex: "1 0 auto",
+                            textTransform: "none",
+                            "&:hover": {
+                              borderColor: "#1d4ed8",
+                              bgcolor: "rgba(59, 130, 246, 0.1)",
+                            },
+                          }}
+                          onClick={handleOpenModifySlModal}
+                        >
+                          Modify SL
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          sx={{
+                            color: "#8b5cf6",
+                            borderColor: "#4c1d95",
+                            fontSize: "0.7rem",
+                            py: 0.5,
+                            minWidth: 0,
+                            flex: "1 0 auto",
+                            textTransform: "none",
+                            "&:hover": {
+                              borderColor: "#6d28d9",
+                              bgcolor: "rgba(139, 92, 246, 0.1)",
+                            },
+                          }}
+                          onClick={handleOpenModifyTgtModal}
+                        >
+                          Modify Target
+                        </Button>
+                      </Box>
+                    </>
+                  )}
                 </Box>
               )}
             </Box>
@@ -1031,7 +1053,7 @@ function ChartModal({
           Open in TradingView
         </Button>
         <Button
-          onClick={() => onAddAlert(symbol, token, livePrice)}
+          onClick={() => onAddAlert(symbol, instrumentToken, livePrice)}
           variant="outlined"
           sx={{
             color: "#3b82f6", // blue-500
@@ -1074,7 +1096,7 @@ function ChartModal({
       </DialogActions>
       
       {/* Modal components for position management */}
-      {symbolPosition && (
+      {symbolPosition && userRole === "admin" && (
         <>
           <ModifySlModal
             isOpen={isModifySlModalOpen}
@@ -1096,7 +1118,7 @@ function ChartModal({
             isOpen={isIncreaseModalOpen}
             onClose={handleCloseIncreaseModal}
             symbol={symbol}
-            token={token}
+            token={instrumentToken}
             entry={symbolPosition.entry_price}
             ltp={livePrice || symbolPosition.last_price}
             qty={symbolPosition.current_qty}

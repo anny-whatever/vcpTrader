@@ -41,9 +41,9 @@ def apply_risk_pool_update_on_buy(cur, average_price, stop_loss_price, qty):
             raise ValueError(f"Available risk would become negative ({new_available_risk})")
         
         # Enforce minimum combined risk
-        if new_used_risk + new_available_risk < 50000:
-            logger.warning(f"Combined risk would drop below 50000. Adjusting available risk.")
-            new_available_risk = 50000 - new_used_risk
+        if new_used_risk + new_available_risk < 100000:
+            logger.warning(f"Combined risk would drop below 100000. Adjusting available risk.")
+            new_available_risk = 100000 - new_used_risk
         
         try:
             RiskPool.update_used_risk(cur, new_used_risk)
@@ -84,12 +84,12 @@ def update_risk_pool_on_increase(cur, initial_stop_loss, actual_price, qty):
         
         # Enforce constraints:
         # 1. Maximum available risk cap
-        new_available_risk = min(new_available_risk, 350000)
+        new_available_risk = min(new_available_risk, 450000)
         
         # 2. Minimum combined risk floor
-        if new_used_risk + new_available_risk < 50000:
-            new_available_risk = 50000 - new_used_risk
-            logger.info(f"Enforcing minimum combined risk of 50000. Adjusted available risk to {new_available_risk}.")
+        if new_used_risk + new_available_risk < 100000:
+            new_available_risk = 100000 - new_used_risk
+            logger.info(f"Enforcing minimum combined risk of 100000. Adjusted available risk to {new_available_risk}.")
 
         RiskPool.update_used_risk(cur, new_used_risk)
         RiskPool.update_available_risk(cur, new_available_risk)
@@ -159,12 +159,12 @@ def update_risk_pool_on_decrease(cur, initial_stop_loss, entry_price, actual_pri
     
     # Apply constraints:
     # 1. Maximum available risk cap
-    final_available_risk = min(final_available_risk, 350000)
+    final_available_risk = min(final_available_risk, 450000)
     
     # 2. Minimum combined risk floor
-    if final_used_risk + final_available_risk < 50000:
-        final_available_risk = 50000 - final_used_risk
-        logger.info(f"Enforcing minimum combined risk of 50000. Adjusted available risk to {final_available_risk}.")
+    if final_used_risk + final_available_risk < 100000:
+        final_available_risk = 100000 - final_used_risk
+        logger.info(f"Enforcing minimum combined risk of 100000. Adjusted available risk to {final_available_risk}.")
     
     # Update the risk pool
     RiskPool.update_available_risk(cur, final_available_risk)
@@ -231,12 +231,12 @@ def update_risk_pool_on_exit(cur, initial_stop_loss, entry_price, actual_price, 
     
     # Apply constraints:
     # 1. Maximum available risk cap
-    final_available_risk = min(final_available_risk, 350000)
+    final_available_risk = min(final_available_risk, 450000)
     
     # 2. Minimum combined risk floor
-    if final_used_risk + final_available_risk < 50000:
-        final_available_risk = 50000 - final_used_risk
-        logger.info(f"Enforcing minimum combined risk of 50000. Adjusted available risk to {final_available_risk}.")
+    if final_used_risk + final_available_risk < 100000:
+        final_available_risk = 100000 - final_used_risk
+        logger.info(f"Enforcing minimum combined risk of 100000. Adjusted available risk to {final_available_risk}.")
     
     # Update the risk pool
     RiskPool.update_available_risk(cur, final_available_risk)
@@ -321,12 +321,12 @@ def update_risk_pool_on_parameter_change(cur, current_stop_loss, new_stop_loss, 
         
         # Apply constraints:
         # 1. Maximum available risk cap
-        new_available_risk = min(new_available_risk, 350000)
+        new_available_risk = min(new_available_risk, 450000)
         
         # 2. Minimum combined risk floor
-        if new_used_risk + new_available_risk < 50000:
-            new_available_risk = 50000 - new_used_risk
-            logger.info(f"Enforcing minimum combined risk of 50000. Adjusted available risk to {new_available_risk}.")
+        if new_used_risk + new_available_risk < 100000:
+            new_available_risk = 100000 - new_used_risk
+            logger.info(f"Enforcing minimum combined risk of 100000. Adjusted available risk to {new_available_risk}.")
         
         # Update the risk pool
         RiskPool.update_used_risk(cur, new_used_risk)
