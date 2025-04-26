@@ -798,17 +798,9 @@ def update_weekly_live_data(df, live_data):
                 "high": live_price,
                 "low": live_price,
                 "close": live_price,
-                "volume": 0,
+                "volume": 0, # Volume for live tick is unknown/0
                 "segment": last_row["segment"],
-                # Copy the last available indicator values for now
-                "sma_50": last_row["sma_50"],
-                "sma_150": last_row["sma_150"],
-                "sma_200": last_row["sma_200"],
-                "atr": last_row["atr"],
-                "52_week_high": last_row["52_week_high"],
-                "52_week_low": last_row["52_week_low"],
-                "away_from_high": last_row["away_from_high"],
-                "away_from_low": last_row["away_from_low"],
+                # Indicators will be fully recalculated below
             }
         else:
             logger.debug(f"STEP 10.10: Updating EXISTING weekly bar for {symbol} with live price {live_price}")
@@ -824,91 +816,114 @@ def update_weekly_live_data(df, live_data):
                 "interval": "week",
                 "date": last_date,  # Keep the original date of the weekly bar
                 "open": last_row["open"],  # Keep the original open
-                "high": max(last_row["high"], live_price),
-                "low": min(last_row["low"], live_price),
+                "high": max(float(last_row["high"]), live_price), # Ensure comparison with float
+                "low": min(float(last_row["low"]), live_price),   # Ensure comparison with float
                 "close": live_price,
-                "volume": last_row["volume"],
+                "volume": last_row["volume"], # Keep existing volume (or add logic if available)
                 "segment": last_row["segment"],
-                # Keep existing indicators
-                "sma_50": last_row["sma_50"],
-                "sma_150": last_row["sma_150"],
-                "sma_200": last_row["sma_200"],
-                "atr": last_row["atr"],
-                "52_week_high": last_row["52_week_high"],
-                "52_week_low": last_row["52_week_low"],
-                "away_from_high": last_row["away_from_high"],
-                "away_from_low": last_row["away_from_low"],
+                 # Indicators will be fully recalculated below
             }
             
             # Remove the last row as we'll replace it
             group = group.iloc[:-1]
 
-        # Add the updated or new row
-        logger.debug(f"STEP 10.11: Adding new/updated row to group for {symbol}")
-        group_updated = pd.concat([group, pd.DataFrame([new_row])], ignore_index=True)
+        # Add the updated or new row (without old indicators)
+        logger.debug(f"STEP 10.11: Adding new/updated OHLC row to group for {symbol}")
+        # Ensure consistent data types before concat
+        group['high'] = group['high'].astype(float)
+        group['low'] = group['low'].astype(float)
+        group['close'] = group['close'].astype(float)
+        new_row_df = pd.DataFrame([new_row])
+        new_row_df['high'] = new_row_df['high'].astype(float)
+        new_row_df['low'] = new_row_df['low'].astype(float)
+        new_row_df['close'] = new_row_df['close'].astype(float)
         
-        # Recalculate indicators for accuracy
-        logger.debug(f"STEP 10.12: Recalculating indicators for {symbol}")
+        group_updated = pd.concat([group, new_row_df], ignore_index=True)
         
-        # Use the close prices series for calculating SMAs
-        close_series = group_updated["close"]
-        
-        # Recalculate SMAs
-        logger.debug(f"STEP 10.13: Recalculating SMAs for {symbol}")
-        if len(close_series) >= 50:
-            sma_50 = ta.sma(close_series, length=50).iloc[-1]
-            group_updated.at[len(group_updated)-1, "sma_50"] = float(sma_50)
-            logger.debug(f"STEP 10.14: New SMA50 for {symbol}: {float(sma_50):.2f}")
-        
-        if len(close_series) >= 150:
-            sma_150 = ta.sma(close_series, length=150).iloc[-1]
-            group_updated.at[len(group_updated)-1, "sma_150"] = float(sma_150)
-            logger.debug(f"STEP 10.15: New SMA150 for {symbol}: {float(sma_150):.2f}")
-        
-        if len(close_series) >= 200:
-            sma_200 = ta.sma(close_series, length=200).iloc[-1]
-            group_updated.at[len(group_updated)-1, "sma_200"] = float(sma_200)
-            logger.debug(f"STEP 10.16: New SMA200 for {symbol}: {float(sma_200):.2f}")
+        # --- Full Recalculation of Indicators ---
+        logger.debug(f"STEP 10.12: Starting full indicator recalculation for {symbol}")
 
-        # Recompute ATR with available data
-        logger.debug(f"STEP 10.17: Recalculating ATR for {symbol}")
-        tail_window = min(50, len(group_updated))
-        subset = group_updated.tail(tail_window).copy()
-        new_atr_series = ta.atr(
-            high=subset["high"],
-            low=subset["low"],
-            close=subset["close"],
-            length=min(tail_window, len(subset))
-        )
-        new_atr_val = float(new_atr_series.iloc[-1] if not new_atr_series.empty else 0.0)
-        logger.debug(f"STEP 10.18: New ATR for {symbol}: {new_atr_val:.2f}")
+        # Ensure required columns are numeric for pandas_ta
+        group_updated['open'] = pd.to_numeric(group_updated['open'], errors='coerce')
+        group_updated['high'] = pd.to_numeric(group_updated['high'], errors='coerce')
+        group_updated['low'] = pd.to_numeric(group_updated['low'], errors='coerce')
+        group_updated['close'] = pd.to_numeric(group_updated['close'], errors='coerce')
+        group_updated['volume'] = pd.to_numeric(group_updated['volume'], errors='coerce')
 
-        # Recalculate 52-week highs/lows
-        logger.debug(f"STEP 10.19: Recalculating 52-week high/low for {symbol}")
-        # Use min(52 weeks, available data)
-        subset_52 = group_updated.tail(min(52, len(group_updated)))
-        new_52_high = float(subset_52["high"].max())
-        new_52_low = float(subset_52["low"].min())
-        logger.debug(f"STEP 10.20: New 52-week high/low for {symbol}: {new_52_high:.2f}/{new_52_low:.2f}")
-        
+        # Recalculate SMAs for the entire series
+        logger.debug(f"STEP 10.13: Recalculating SMA series for {symbol}")
+        for sma_len in [50, 150, 200]:
+            col_name = f"sma_{sma_len}"
+            if len(group_updated) >= sma_len:
+                # Calculate the full SMA series
+                sma_series = ta.sma(group_updated["close"], length=sma_len)
+                # Assign the series back to the DataFrame
+                group_updated[col_name] = sma_series.astype(float) 
+                logger.debug(f"STEP 10.14: Recalculated {col_name} series. Last value: {group_updated[col_name].iloc[-1]:.2f}")
+            else:
+                 # Assign NaN if not enough data
+                group_updated[col_name] = float('nan')
+                logger.debug(f"STEP 10.14: Not enough data for {col_name}, assigning NaN.")
+
+        # Recalculate ATR for the entire series
+        logger.debug(f"STEP 10.15: Recalculating ATR series for {symbol}")
+        # ATR typically uses length 14, ensure we have enough data
+        atr_len = 14 
+        if len(group_updated) > atr_len: # Need atr_len + 1 for calculation start
+             # Calculate the full ATR series
+             atr_series = ta.atr(
+                 high=group_updated["high"],
+                 low=group_updated["low"],
+                 close=group_updated["close"],
+                 length=atr_len
+             )
+             # Assign the series back
+             group_updated["atr"] = atr_series.astype(float)
+             logger.debug(f"STEP 10.16: Recalculated ATR series. Last value: {group_updated['atr'].iloc[-1]:.2f}")
+        else:
+            # Assign NaN if not enough data
+            group_updated["atr"] = float('nan')
+            logger.debug(f"STEP 10.16: Not enough data for ATR, assigning NaN.")
+
+
+        # Recalculate 52-week high/low using rolling window on the updated series
+        logger.debug(f"STEP 10.17: Recalculating 52-week high/low series for {symbol}")
+        window_52_week = 52
+        # Calculate rolling max over the 'high' column for the last 52 periods (or available)
+        group_updated['52_week_high'] = group_updated['high'].rolling(window=window_52_week, min_periods=1).max()
+        # Calculate rolling min over the 'low' column for the last 52 periods (or available)
+        group_updated['52_week_low'] = group_updated['low'].rolling(window=window_52_week, min_periods=1).min()
+        logger.debug(f"STEP 10.18: Recalculated 52-week high/low series. Last H/L: {group_updated['52_week_high'].iloc[-1]:.2f} / {group_updated['52_week_low'].iloc[-1]:.2f}")
+
+
+        # Recalculate away_from_high / away_from_low based on the *last* values
+        logger.debug(f"STEP 10.19: Recalculating away_from high/low for {symbol} using last values")
+        last_idx = len(group_updated) - 1
+        last_close = group_updated.at[last_idx, "close"]
+        last_52_high = group_updated.at[last_idx, "52_week_high"]
+        last_52_low = group_updated.at[last_idx, "52_week_low"]
+
         away_high = 0.0
         away_low = 0.0
-        if new_52_high != 0:
-            away_high = ((new_52_high - live_price) / new_52_high) * 100
-        if new_52_low != 0:
-            away_low = ((live_price - new_52_low) / new_52_low) * 100
-        logger.debug(f"STEP 10.21: New away_high/away_low for {symbol}: {away_high:.2f}%/{away_low:.2f}%")
+        if pd.notna(last_52_high) and last_52_high != 0 and pd.notna(last_close):
+            away_high = ((last_52_high - last_close) / last_52_high) * 100
+        if pd.notna(last_52_low) and last_52_low != 0 and pd.notna(last_close):
+            away_low = ((last_close - last_52_low) / last_52_low) * 100
+        
+        # Assign calculated percentages for the last row only (as they depend only on the last point)
+        group_updated.loc[last_idx, "away_from_high"] = away_high
+        group_updated.loc[last_idx, "away_from_low"] = away_low
+        logger.debug(f"STEP 10.20: Updated away_from_high/low: {away_high:.2f}% / {away_low:.2f}%")
+        # Fill potentially missing values in earlier rows if needed, though usually only the last matters for screening
+        group_updated["away_from_high"].fillna(method='ffill', inplace=True) 
+        group_updated["away_from_low"].fillna(method='ffill', inplace=True)
 
-        # Update the indicators for the last row
-        last_idx = len(group_updated) - 1
-        group_updated.at[last_idx, "atr"] = new_atr_val
-        group_updated.at[last_idx, "52_week_high"] = new_52_high
-        group_updated.at[last_idx, "52_week_low"] = new_52_low
-        group_updated.at[last_idx, "away_from_high"] = away_high
-        group_updated.at[last_idx, "away_from_low"] = away_low
+
+        # --- End of Full Recalculation ---
 
         updated_groups.append(group_updated)
 
+    # Combine all updated groups
     df_updated = pd.concat(updated_groups, ignore_index=True)
     logger.info(f"STEP 10.22: Finished updating weekly data. Created {update_counts['created_new']} new bars, " +
                 f"updated {update_counts['updated_existing']} existing bars, skipped {update_counts['skipped']} symbols")
