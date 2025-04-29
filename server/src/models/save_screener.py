@@ -70,7 +70,6 @@ class ScreenerResult:
                     self.run_time
                 )
             )
-            logger.info(f"[{self.screener_name}] ScreenerResult saved for {self.symbol} (token: {self.instrument_token})")
         except Exception as e:
             logger.error(f"Error saving screener result: {e}")
             raise e
@@ -121,4 +120,30 @@ class ScreenerResult:
             return rows
         except Exception as e:
             logger.error(f"Error fetching screener_results for {screener_name}: {e}")
+            raise e
+
+    @classmethod
+    def batch_save(cls, cur, results):
+        """
+        Save multiple screener results in batch, with a single log message at the end.
+        
+        Args:
+            cur: Database cursor
+            results: List of ScreenerResult objects
+        """
+        if not results:
+            logger.info("No screener results to save")
+            return
+            
+        count = 0
+        screener_name = results[0].screener_name if results else None
+        
+        try:
+            for result in results:
+                result.save(cur)
+                count += 1
+                
+            logger.info(f"[{screener_name}] Saved {count} screener results")
+        except Exception as e:
+            logger.error(f"Error in batch save of screener results: {e}")
             raise e

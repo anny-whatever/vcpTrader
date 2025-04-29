@@ -8,9 +8,12 @@ from .get_instruments_list import get_instrument_indices
 from .get_equity_list import get_instrument_equity
 from .get_historical_data import get_historical_data
 from .get_ohlc import get_equity_ohlc_data_loop
+# Keep these imports for backward compatibility but users should migrate to order_manager
 from .place_buy import buy_order_execute
 from .place_exit import sell_order_execute
 from .place_adjust import adjust_order_execute
+# Import the order_manager explicitly
+from .order_manager import execute_buy, execute_sell, execute_adjust, get_order_status
 from .get_screener import run_vcp_screener, run_ipo_screener, run_weekly_vcp_screener, fetch_live_quotes, load_precomputed_ohlc, load_precomputed_weekly_ohlc
 from .manage_risk_pool import (
     update_risk_pool_on_increase,
@@ -56,9 +59,15 @@ __all__ = [
     "get_instrument_equity",
     "get_historical_data",
     "get_equity_ohlc_data_loop",
+    # Old order functions
     "buy_order_execute",
     "sell_order_execute",
     "adjust_order_execute",
+    # New order manager functions
+    "execute_buy",
+    "execute_sell",
+    "execute_adjust",
+    "get_order_status",
     "run_vcp_screener",
     "run_ipo_screener",
     "run_weekly_vcp_screener",
@@ -85,7 +94,6 @@ __all__ = [
     "get_watchlist_entries",
     "search_equity",
     "listen_for_data_changes",
-    "tokens_lock",
     "filtered_tokens",
     "save_tradable_ticks",
     "save_nontradable_ticks",

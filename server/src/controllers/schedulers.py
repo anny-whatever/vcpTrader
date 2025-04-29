@@ -11,6 +11,9 @@ from apscheduler.schedulers.base import STATE_RUNNING
 logger = logging.getLogger(__name__)
 scheduler = None
 
+# Dedicated thread pool for screeners
+screener_executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="screener")
+
 #
 # Existing Jobs
 #
@@ -50,23 +53,29 @@ def get_ohlc_on_schedule():
 def run_vcp_screener_on_schedule():
     try:
         from services import run_vcp_screener
-        run_vcp_screener()
+        # Run in a separate thread to avoid blocking the scheduler
+        screener_executor.submit(run_vcp_screener)
+        logger.info("VCP screener job submitted to thread pool")
     except Exception as e:
         logger.error(f"Error in run_vcp_screener_on_schedule: {e}")
 
 def run_ipo_screener_on_schedule():
     try:
         from services import run_ipo_screener
-        run_ipo_screener()
+        # Run in a separate thread to avoid blocking the scheduler
+        screener_executor.submit(run_ipo_screener)
+        logger.info("IPO screener job submitted to thread pool")
     except Exception as e:
         logger.error(f"Error in run_ipo_screener_on_schedule: {e}")
 
 def run_weekly_vcp_screener_on_schedule():
     try:
         from services import run_weekly_vcp_screener
-        run_weekly_vcp_screener()
+        # Run in a separate thread to avoid blocking the scheduler
+        screener_executor.submit(run_weekly_vcp_screener)
+        logger.info("Weekly VCP screener job submitted to thread pool")
     except Exception as e:
-        logger.error(f"Error in run_vcp_screener_on_schedule: {e}")
+        logger.error(f"Error in run_weekly_vcp_screener_on_schedule: {e}")
 
 #
 # Utility to decide if we are within the time range for resampling
@@ -188,30 +197,30 @@ def get_scheduler():
             id="vcp_trader_get_ohlc"
         )
 
-        # VCP screener jobs => runs multiple times daily
+        # VCP screener jobs => runs every 5 minutes during trading hours
         scheduler.add_job(
             run_vcp_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='9', minute='15-59'),
+            CronTrigger(day_of_week='mon-fri', hour='9', minute='15,20,25,30,35,40,45,50,55'),
             max_instances=3,
             replace_existing=False,
             id="run_vcp_screener_job_part1"
         )
         scheduler.add_job(
             run_vcp_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='10-14', minute='*'),
+            CronTrigger(day_of_week='mon-fri', hour='10-14', minute='0,5,10,15,20,25,30,35,40,45,50,55'),
             max_instances=3,
             replace_existing=False,
             id="run_vcp_screener_job_part2"
         )
         scheduler.add_job(
             run_vcp_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='15', minute='0-30'),
+            CronTrigger(day_of_week='mon-fri', hour='15', minute='0,5,10,15,20,25,30'),
             max_instances=3,
             replace_existing=False,
             id="run_vcp_screener_job_part3"
         )
         
-        # Weekly VCP screener jobs => runs less frequently (every 5 minutes)
+        # Weekly VCP screener jobs => runs every 5 minutes too
         scheduler.add_job(
             run_weekly_vcp_screener_on_schedule,
             CronTrigger(day_of_week='mon-fri', hour='9', minute='15,20,25,30,35,40,45,50,55'),
@@ -234,50 +243,27 @@ def get_scheduler():
             id="run_weekly_vcp_screener_job_part3"
         )
 
-        # IPO screener jobs => runs multiple times daily
+        # IPO screener jobs => runs every 5 minutes too
         scheduler.add_job(
             run_ipo_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='9', minute='15-59'),
+            CronTrigger(day_of_week='mon-fri', hour='9', minute='15,20,25,30,35,40,45,50,55'),
             max_instances=3,
             replace_existing=False,
             id="run_ipo_screener_job_part1"
         )
         scheduler.add_job(
             run_ipo_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='10-14', minute='*'),
+            CronTrigger(day_of_week='mon-fri', hour='10-14', minute='0,5,10,15,20,25,30,35,40,45,50,55'),
             max_instances=3,
             replace_existing=False,
             id="run_ipo_screener_job_part2"
         )
         scheduler.add_job(
             run_ipo_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='15', minute='0-30'),
+            CronTrigger(day_of_week='mon-fri', hour='15', minute='0,5,10,15,20,25,30'),
             max_instances=3,
             replace_existing=False,
             id="run_ipo_screener_job_part3"
-        )
-
-        # -- New 1/5/15-min resample jobs --
-        scheduler.add_job(
-            resample_job_one_minute,
-            CronTrigger(minute='*/1', hour='9-15', day_of_week='mon-fri'),
-            max_instances=1,
-            replace_existing=True,
-            id="resample_job_one_minute"
-        )
-        scheduler.add_job(
-            resample_job_five_minute,
-            CronTrigger(minute='*/5', hour='9-15', day_of_week='mon-fri'),
-            max_instances=1,
-            replace_existing=True,
-            id="resample_job_five_minute"
-        )
-        scheduler.add_job(
-            resample_job_fifteen_minute,
-            CronTrigger(minute='*/15', hour='9-15', day_of_week='mon-fri'),
-            max_instances=1,
-            replace_existing=True,
-            id="resample_job_fifteen_minute"
         )
 
         # Start the scheduler

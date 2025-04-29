@@ -43,10 +43,10 @@ def get_ohlc(instrument_token, interval, symbol, segment):
         
         if interval == "week":
             day_count = 2000
-            loop_count = 2
+            loop_count = 3
         else:
             day_count = 500
-            loop_count = 1
+            loop_count = 2
         logger.info(f"Using day_count of {day_count} for interval {interval}")
 
         # 2) Fetch historical data from the API

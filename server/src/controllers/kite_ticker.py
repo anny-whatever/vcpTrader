@@ -162,19 +162,10 @@ def start_kite_ticker():
                     loop.close()
             # Process ticks for live updates, alerts, and auto-exit actions
 
-            async def async_save_ticks(ticks):
-                from services import save_nontradable_ticks
-                if is_within_trade_time_range():
-                    save_nontradable_ticks(ticks)
-
-            executor.submit(run_async_in_thread, async_save_ticks, ticks)
             executor.submit(run_async_in_thread, process_and_send_live_ticks, ticks)
             executor.submit(run_async_in_thread, process_live_alerts, ticks)
             if is_within_monitor_live_trade_time_range():
                 executor.submit(run_async_in_thread, process_live_auto_exit, ticks)
-            if is_within_monitor_live_trade_time_range():
-                executor.submit(monitor_live_position_fema_short, ticks, "fema_five_short")
-                executor.submit(monitor_live_position_fema_long, ticks, "fema_fifteen_long")
         except Exception as e:
             logger.error(f"Error processing ticks: {e}")
 

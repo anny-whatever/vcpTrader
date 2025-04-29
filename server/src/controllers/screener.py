@@ -2,6 +2,7 @@ import asyncio
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
+from concurrent.futures import ThreadPoolExecutor
 
 # If you have an auth file for user authentication:
 from auth import get_current_user
@@ -10,6 +11,10 @@ from services import fetch_screener_data, run_vcp_screener, run_ipo_screener, ru
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+# Dedicated thread pool for manual screener requests
+# This is separate from the scheduled screeners
+manual_screener_executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="manual_screener")
 
 @router.get("/vcpscreen")
 async def screen_vcp(user: dict = Depends(get_current_user)):
@@ -33,12 +38,13 @@ async def screen_vcp(user: dict = Depends(get_current_user)):
 
         # If we still have no data, run the VCP screener to force generation
         logger.debug("No data after 5 tries. Forcing a run of 'run_vcp_screener()'.")
-        success = await asyncio.to_thread(run_vcp_screener)
+        # Use our dedicated thread pool for manual screening
+        success = await asyncio.wrap_future(manual_screener_executor.submit(run_vcp_screener))
         
         if not success:
             logger.error("VCP screener run failed. Will try one more time.")
             # Try running it one more time immediately
-            success = await asyncio.to_thread(run_vcp_screener)
+            success = await asyncio.wrap_future(manual_screener_executor.submit(run_vcp_screener))
             if not success:
                 logger.error("Second VCP screener run also failed.")
                 return JSONResponse(content={"error": "Failed to generate VCP screener data"}, status_code=500)
@@ -51,7 +57,7 @@ async def screen_vcp(user: dict = Depends(get_current_user)):
             
         # If still no data, run the screener one more time
         logger.debug("No data after first run. Running VCP screener one more time.")
-        success = await asyncio.to_thread(run_vcp_screener)
+        success = await asyncio.wrap_future(manual_screener_executor.submit(run_vcp_screener))
         if not success:
             logger.error("Final VCP screener run failed.")
             return JSONResponse(content={"error": "Failed to generate VCP screener data after multiple attempts"}, status_code=500)
@@ -91,12 +97,12 @@ async def screen_weekly_vcp(user: dict = Depends(get_current_user)):
 
         # If we still have no data, run the weekly VCP screener to force generation
         logger.debug("No data after 5 tries. Forcing a run of 'run_weekly_vcp_screener()'.")
-        success = await asyncio.to_thread(run_weekly_vcp_screener)
+        success = await asyncio.wrap_future(manual_screener_executor.submit(run_weekly_vcp_screener))
         
         if not success:
             logger.error("Weekly VCP screener run failed. Will try one more time.")
             # Try running it one more time immediately
-            success = await asyncio.to_thread(run_weekly_vcp_screener)
+            success = await asyncio.wrap_future(manual_screener_executor.submit(run_weekly_vcp_screener))
             if not success:
                 logger.error("Second Weekly VCP screener run also failed.")
                 return JSONResponse(content={"error": "Failed to generate Weekly VCP screener data"}, status_code=500)
@@ -109,7 +115,7 @@ async def screen_weekly_vcp(user: dict = Depends(get_current_user)):
             
         # If still no data, run the screener one more time
         logger.debug("No data after first run. Running Weekly VCP screener one more time.")
-        success = await asyncio.to_thread(run_weekly_vcp_screener)
+        success = await asyncio.wrap_future(manual_screener_executor.submit(run_weekly_vcp_screener))
         if not success:
             logger.error("Final Weekly VCP screener run failed.")
             return JSONResponse(content={"error": "Failed to generate Weekly VCP screener data after multiple attempts"}, status_code=500)
@@ -148,12 +154,12 @@ async def screen_ipo(user: dict = Depends(get_current_user)):
 
         # If no data after 5 tries, run the IPO screener forcibly
         logger.debug("No data after 5 tries. Forcing a run of 'run_ipo_screener()'.")
-        success = await asyncio.to_thread(run_ipo_screener)
+        success = await asyncio.wrap_future(manual_screener_executor.submit(run_ipo_screener))
         
         if not success:
             logger.error("IPO screener run failed. Will try one more time.")
             # Try running it one more time immediately
-            success = await asyncio.to_thread(run_ipo_screener)
+            success = await asyncio.wrap_future(manual_screener_executor.submit(run_ipo_screener))
             if not success:
                 logger.error("Second IPO screener run also failed.")
                 return JSONResponse(content={"error": "Failed to generate IPO screener data"}, status_code=500)
@@ -166,7 +172,7 @@ async def screen_ipo(user: dict = Depends(get_current_user)):
             
         # If still no data, run the screener one more time
         logger.debug("No data after first run. Running IPO screener one more time.")
-        success = await asyncio.to_thread(run_ipo_screener)
+        success = await asyncio.wrap_future(manual_screener_executor.submit(run_ipo_screener))
         if not success:
             logger.error("Final IPO screener run failed.")
             return JSONResponse(content={"error": "Failed to generate IPO screener data after multiple attempts"}, status_code=500)
