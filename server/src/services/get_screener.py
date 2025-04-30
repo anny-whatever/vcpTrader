@@ -810,6 +810,11 @@ def run_vcp_screener():
 
             logger.info("Committing VCP screener results to database")
             conn.commit()
+            
+            # Send NOTIFY to trigger socket subscription update
+            cur.execute("NOTIFY data_changed, 'screener_results'")
+            logger.info("Sent notification to update ticker subscriptions with VCP screener tokens")
+            
             logger.info(f"Successfully saved {len(vcp_results)} VCP screener results")
             return True
         except Exception as e:
@@ -913,6 +918,11 @@ def run_ipo_screener():
 
             logger.info("Committing IPO screener results to database")
             conn.commit()
+            
+            # Send NOTIFY to trigger socket subscription update
+            cur.execute("NOTIFY data_changed, 'screener_results'")
+            logger.info("Sent notification to update ticker subscriptions with IPO screener tokens")
+            
             logger.info(f"Successfully saved {len(ipo_results)} IPO screener results")
             return True
         except Exception as e:
@@ -1019,6 +1029,11 @@ def run_weekly_vcp_screener():
 
             conn.commit()
             logger.info(f"Successfully saved {len(weekly_results)} weekly VCP screener results")
+            
+            # Send NOTIFY to trigger socket subscription update
+            cur.execute("NOTIFY data_changed, 'screener_results'")
+            logger.info("Sent notification to update ticker subscriptions with weekly VCP screener tokens")
+            
             return True
         except Exception as e:
             logger.error(f"Error saving weekly VCP results: {e}", exc_info=True)

@@ -144,6 +144,10 @@ class ScreenerResult:
                 count += 1
                 
             logger.info(f"[{screener_name}] Saved {count} screener results")
+            
+            # Send NOTIFY to trigger the socket subscription update for newly added stocks
+            cur.execute("NOTIFY data_changed, 'screener_results'")
+            logger.info("Sent NOTIFY data_changed for screener_results")
         except Exception as e:
             logger.error(f"Error in batch save of screener results: {e}")
             raise e
