@@ -5,6 +5,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
 
 # Configure logging to output to both console and file.
 LOGGING_CONFIG = {
@@ -50,6 +51,11 @@ from controllers import (
 )
 
 app = FastAPI()
+
+# Add health check endpoint
+@app.get("/health")
+async def health_check():
+    return JSONResponse(content={"status": "healthy"}, status_code=200)
 
 app.add_middleware(
     CORSMiddleware,

@@ -332,6 +332,21 @@ function Screener() {
     []
   );
 
+  // Add a function to handle buying from the chart modal
+  const handleBuyFromChart = useCallback(
+    (symbol, instrument_token, ltp) => {
+      setBuyData({
+        symbol,
+        instrument_token,
+        available_risk: riskpool?.available_risk,
+        used_risk: riskpool?.used_risk,
+        last_price: ltp,
+      });
+      handleOpenBuyModal();
+    },
+    [riskpool, handleOpenBuyModal]
+  );
+
   // Memoize the initial setup for different screen types
   const screenChangeHandler = useCallback(
     (e) => {
@@ -727,6 +742,7 @@ function Screener() {
         hasPrevious={currentStockIndex > 0}
         hasNext={currentStockIndex < screenerData?.length - 1}
         onAddAlert={handleAddAlertFromChart}
+        onBuy={userRole === "admin" ? handleBuyFromChart : undefined}
       />
       <AddAlertModal
         isOpen={isAddAlertModalOpen}

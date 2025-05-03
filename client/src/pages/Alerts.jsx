@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef, useMemo } from "react";
+import React, { useContext, useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { DataContext } from "../utils/DataContext";
 import { AuthContext } from "../utils/AuthContext";
 import { jwtDecode } from "jwt-decode";
@@ -34,9 +34,11 @@ import { Toaster, toast } from "sonner";
 import api from "../utils/api";
 import { PlayToastSound, PlayErrorSound } from "../utils/PlaySound";
 import ChartModal from "../components/ChartModal";
+import AddAlertModal from "../components/AddAlertModal";
+import BuyModal from "../components/BuyModal";
 
 export default function Alerts() {
-  const { priceAlerts, liveData } = useContext(DataContext);
+  const { priceAlerts, liveData, riskpool } = useContext(DataContext);
   const { token } = useContext(AuthContext);
   const navigate = useNavigate();
   const theme = useTheme();
@@ -45,6 +47,10 @@ export default function Alerts() {
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   const [chartData, setChartData] = useState(null);
   const [cachedPrices, setCachedPrices] = useState({});
+  const [addAlertData, setAddAlertData] = useState(null);
+  const [isAddAlertModalOpen, setIsAddAlertModalOpen] = useState(false);
+  const [buyData, setBuyData] = useState(null);
+  const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   
   // Determine if user is admin
   let userRole = "";
@@ -133,6 +139,38 @@ export default function Alerts() {
   // Chart modal handlers
   const handleOpenChartModal = () => setIsChartModalOpen(true);
   const handleCloseChartModal = () => setIsChartModalOpen(false);
+  
+  // Buy modal handlers
+  const handleOpenBuyModal = () => setIsBuyModalOpen(true);
+  const handleCloseBuyModal = () => setIsBuyModalOpen(false);
+
+  // Add a function to handle adding alerts from the chart modal
+  const handleAddAlertFromChart = useCallback(
+    (symbol, instrument_token, ltp) => {
+      setAddAlertData({
+        symbol,
+        instrument_token,
+        ltp,
+      });
+      setIsAddAlertModalOpen(true);
+    },
+    []
+  );
+
+  // Add a function to handle buying from the chart modal
+  const handleBuyFromChart = useCallback(
+    (symbol, instrument_token, ltp) => {
+      setBuyData({
+        symbol,
+        instrument_token,
+        available_risk: riskpool?.available_risk,
+        used_risk: riskpool?.used_risk,
+        last_price: ltp,
+      });
+      handleOpenBuyModal();
+    },
+    [riskpool]
+  );
 
   // Open chart modal with the symbol and token
   const openChartModal = (symbol, instrumentToken) => {
@@ -424,6 +462,27 @@ export default function Alerts() {
         onClose={handleCloseChartModal}
         symbol={chartData?.symbol}
         token={chartData?.token}
+        onAddAlert={handleAddAlertFromChart}
+        onBuy={userRole === "admin" ? handleBuyFromChart : undefined}
+      />
+      
+      {/* Add Alert Modal */}
+      <AddAlertModal
+        isOpen={isAddAlertModalOpen}
+        onClose={() => setIsAddAlertModalOpen(false)}
+        symbol={addAlertData?.symbol}
+        instrument_token={addAlertData?.instrument_token}
+        ltp={addAlertData?.ltp}
+      />
+      
+      {/* Buy Modal */}
+      <BuyModal
+        isOpen={isBuyModalOpen}
+        onClose={handleCloseBuyModal}
+        AvailableRisk={buyData?.available_risk}
+        UsedRisk={buyData?.used_risk}
+        symbol={buyData?.symbol}
+        ltp={buyData?.last_price}
       />
 
       <Typography variant="h4" sx={{ mb: 3 }}>

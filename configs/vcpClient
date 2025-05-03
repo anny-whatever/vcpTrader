@@ -1,0 +1,11 @@
+server {
+    listen 80;
+    server_name devstatz.com;
+
+    root /var/www/vcpTrader/client/dist;
+    index index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

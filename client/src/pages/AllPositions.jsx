@@ -1,4 +1,4 @@
-import React, { useEffect, useContext, useState } from "react";
+import React, { useEffect, useContext, useState, useCallback } from "react";
 import { DataContext } from "../utils/DataContext";
 import {
   Table,
@@ -23,6 +23,7 @@ import ModifySlModal from "../components/ModifySlModal";
 import ModifyTgtModal from "../components/ModifyTgtModal";
 import ChartModal from "../components/ChartModal";
 import AddAlertModal from "../components/AddAlertModal"; // New import for Add Alert modal
+import BuyModal from "../components/BuyModal"; // Import for Buy modal
 import { AuthContext } from "../utils/AuthContext";
 import { jwtDecode } from "jwt-decode"; // ✅ Correct import
 import api from "../utils/api"; // Adjust the path as necessary
@@ -38,6 +39,7 @@ function AllPositions() {
   const [chartData, setChartData] = useState(null);
   // New state for Add Alert modal
   const [addAlertData, setAddAlertData] = useState(null);
+  const [buyData, setBuyData] = useState(null);
 
   // Modal states
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
@@ -47,6 +49,7 @@ function AllPositions() {
   const [isModifyTgtModalOpen, setIsModifyTgtModalOpen] = useState(false);
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   const [isAddAlertModalOpen, setIsAddAlertModalOpen] = useState(false);
+  const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   // Stats
   const [totalPnl, setTotalPnl] = useState(0);
   const [capitalUsed, setCapitalUsed] = useState(0);
@@ -133,6 +136,38 @@ function AllPositions() {
 
   const handleOpenAddAlertModal = () => setIsAddAlertModalOpen(true);
   const handleCloseAddAlertModal = () => setIsAddAlertModalOpen(false);
+
+  const handleOpenBuyModal = () => setIsBuyModalOpen(true);
+  const handleCloseBuyModal = () => setIsBuyModalOpen(false);
+
+  // Add a function to handle buying from the chart modal
+  const handleBuyFromChart = useCallback(
+    (symbol, instrument_token, ltp) => {
+      // Set position data for buy modal
+      setBuyData({
+        symbol,
+        instrument_token,
+        available_risk: riskpool?.available_risk,
+        used_risk: riskpool?.used_risk,
+        last_price: ltp,
+      });
+      handleOpenBuyModal();
+    },
+    [riskpool]
+  );
+
+  // Add a function to handle adding alerts from the chart modal
+  const handleAddAlertFromChart = useCallback(
+    (symbol, instrument_token, ltp) => {
+      setAddAlertData({
+        stock_name: symbol,
+        token: instrument_token,
+        last_price: ltp,
+      });
+      handleOpenAddAlertModal();
+    },
+    [handleOpenAddAlertModal]
+  );
 
   const toggleAutoExit = async (row) => {
     try {
@@ -977,6 +1012,8 @@ function AllPositions() {
           onClose={handleCloseChartModal}
           symbol={chartData?.symbol}
           token={chartData?.token}
+          onAddAlert={handleAddAlertFromChart}
+          onBuy={userRole === "admin" ? handleBuyFromChart : undefined}
         />
         <AddAlertModal
           isOpen={isAddAlertModalOpen}
@@ -984,6 +1021,14 @@ function AllPositions() {
           symbol={addAlertData?.stock_name}
           instrument_token={addAlertData?.token}
           ltp={addAlertData?.last_price}
+        />
+        <BuyModal
+          isOpen={isBuyModalOpen}
+          onClose={handleCloseBuyModal}
+          AvailableRisk={buyData?.available_risk}
+          UsedRisk={buyData?.used_risk}
+          symbol={buyData?.symbol}
+          ltp={buyData?.last_price}
         />
       </div>
     </>

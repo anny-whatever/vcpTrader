@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useContext } from "react";
+import React, { useEffect, useState, useRef, useContext, useCallback } from "react";
 import { toast } from "sonner";
 import api from "../utils/api"; // Adjust as necessary
 import {
@@ -78,6 +78,34 @@ function Watchlist() {
   const handleCloseAddAlertModal = () => setIsAddAlertModalOpen(false);
   const handleOpenAddWatchlistModal = () => setIsAddWatchlistModalOpen(true);
   const handleCloseAddWatchlistModal = () => setIsAddWatchlistModalOpen(false);
+
+  // Add a function to handle adding alerts from the chart modal
+  const handleAddAlertFromChart = useCallback(
+    (symbol, instrument_token, ltp) => {
+      setAddAlertData({
+        symbol,
+        instrument_token,
+        ltp,
+      });
+      setIsAddAlertModalOpen(true);
+    },
+    []
+  );
+
+  // Add a function to handle buying from the chart modal
+  const handleBuyFromChart = useCallback(
+    (symbol, instrument_token, ltp) => {
+      setBuyData({
+        symbol,
+        instrument_token,
+        available_risk: riskpool?.available_risk,
+        used_risk: riskpool?.used_risk,
+        last_price: ltp,
+      });
+      handleOpenBuyModal();
+    },
+    [riskpool, handleOpenBuyModal]
+  );
 
   // -------------------------------------------------------
   // FETCH WATCHLIST NAMES ON MOUNT
@@ -389,6 +417,8 @@ function Watchlist() {
         onClose={handleCloseChartModal}
         symbol={chartData?.symbol}
         token={chartData?.token}
+        onAddAlert={handleAddAlertFromChart}
+        onBuy={userRole === "admin" ? handleBuyFromChart : undefined}
       />
       <AddAlertModal
         isOpen={isAddAlertModalOpen}

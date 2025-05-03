@@ -50,6 +50,7 @@ function ChartModal({
   hasNext,
   hasPrevious,
   onAddAlert,
+  onBuy,
 }) {
   const { liveData, priceAlerts, positions } = useContext(DataContext);
   const { token } = useContext(AuthContext);
@@ -1030,6 +1031,8 @@ function ChartModal({
           bgcolor: "#18181b", // zinc-900
           borderTop: "1px solid #27272a", // zinc-800
           gap: 1,
+          flexWrap: "wrap", // Allow buttons to wrap on smaller screens
+          justifyContent: "flex-end", // Keep buttons right-aligned
         }}
       >
         <Button
@@ -1041,17 +1044,43 @@ function ChartModal({
             borderRadius: "8px",
             textTransform: "none",
             fontWeight: "normal",
-            fontSize: "0.875rem",
+            fontSize: { xs: "0.75rem", sm: "0.875rem" },
             py: 0.75,
-            px: 2,
+            px: { xs: 1.5, sm: 2 },
+            mb: { xs: 1, sm: 0 },
             "&:hover": {
               borderColor: "#52525b", // zinc-600
               bgcolor: "rgba(82, 82, 91, 0.1)",
             },
           }}
         >
-          Open in TradingView
+          <span className="hidden sm:inline">Open in TradingView</span>
+          <span className="sm:hidden">TWC</span>
         </Button>
+        {/* Only show Buy button if we have the onBuy prop AND no existing position */}
+        {onBuy && !symbolPosition && (
+          <Button
+            onClick={() => onBuy(symbol, instrumentToken, livePrice)}
+            variant="outlined"
+            sx={{
+              color: "#22c55e", // green-500
+              borderColor: "#14532d", // green-900
+              borderRadius: "8px",
+              textTransform: "none",
+              fontWeight: "normal",
+              fontSize: { xs: "0.75rem", sm: "0.875rem" },
+              py: 0.75,
+              px: { xs: 1.5, sm: 2 },
+              mb: { xs: 1, sm: 0 },
+              "&:hover": {
+                borderColor: "#15803d", // green-700
+                bgcolor: "rgba(34, 197, 94, 0.1)",
+              },
+            }}
+          >
+            Buy
+          </Button>
+        )}
         <Button
           onClick={() => onAddAlert(symbol, instrumentToken, livePrice)}
           variant="outlined"
@@ -1061,30 +1090,32 @@ function ChartModal({
             borderRadius: "8px",
             textTransform: "none",
             fontWeight: "normal",
-            fontSize: "0.875rem",
+            fontSize: { xs: "0.75rem", sm: "0.875rem" },
             py: 0.75,
-            px: 2,
+            px: { xs: 1.5, sm: 2 },
+            mb: { xs: 1, sm: 0 },
             "&:hover": {
               borderColor: "#1d4ed8", // blue-700
               bgcolor: "rgba(59, 130, 246, 0.1)",
             },
           }}
         >
-          Add Alert
+          <span className="hidden sm:inline">Add Alert</span>
+          <span className="sm:hidden">Alert</span>
         </Button>
         <Button
           onClick={onClose}
           variant="outlined"
           sx={{
-            ml: "auto",
+            ml: { xs: 0, sm: "auto" },
             color: "#ef4444", // red-500
             borderColor: "#7f1d1d", // red-900
             borderRadius: "8px",
             textTransform: "none",
             fontWeight: "normal",
-            fontSize: "0.875rem",
+            fontSize: { xs: "0.75rem", sm: "0.875rem" },
             py: 0.75,
-            px: 2,
+            px: { xs: 1.5, sm: 2 },
             "&:hover": {
               borderColor: "#b91c1c", // red-700
               bgcolor: "rgba(239, 68, 68, 0.1)",
