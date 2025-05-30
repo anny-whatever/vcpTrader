@@ -65,7 +65,7 @@ export default function NavbarComponent() {
   };
 
   const redirectToZerodhaLogin = () => {
-    window.location.href = "https://api.devstatz.com/api/auth";
+    window.location.href = "https://api.tradekeep.in/api/auth";
   };
 
   // Notification (dropdown) menu handlers

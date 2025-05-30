@@ -1,6 +1,6 @@
 server {
     listen 80;
-    server_name api.devstatz.com;
+    server_name api.tradekeep.in;
 
     # Trust Cloudflare IPs
     # You may want to update this list periodically as Cloudflare adds new IP ranges

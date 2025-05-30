@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Use environment variable if set (Vite automatically exposes variables prefixed with VITE_)
-const baseURL = "https://api.devstatz.com";
+const baseURL = "https://api.tradekeep.in";
 
 const api = axios.create({
   baseURL,

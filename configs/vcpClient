@@ -1,6 +1,6 @@
 server {
     listen 80;
-    server_name devstatz.com;
+    server_name tradekeep.in;
 
     root /var/www/vcpTrader/client/dist;
     index index.html index.htm;

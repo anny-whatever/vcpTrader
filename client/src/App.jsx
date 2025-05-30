@@ -505,7 +505,7 @@ function App() {
       socketRef.current.close();
     }
 
-    socketRef.current = new WebSocket("wss://api.devstatz.com/socket/ws");
+    socketRef.current = new WebSocket("wss://api.tradekeep.in/socket/ws");
 
     socketRef.current.onopen = () => {
       // Removed console.log("Connected to WebSocket");

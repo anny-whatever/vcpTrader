@@ -74,7 +74,8 @@ atexit.register(cleanup_resources)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-    "https://devstatz.com",
+    "https://tradekeep.in",
+    "https://www.tradekeep.in",
     "http://localhost:5173",
     "http://127.0.0.1:5173"
     ],# Or ["*"] for all origins (less secure)

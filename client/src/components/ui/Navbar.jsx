@@ -306,7 +306,7 @@ const Navbar = ({
   const adminActions = [
     {
       name: "Zerodha Login",
-      path: "https://api.devstatz.com/api/auth",
+      path: "https://api.tradekeep.in/api/auth",
       external: true,
     },
   ];
@@ -749,7 +749,7 @@ const Navbar = ({
         {userRole === "admin" && (
           <MenuItem
             component="a"
-            href="https://api.devstatz.com/api/auth"
+            href="https://api.tradekeep.in/api/auth"
             onClick={handleAccountClose}
           >
             <Typography variant="body2">Zerodha Login</Typography>
