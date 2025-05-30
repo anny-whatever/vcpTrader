@@ -49,6 +49,7 @@ from controllers import (
     alerts_router,
     watchlist_router
 )
+from controllers.risk_scores import router as risk_scores_router
 
 app = FastAPI()
 
@@ -59,7 +60,11 @@ async def health_check():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://devstatz.com"],  # Or ["*"] for all origins (less secure)
+    allow_origins=[
+    "https://devstatz.com",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173"
+    ],# Or ["*"] for all origins (less secure)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -77,6 +82,7 @@ app.include_router(data_router, prefix="/api/data")
 app.include_router(user_login_router, prefix="/api/login")
 app.include_router(alerts_router, prefix="/api/alerts")
 app.include_router(watchlist_router, prefix="/api/watchlist")
+app.include_router(risk_scores_router, prefix="/api/risk_scores")
 
 
 if __name__ == "__main__":

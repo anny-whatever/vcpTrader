@@ -120,6 +120,24 @@ class SaveOHLC:
         except Exception as e:
             logger.error(f"Error deleting OHLC data: {e}")
             raise e
+    
+    @classmethod
+    def delete_by_interval(cls, cur, interval):
+        """
+        Deletes all rows in the 'ohlc' table matching
+        the provided interval only.
+        """
+        delete_query = """
+            DELETE FROM ohlc
+            WHERE interval = %s;
+        """
+        try:
+            cur.execute(delete_query, (interval,))
+            logger.info(f"Deleted OHLC records for interval: {interval}")
+        except Exception as e:
+            logger.error(f"Error deleting OHLC data by interval: {e}")
+            raise e
+
 
     @classmethod
     def fetch_by_instrument(cls, cur, instrument_token):

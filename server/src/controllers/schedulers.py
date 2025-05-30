@@ -18,6 +18,36 @@ screener_executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="screen
 # Existing Jobs
 #
 
+def calculate_daily_risk_scores():
+    """
+    Calculate risk scores for all stocks after daily OHLC data collection.
+    This runs after the get_ohlc_on_schedule job completes.
+    """
+    try:
+        logger.info("Starting daily risk scores calculation...")
+        from services.risk_calculator import get_bulk_risk_scores
+        from models.risk_scores import RiskScore
+        from db import get_db_connection, close_db_connection
+        
+        conn, cur = get_db_connection()
+        
+        # Calculate risk scores for all available stocks
+        # This will process all stocks in the database with OHLC data
+        risk_results = get_bulk_risk_scores(symbols_list=None, limit=None)
+        
+        if risk_results:
+            # Save to database
+            RiskScore.bulk_save_risk_scores(cur, risk_results)
+            conn.commit()
+            logger.info(f"Daily risk calculation completed: {len(risk_results)} stocks processed")
+        else:
+            logger.warning("No risk scores calculated - check if OHLC data is available")
+            
+        close_db_connection()
+        
+    except Exception as e:
+        logger.error(f"Error in calculate_daily_risk_scores: {e}")
+
 def check_exits_on_schedule():
     try:
         logger.info("Checking for exits")
@@ -45,6 +75,8 @@ def get_ohlc_on_schedule():
         run_vcp_screener_on_schedule()
         run_ipo_screener_on_schedule()
         run_weekly_vcp_screener_on_schedule()
+
+        calculate_daily_risk_scores()
 
         logger.info("OHLC data retrieval job completed.")
     except Exception as e:
@@ -195,6 +227,15 @@ def get_scheduler():
             max_instances=1,
             replace_existing=True,
             id="vcp_trader_get_ohlc"
+        )
+        
+        # Risk calculation job - runs at 3:35 PM after OHLC data collection
+        scheduler.add_job(
+            calculate_daily_risk_scores,
+            CronTrigger(minute='35', hour='15', day_of_week='mon-fri'),
+            max_instances=1,
+            replace_existing=True,
+            id="vcp_trader_calculate_risk_scores"
         )
 
         # VCP screener jobs => runs every 5 minutes during trading hours

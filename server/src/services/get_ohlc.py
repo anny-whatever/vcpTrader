@@ -20,15 +20,7 @@ def get_ohlc(instrument_token, interval, symbol, segment):
     computes indicators, and saves everything into the `ohlc` table.
     """
     conn, cur = get_db_connection()  # Get connection and cursor
-    try:
-        # 1) Remove existing OHLC data for this token + interval (if that's your desired logic)
-        try:
-            SaveOHLC.delete_all(cur, instrument_token, interval)
-            logger.info(f"Successfully deleted data for {symbol} ({instrument_token}), interval: {interval}")
-        except Exception as err:
-            logger.error(f"Error deleting OHLC data: {err}")
-            return {"error": str(err)}
-    
+    try: 
         if not kite.access_token:
             logger.error(f"Missing Kite access token for {symbol} ({instrument_token})")
             return {"error": "Access token not found"}
@@ -221,9 +213,17 @@ def get_ohlc(instrument_token, interval, symbol, segment):
 def get_equity_ohlc_data_loop(interval):
     conn, cur = get_db_connection()  # Get connection and cursor
     try:
+        SaveOHLC.delete_by_interval(cur, interval)
+        logger.info(f"Successfully deleted data for interval: {interval}")
+    except Exception as err:
+        logger.error(f"Error deleting OHLC data: {err}")
+        return {"error": str(err)}
+    try:
         select_query = "SELECT * FROM equity_tokens;"
         cur.execute(select_query)
         tokens = cur.fetchall()
+        #Remove existing OHLC data for this token + interval (if that's your desired logic)
+        
         for token in tokens:
         # for token in tokens[:1]:
             get_ohlc(token[0], interval, token[1], token[4])

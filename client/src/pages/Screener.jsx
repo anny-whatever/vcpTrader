@@ -24,10 +24,12 @@ import BuyModal from "../components/BuyModal";
 import SellModal from "../components/SellModal";
 import ChartModal from "../components/ChartModal";
 import AddAlertModal from "../components/AddAlertModal"; // New modal for adding alert
+import RiskMeter from "../components/RiskMeter"; // Risk meter component
 import api from "../utils/api";
 import { AuthContext } from "../utils/AuthContext";
 import { jwtDecode } from "jwt-decode"; // ✅ Correct import
 import { Box, Typography, Button } from "@mui/material";
+import { calculateRiskScores } from "../utils/api.js";
 
 function Screener() {
   const { liveData, riskpool } = useContext(DataContext);
@@ -60,6 +62,9 @@ function Screener() {
   const updateTimeoutRef = useRef(null);
   const lastUpdateTime = useRef(0);
   const UPDATE_THROTTLE = 500; // ms
+
+  // Risk calculation state
+  const [isCalculatingRisk, setIsCalculatingRisk] = useState(false);
 
   let userRole = "";
   if (token) {
@@ -135,13 +140,27 @@ function Screener() {
 
   // Memoize the screener data transformation to prevent unnecessary recalculations
   const transformedScreenerData = useMemo(() => {
-    if (!screenerData || !liveDataMap.size) return screenerData;
+    if (!screenerData) return screenerData;
+
+    // If no live data, just ensure all items have stored_last_price
+    if (!liveDataMap.size) {
+      return screenerData.map((item) => ({
+        ...item,
+        stored_last_price: item.stored_last_price || item.last_price,
+      }));
+    }
 
     let changed = false;
     const newData = screenerData.map((item) => {
       const liveDataItem = liveDataMap.get(item.instrument_token);
+      
+      // Ensure all items have stored_last_price for ATR calculation
+      const baseItem = {
+        ...item,
+        stored_last_price: item.stored_last_price || item.last_price,
+      };
 
-      if (!liveDataItem) return item;
+      if (!liveDataItem) return baseItem;
 
       // Only create a new object if there are actual changes
       if (
@@ -149,13 +168,20 @@ function Screener() {
         item.last_price !== liveDataItem.last_price
       ) {
         changed = true;
-        return {
-          ...item,
+        const updatedItem = {
+          ...baseItem,
           change: liveDataItem.change,
           last_price: liveDataItem.last_price,
         };
+        
+        // Include ATR from live data if available, otherwise keep original
+        if (liveDataItem.atr !== undefined) {
+          updatedItem.atr = liveDataItem.atr;
+        }
+        
+        return updatedItem;
       }
-      return item;
+      return baseItem;
     });
 
     if (changed) {
@@ -163,7 +189,7 @@ function Screener() {
       return [...newData].sort((a, b) => (b.change || 0) - (a.change || 0));
     }
 
-    return screenerData;
+    return newData; // Return newData instead of screenerData to maintain stored_last_price
   }, [screenerData, liveDataMap]);
 
   // Calculate pagination values
@@ -400,13 +426,43 @@ function Screener() {
     [populateAddAlertData, handleOpenAddAlertModal]
   );
 
+  // Add a function to calculate risk scores for all stocks in screener
+  const handleCalculateRiskScores = useCallback(async () => {
+    if (!screenerData || isCalculatingRisk) return;
+    
+    setIsCalculatingRisk(true);
+    
+    try {
+      // Get all symbols from the screener data to recalculate risk scores for all
+      const symbols = screenerData.map(stock => stock.symbol);
+      console.log(`Calculating risk scores for ${symbols.length} stocks:`, symbols);
+      
+      await calculateRiskScores(symbols);
+      
+      // Refresh screener data to get updated risk scores
+      setTimeout(() => {
+        fetchScreenerData();
+        setIsCalculatingRisk(false);
+      }, 2000); // Give backend time to calculate
+      
+    } catch (error) {
+      console.error('Error calculating risk scores:', error);
+      setIsCalculatingRisk(false);
+      alert('Error calculating risk scores. Please try again.');
+    }
+  }, [screenerData, isCalculatingRisk, fetchScreenerData]);
+
   // Memoize rendering of table rows to prevent forced reflows
   const renderTableRows = useMemo(() => {
     if (!paginatedData) return null;
 
     return paginatedData.map((row, index) => {
       const colorClass = row.change > 0 ? "text-green-500" : "text-red-500";
-      const atrPercent = ((row?.atr / row?.last_price) * 100).toFixed(2) + "%";
+      // Use the stored price that ATR was calculated against for accurate percentage
+      const priceForATR = row?.stored_last_price || row?.last_price || 0;
+      const atrPercent = row?.atr && priceForATR > 0 
+        ? ((row.atr / priceForATR) * 100).toFixed(2) + "%" 
+        : "0.00%";
 
       return (
         <TableRow key={`${row.symbol}-${index}`}>
@@ -419,6 +475,14 @@ function Screener() {
             </span>
           </TableCell>
           <TableCell>{atrPercent}</TableCell>
+          <TableCell>
+            <RiskMeter 
+              riskScore={row.risk_score} 
+              size="sm" 
+              showLabel={false}
+              className="justify-center"
+            />
+          </TableCell>
           <TableCell>
             <ButtonGroup size="sm" variant="flat" className="rounded-lg">
               {userRole === "admin" && (
@@ -555,7 +619,11 @@ function Screener() {
 
     return paginatedData.map((row, index) => {
       const colorClass = row.change > 0 ? "text-green-500" : "text-red-500";
-      const atrPercent = ((row?.atr / row?.last_price) * 100).toFixed(2) + "%";
+      // Use the stored price that ATR was calculated against for accurate percentage
+      const priceForATR = row?.stored_last_price || row?.last_price || 0;
+      const atrPercent = row?.atr && priceForATR > 0 
+        ? ((row.atr / priceForATR) * 100).toFixed(2) + "%" 
+        : "0.00%";
 
       return (
         <div
@@ -572,7 +640,7 @@ function Screener() {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-4 mt-1">
+          <div className="grid grid-cols-3 gap-3 mt-1">
             <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
               <span className="text-xs text-zinc-400 font-medium mb-1">
                 Last Price
@@ -596,6 +664,20 @@ function Screener() {
               <span className="text-sm font-medium text-white">
                 {atrPercent}
               </span>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+              <span className="text-xs text-zinc-400 font-medium mb-1">
+                Risk Score
+              </span>
+              <RiskMeter 
+                riskScore={row.risk_score} 
+                size="sm" 
+                showLabel={false}
+                className="mt-1"
+              />
             </div>
             <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
               <span className="text-xs text-zinc-400 font-medium mb-1">
@@ -764,6 +846,17 @@ function Screener() {
           >
             Refresh Screener
           </NextUIButton>
+          <NextUIButton
+            size="md"
+            color="primary"
+            variant="flat"
+            className="min-w-[170px] h-10 px-4 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
+            onPress={handleCalculateRiskScores}
+            isLoading={isCalculatingRisk}
+            isDisabled={isCalculatingRisk}
+          >
+            {isCalculatingRisk ? 'Calculating...' : 'Calculate Risk Scores'}
+          </NextUIButton>
           <select
             className="h-10 px-4 py-1 text-sm text-white rounded-md border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-green-500 shadow-md"
             value={screen}
@@ -814,6 +907,7 @@ function Screener() {
                 <TableColumn>Last Price</TableColumn>
                 <TableColumn>Change</TableColumn>
                 <TableColumn>ATR %</TableColumn>
+                <TableColumn>Risk</TableColumn>
                 <TableColumn>Actions</TableColumn>
               </TableHeader>
               <TableBody>{renderTableRows}</TableBody>

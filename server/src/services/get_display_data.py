@@ -220,14 +220,43 @@ def get_latest_alert_messages():
 
 def fetch_screener_data(screener_name: str) -> list:
     """
-    Fetch screener results from the screener_results table.
+    Fetch screener results from the screener_results table with risk scores.
     Returns a list of dicts suitable for JSON response,
     sorted in descending order by 'change'.
     """
     logger.info(f"Fetching screener data for {screener_name}")
     conn, cur = get_db_connection()
     try:
-        rows = ScreenerResult.fetch_by_screener(cur, screener_name)
+        # Modified query to include risk scores
+        query = """
+            SELECT 
+                sr.screener_name,
+                sr.instrument_token,
+                sr.symbol,
+                sr.last_price,
+                sr.change_pct,
+                sr.sma_50,
+                sr.sma_150,
+                sr.sma_200,
+                sr.atr,
+                sr.run_time,
+                rs.overall_risk_score,
+                rs.volatility_score,
+                rs.atr_risk_score,
+                rs.drawdown_risk_score,
+                rs.gap_risk_score,
+                rs.volume_consistency_score,
+                rs.trend_stability_score,
+                rs.data_points as risk_data_points,
+                rs.calculated_at as risk_calculated_at
+            FROM screener_results sr
+            LEFT JOIN risk_scores rs ON sr.instrument_token = rs.instrument_token
+            WHERE sr.screener_name = %s
+            ORDER BY sr.run_time DESC;
+        """
+        
+        cur.execute(query, (screener_name,))
+        rows = cur.fetchall()
         logger.info(f"Retrieved {len(rows)} rows for screener: {screener_name}")
         
         if not rows:
@@ -236,21 +265,33 @@ def fetch_screener_data(screener_name: str) -> list:
             
         data = []
         for row in rows:
-            # row is (screener_name, instrument_token, symbol,
-            #         last_price, change_pct, sma_50, sma_150,
-            #         sma_200, atr, run_time)
-            data.append({
+            # Extended data structure with risk scores
+            item = {
                 "screener_name": row[0],
                 "instrument_token": row[1],
                 "symbol": row[2],
                 "last_price": safe_float(row[3]),
-                "change": safe_float(row[4]),   # rename from 'change_pct' to 'change'
+                "change": safe_float(row[4]),
                 "sma_50": safe_float(row[5]),
                 "sma_150": safe_float(row[6]),
                 "sma_200": safe_float(row[7]),
                 "atr": safe_float(row[8]),
-                "run_time": row[9].isoformat() if row[9] else None
-            })
+                "run_time": row[9].isoformat() if row[9] else None,
+                "stored_last_price": safe_float(row[3]),  # Store original price for ATR calculation
+                # Risk score data
+                "risk_score": safe_float(row[10]) if row[10] is not None else None,
+                "risk_components": {
+                    "volatility": int(row[11]) if row[11] is not None else None,
+                    "atr_risk": int(row[12]) if row[12] is not None else None,
+                    "drawdown_risk": int(row[13]) if row[13] is not None else None,
+                    "gap_risk": int(row[14]) if row[14] is not None else None,
+                    "volume_consistency": int(row[15]) if row[15] is not None else None,
+                    "trend_stability": int(row[16]) if row[16] is not None else None,
+                } if any(row[11:17]) else None,
+                "risk_data_points": int(row[17]) if row[17] is not None else None,
+                "risk_calculated_at": row[18].isoformat() if row[18] else None
+            }
+            data.append(item)
 
         # Sort the 'data' list in descending order by "change"
         data.sort(key=lambda x: x["change"], reverse=True)
@@ -258,7 +299,8 @@ def fetch_screener_data(screener_name: str) -> list:
         # Log some of the results
         if data:
             symbols = ", ".join([item["symbol"] for item in data[:5]])
-            logger.info(f"Returning {len(data)} results for {screener_name}. First few symbols: {symbols}...")
+            risk_count = sum(1 for item in data if item["risk_score"] is not None)
+            logger.info(f"Returning {len(data)} results for {screener_name}. Risk scores available for {risk_count} stocks. First few symbols: {symbols}...")
         
         return data
 

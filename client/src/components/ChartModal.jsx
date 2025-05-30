@@ -230,8 +230,8 @@ function ChartModal({
       lastCandleRef.current = chartData[chartData.length - 1];
 
       // Adjust visible range when updating data
-      if (chartData.length > 75) {
-        const fromIdx = chartData.length - 75;
+      if (chartData.length > 150) {
+        const fromIdx = chartData.length - 150;
         chartRef.current.timeScale().setVisibleRange({
           from: chartData[fromIdx].time,
           to: chartData[chartData.length - 1].time,
@@ -351,8 +351,8 @@ function ChartModal({
     ma200SeriesRef.current = ma200Series;
 
     // Adjust visible range
-    if (chartData.length > 75) {
-      const fromIdx = chartData.length - 75;
+    if (chartData.length > 150) {
+      const fromIdx = chartData.length - 150;
       chart.timeScale().setVisibleRange({
         from: chartData[fromIdx].time,
         to: chartData[chartData.length - 1].time,
@@ -531,7 +531,7 @@ function ChartModal({
       open={isOpen}
       onClose={onClose}
       fullWidth
-      maxWidth="xl"
+      maxWidth="2xl"
       PaperProps={{
         sx: {
           bgcolor: "#18181b", // zinc-900
@@ -539,7 +539,7 @@ function ChartModal({
           borderRadius: "12px",
           border: "1px solid #27272a", // zinc-800
           p: 0,
-          height: fullScreen ? "100%" : "80vh",
+          height: fullScreen ? "100%" : "90vh",
         },
       }}
     >
