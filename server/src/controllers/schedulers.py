@@ -5,6 +5,7 @@ from time import sleep
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.schedulers.base import STATE_RUNNING
+import os
 
 
 
@@ -183,6 +184,29 @@ def resample_job_fifteen_minute():
     except Exception as e:
         logger.error(f"Error in resample_job_fifteen_minute: {e}")
 
+def clean_server_log():
+    """
+    Clean the server.log file every day at 6 PM.
+    This helps prevent the log file from growing too large.
+    """
+    try:
+        log_file_path = "server.log"
+        
+        if os.path.exists(log_file_path):
+            # Get file size before cleaning
+            file_size = os.path.getsize(log_file_path)
+            
+            # Clear the file contents
+            with open(log_file_path, 'w') as f:
+                f.write("")
+            
+            logger.info(f"Server log cleaned. Previous size: {file_size} bytes")
+        else:
+            logger.warning("Server log file not found at expected location")
+            
+    except Exception as e:
+        logger.error(f"Error in clean_server_log: {e}")
+
 #
 # Main function to get and/or start the scheduler
 #
@@ -246,6 +270,15 @@ def get_scheduler():
         # IPO screener jobs => runs every 5 minutes too
         # run_ipo_screener_on_schedule()  # REMOVED IPO screener
         # run_weekly_vcp_screener_on_schedule()  # REMOVED weekly VCP screener
+
+        # Log cleaning job - runs every day at 6 PM
+        scheduler.add_job(
+            clean_server_log,
+            CronTrigger(minute='0', hour='18'),  # 6:00 PM every day
+            max_instances=1,
+            replace_existing=True,
+            id="vcp_trader_clean_log"
+        )
 
         # Start the scheduler
         scheduler.start()
