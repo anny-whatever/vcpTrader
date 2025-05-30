@@ -69,12 +69,12 @@ def get_ohlc_on_schedule():
         download_nse_csv("https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv", "ALL")
 
         get_equity_ohlc_data_loop("day")
-        get_equity_ohlc_data_loop("week")
+        # get_equity_ohlc_data_loop("week")  # REMOVED weekly data collection
         load_precomputed_ohlc()
 
         run_vcp_screener_on_schedule()
-        run_ipo_screener_on_schedule()
-        run_weekly_vcp_screener_on_schedule()
+        # run_ipo_screener_on_schedule()  # REMOVED IPO screener
+        # run_weekly_vcp_screener_on_schedule()  # REMOVED weekly VCP screener
 
         calculate_daily_risk_scores()
 
@@ -90,24 +90,6 @@ def run_vcp_screener_on_schedule():
         logger.info("VCP screener job submitted to thread pool")
     except Exception as e:
         logger.error(f"Error in run_vcp_screener_on_schedule: {e}")
-
-def run_ipo_screener_on_schedule():
-    try:
-        from services import run_ipo_screener
-        # Run in a separate thread to avoid blocking the scheduler
-        screener_executor.submit(run_ipo_screener)
-        logger.info("IPO screener job submitted to thread pool")
-    except Exception as e:
-        logger.error(f"Error in run_ipo_screener_on_schedule: {e}")
-
-def run_weekly_vcp_screener_on_schedule():
-    try:
-        from services import run_weekly_vcp_screener
-        # Run in a separate thread to avoid blocking the scheduler
-        screener_executor.submit(run_weekly_vcp_screener)
-        logger.info("Weekly VCP screener job submitted to thread pool")
-    except Exception as e:
-        logger.error(f"Error in run_weekly_vcp_screener_on_schedule: {e}")
 
 #
 # Utility to decide if we are within the time range for resampling
@@ -261,51 +243,9 @@ def get_scheduler():
             id="run_vcp_screener_job_part3"
         )
         
-        # Weekly VCP screener jobs => runs every 5 minutes too
-        scheduler.add_job(
-            run_weekly_vcp_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='9', minute='15,20,25,30,35,40,45,50,55'),
-            max_instances=2,
-            replace_existing=False,
-            id="run_weekly_vcp_screener_job_part1"
-        )
-        scheduler.add_job(
-            run_weekly_vcp_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='10-14', minute='0,5,10,15,20,25,30,35,40,45,50,55'),
-            max_instances=2,
-            replace_existing=False,
-            id="run_weekly_vcp_screener_job_part2"
-        )
-        scheduler.add_job(
-            run_weekly_vcp_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='15', minute='0,5,10,15,20,25,30'),
-            max_instances=2,
-            replace_existing=False,
-            id="run_weekly_vcp_screener_job_part3"
-        )
-
         # IPO screener jobs => runs every 5 minutes too
-        scheduler.add_job(
-            run_ipo_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='9', minute='15,20,25,30,35,40,45,50,55'),
-            max_instances=3,
-            replace_existing=False,
-            id="run_ipo_screener_job_part1"
-        )
-        scheduler.add_job(
-            run_ipo_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='10-14', minute='0,5,10,15,20,25,30,35,40,45,50,55'),
-            max_instances=3,
-            replace_existing=False,
-            id="run_ipo_screener_job_part2"
-        )
-        scheduler.add_job(
-            run_ipo_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='15', minute='0,5,10,15,20,25,30'),
-            max_instances=3,
-            replace_existing=False,
-            id="run_ipo_screener_job_part3"
-        )
+        # run_ipo_screener_on_schedule()  # REMOVED IPO screener
+        # run_weekly_vcp_screener_on_schedule()  # REMOVED weekly VCP screener
 
         # Start the scheduler
         scheduler.start()

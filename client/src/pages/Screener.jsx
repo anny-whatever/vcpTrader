@@ -34,7 +34,7 @@ import { calculateRiskScores } from "../utils/api.js";
 function Screener() {
   const { liveData, riskpool } = useContext(DataContext);
   const { token, logout } = useContext(AuthContext);
-  const screenOptions = ["VCP", "Weekly VCP", "IPO"];
+  const screenOptions = ["VCP"];
   const [screenerData, setScreenerData] = useState(null);
   const [screen, setScreen] = useState("VCP");
   const previousScreenRef = useRef(screen);
@@ -91,22 +91,9 @@ function Screener() {
 
     try {
       let response;
-      let endpoint = "";
-
       // Determine endpoint based on screen
-      switch (screen) {
-        case "VCP":
-          endpoint = "/api/screener/vcpscreen";
-          break;
-        case "Weekly VCP":
-          endpoint = "/api/screener/weekly_vcpscreen";
-          break;
-        case "IPO":
-          endpoint = "/api/screener/iposcreen";
-          break;
-        default:
-          endpoint = "/api/screener/vcpscreen";
-      }
+      // Only VCP screener available now
+      const endpoint = "/api/screener/vcpscreen";
 
       // Single API call with the determined endpoint
       response = await api.get(endpoint);

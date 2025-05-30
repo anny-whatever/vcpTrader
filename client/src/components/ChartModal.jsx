@@ -177,7 +177,8 @@ function ChartModal({
 
   // Handle interval change
   const handleIntervalChange = (event, newInterval) => {
-    if (newInterval !== null && newInterval !== interval) {
+    // Only allow "day" interval since weekly charts are removed
+    if (newInterval === "day" && newInterval !== interval) {
       // Mark that we're changing intervals so the chart will be recreated
       if (chartRef.current) {
         chartRef.current._isChangingInterval = true;
@@ -459,9 +460,8 @@ function ChartModal({
   // 4. UI / Render Modal
   // --------------------------------------------
   const openFullChart = (symbol) => {
-    const timeframe = interval === "week" ? "&timeframe=W" : "";
     window.open(
-      `https://www.tradingview.com/chart/?symbol=NSE:${symbol}${timeframe}`,
+      `https://www.tradingview.com/chart/?symbol=NSE:${symbol}`,
       "_blank"
     );
   };
@@ -992,33 +992,7 @@ function ChartModal({
           </Button>
         )}
 
-        {/* Interval Toggle Buttons */}
-        <div className="absolute top-3 right-3 z-10">
-          <div className="bg-zinc-900/80 backdrop-blur-md border border-zinc-800 rounded-lg overflow-hidden shadow-lg">
-            <div className="flex">
-              <button
-                className={`px-3 py-1.5 text-xs font-medium ${
-                  interval === "day"
-                    ? "bg-zinc-700 text-white"
-                    : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
-                }`}
-                onClick={() => handleIntervalChange(null, "day")}
-              >
-                Daily
-              </button>
-              <button
-                className={`px-3 py-1.5 text-xs font-medium ${
-                  interval === "week"
-                    ? "bg-zinc-700 text-white"
-                    : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
-                }`}
-                onClick={() => handleIntervalChange(null, "week")}
-              >
-                Weekly
-              </button>
-            </div>
-          </div>
-        </div>
+        
 
         <div
           ref={chartContainerRef}
