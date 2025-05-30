@@ -24,11 +24,13 @@ import ModifyTgtModal from "../components/ModifyTgtModal";
 import ChartModal from "../components/ChartModal";
 import AddAlertModal from "../components/AddAlertModal"; // New import for Add Alert modal
 import BuyModal from "../components/BuyModal"; // Import for Buy modal
+import RiskMeter from "../components/RiskMeter"; // Risk meter component
 import { AuthContext } from "../utils/AuthContext";
 import { jwtDecode } from "jwt-decode"; // ✅ Correct import
 import api from "../utils/api"; // Adjust the path as necessary
 import { toast } from "sonner";
 import { PlayToastSound } from "../utils/PlaySound";
+import { getSimpleRiskScore } from "../utils/api.js";
 
 function AllPositions() {
   const { liveData, positions, riskpool } = useContext(DataContext);
@@ -40,6 +42,11 @@ function AllPositions() {
   // New state for Add Alert modal
   const [addAlertData, setAddAlertData] = useState(null);
   const [buyData, setBuyData] = useState(null);
+
+  // Risk score states
+  const [positionRiskScores, setPositionRiskScores] = useState({});
+  const [portfolioRiskScore, setPortfolioRiskScore] = useState(null);
+  const [isLoadingRiskScores, setIsLoadingRiskScores] = useState(false);
 
   // Modal states
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
@@ -97,6 +104,86 @@ function AllPositions() {
       setCapitalUsed(runningCap);
     }
   }, [positions, liveData]);
+
+  // Fetch risk scores for all positions
+  const fetchPositionRiskScores = useCallback(async () => {
+    if (!positions || positions.length === 0) return;
+    
+    setIsLoadingRiskScores(true);
+    const riskScores = {};
+    
+    try {
+      // Fetch risk scores for all positions in parallel
+      const riskPromises = positions.map(async (position) => {
+        try {
+          const riskData = await getSimpleRiskScore(position.stock_name);
+          return { symbol: position.stock_name, riskData };
+        } catch (error) {
+          console.error(`Error fetching risk score for ${position.stock_name}:`, error);
+          return { symbol: position.stock_name, riskData: null };
+        }
+      });
+      
+      const results = await Promise.all(riskPromises);
+      
+      // Build risk scores object
+      results.forEach(({ symbol, riskData }) => {
+        riskScores[symbol] = riskData;
+      });
+      
+      setPositionRiskScores(riskScores);
+      
+      // Calculate portfolio weighted average risk score
+      calculatePortfolioRiskScore(positions, riskScores);
+      
+    } catch (error) {
+      console.error('Error fetching position risk scores:', error);
+    } finally {
+      setIsLoadingRiskScores(false);
+    }
+  }, [positions]);
+
+  // Calculate portfolio weighted average risk score
+  const calculatePortfolioRiskScore = useCallback((positions, riskScores) => {
+    if (!positions || positions.length === 0) {
+      setPortfolioRiskScore(null);
+      return;
+    }
+    
+    let totalWeightedRisk = 0;
+    let totalValue = 0;
+    
+    positions.forEach((position) => {
+      const currentValue = position.last_price * position.current_qty;
+      const riskData = riskScores[position.stock_name];
+      
+      if (riskData && riskData.overall_risk_score !== null && riskData.overall_risk_score !== undefined) {
+        totalWeightedRisk += riskData.overall_risk_score * currentValue;
+        totalValue += currentValue;
+      }
+    });
+    
+    if (totalValue > 0) {
+      const weightedAverage = totalWeightedRisk / totalValue;
+      setPortfolioRiskScore(weightedAverage);
+    } else {
+      setPortfolioRiskScore(null);
+    }
+  }, []);
+
+  // Fetch risk scores when positions change
+  useEffect(() => {
+    if (positions && positions.length > 0) {
+      fetchPositionRiskScores();
+    }
+  }, [positions, fetchPositionRiskScores]);
+
+  // Recalculate portfolio risk when position values change (live data updates)
+  useEffect(() => {
+    if (positions && Object.keys(positionRiskScores).length > 0) {
+      calculatePortfolioRiskScore(positions, positionRiskScores);
+    }
+  }, [positions, positionRiskScores, liveData, calculatePortfolioRiskScore]);
 
   // For row-based modals
   const populatePositionData = (row) => setPositionData({ ...row });
@@ -201,7 +288,7 @@ function AllPositions() {
           <div className="flex flex-col bg-zinc-900/50 backdrop-blur-sm rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
             <span className="text-sm text-zinc-400 font-medium">Total P&L</span>
             <span
-              className={`text-xl mt-1 font-semibold ${
+              className={`text-xl font-semibold ${
                 totalPnl >= 0 ? "text-green-500" : "text-red-500"
               }`}
             >
@@ -219,13 +306,13 @@ function AllPositions() {
             <span className="text-sm text-zinc-400 font-medium">
               Capital Used
             </span>
-            <span className="mt-1 text-xl text-zinc-200 font-semibold">
+            <span className="text-xl text-zinc-200 font-semibold">
               {(capitalUsed * multiplier).toFixed(2)}
             </span>
           </div>
           <div className="flex flex-col bg-zinc-900/50 backdrop-blur-sm rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
             <span className="text-sm text-zinc-400 font-medium">Used Risk</span>
-            <span className="mt-1 text-xl text-zinc-200 font-semibold">
+            <span className="text-xl text-zinc-200 font-semibold">
               {(riskpool?.used_risk * multiplier || 0).toFixed(2)}
             </span>
           </div>
@@ -233,7 +320,7 @@ function AllPositions() {
             <span className="text-sm text-zinc-400 font-medium">
               Available Risk
             </span>
-            <span className="mt-1 text-xl text-zinc-200 font-semibold">
+            <span className="text-xl text-zinc-200 font-semibold">
               {(riskpool?.available_risk * multiplier || 0).toFixed(2)}
             </span>
           </div>
@@ -241,9 +328,64 @@ function AllPositions() {
             <span className="text-sm text-zinc-400 font-medium">
               Total Risk
             </span>
-            <span className="mt-1 text-xl text-zinc-200 font-semibold">
+            <span className="text-xl text-zinc-200 font-semibold">
               {((riskpool?.available_risk + riskpool?.used_risk) * multiplier || 0).toFixed(2)}
             </span>
+          </div>
+          <div className="flex flex-col bg-zinc-900/50 backdrop-blur-sm rounded-xl p-4 shadow-md border border-zinc-800 min-w-[200px] flex-1">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-zinc-400 font-medium">
+                Portfolio Risk Score
+              </span>
+              <button
+                onClick={fetchPositionRiskScores}
+                disabled={isLoadingRiskScores}
+                className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700/50 rounded-lg transition-colors disabled:opacity-50"
+                title="Refresh Risk Scores"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className={`w-4 h-4 ${isLoadingRiskScores ? 'animate-spin' : ''}`}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="flex items-center">
+              {isLoadingRiskScores ? (
+                <div className="flex items-center">
+                  <div className="animate-spin w-4 h-4 border-2 border-zinc-600 border-t-white rounded-full mr-2"></div>
+                  <span className="text-sm text-zinc-400">Loading...</span>
+                </div>
+              ) : portfolioRiskScore !== null ? (
+                <div className="flex items-center">
+                  <RiskMeter 
+                    riskScore={portfolioRiskScore} 
+                    size="sm" 
+                    showLabel={false}
+                    className="mr-3"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-lg text-zinc-200 font-semibold">
+                      {portfolioRiskScore.toFixed(1)}
+                    </span>
+                    <span className="text-xs text-zinc-400">
+                      Weighted Avg
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <span className="text-sm text-zinc-500">Not Available</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -270,6 +412,7 @@ function AllPositions() {
               <TableColumn>LTP</TableColumn>
               <TableColumn>Cur. Val</TableColumn>
               <TableColumn>P&L</TableColumn>
+              <TableColumn>Risk</TableColumn>
               <TableColumn>Actions</TableColumn>
             </TableHeader>
             <TableBody emptyContent="No positions available.">
@@ -299,6 +442,20 @@ function AllPositions() {
                     <TableCell>{(curVal * multiplier).toFixed(2)}</TableCell>
                     <TableCell className={pnlClass}>
                       {(currentPnl * multiplier).toFixed(2)} ({pnlPercent}%)
+                    </TableCell>
+                    <TableCell>
+                      {positionRiskScores[row.stock_name] ? (
+                        <RiskMeter 
+                          riskScore={positionRiskScores[row.stock_name].overall_risk_score} 
+                          size="sm" 
+                          showLabel={false}
+                          className="justify-center"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center">
+                          <span className="text-xs text-zinc-500">N/A</span>
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <ButtonGroup className="w-full">
@@ -659,6 +816,21 @@ function AllPositions() {
                     <span className="text-sm font-medium text-white">
                       {(curVal * multiplier).toFixed(2)}
                     </span>
+                  </div>
+                  <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+                    <span className="text-xs text-zinc-400 font-medium mb-1">
+                      Risk Score
+                    </span>
+                    {positionRiskScores[row.stock_name] ? (
+                      <RiskMeter 
+                        riskScore={positionRiskScores[row.stock_name].overall_risk_score} 
+                        size="sm" 
+                        showLabel={false}
+                        className="mt-1"
+                      />
+                    ) : (
+                      <span className="text-xs text-zinc-500 mt-1">N/A</span>
+                    )}
                   </div>
                   
                   {/* Action buttons in a stacked layout */}

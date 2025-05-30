@@ -142,7 +142,7 @@ def start_kite_ticker():
     # Import additional service modules
     from .ws_clients import process_and_send_live_ticks
     from services import process_live_alerts, process_live_auto_exit
-    from signals import monitor_live_position_fema_short, monitor_live_position_fema_long
+
 
     tokens = get_instrument_token()
     if isinstance(tokens, dict):  # Indicates an error occurred

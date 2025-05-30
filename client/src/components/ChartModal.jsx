@@ -39,6 +39,8 @@ import ModifySlModal from "./ModifySlModal";
 import ModifyTgtModal from "./ModifyTgtModal";
 import IncreaseModal from "./IncreaseModal";
 import ReduceModal from "./ReduceModal";
+import RiskMeter from "./RiskMeter";
+import { getSimpleRiskScore } from "../utils/api.js";
 
 function ChartModal({
   isOpen,
@@ -90,6 +92,10 @@ function ChartModal({
   const [isIncreaseModalOpen, setIsIncreaseModalOpen] = useState(false);
   const [isReduceModalOpen, setIsReduceModalOpen] = useState(false);
   const [isExitLoading, setIsExitLoading] = useState(false);
+
+  // Risk score state
+  const [riskScore, setRiskScore] = useState(null);
+  const [isLoadingRisk, setIsLoadingRisk] = useState(false);
 
   // Add multiplier logic
   let multiplier = 1;
@@ -175,6 +181,23 @@ function ChartModal({
     }
   };
 
+  // --------------------------------------------
+  // Fetch Risk Score for the symbol
+  // --------------------------------------------
+  const getRiskScore = async () => {
+    if (!symbol) return;
+    try {
+      setIsLoadingRisk(true);
+      const response = await getSimpleRiskScore(symbol);
+      setRiskScore(response);
+    } catch (error) {
+      console.error("Error fetching risk score:", error);
+      setRiskScore(null);
+    } finally {
+      setIsLoadingRisk(false);
+    }
+  };
+
   // Handle interval change
   const handleIntervalChange = (event, newInterval) => {
     // Only allow "day" interval since weekly charts are removed
@@ -190,6 +213,7 @@ function ChartModal({
   useEffect(() => {
     if (isOpen) {
       getChartData();
+      getRiskScore();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, symbol, instrumentToken, interval]); // Add interval as dependency
@@ -650,6 +674,28 @@ function ChartModal({
               C: <span className="text-white">{livePrice?.toFixed(2)}</span>
             </span>
           </div>
+        </div>
+
+        {/* Risk Meter - Top Right */}
+        <div className="absolute top-3 right-20 z-10 bg-zinc-900/80 backdrop-blur-md text-white px-3 py-2 rounded-lg border border-zinc-800 shadow-lg">
+          <div className="text-xs font-medium mb-2 text-zinc-300">Risk Score</div>
+          {isLoadingRisk ? (
+            <div className="flex items-center justify-center h-6">
+              <div className="animate-spin w-4 h-4 border-2 border-zinc-600 border-t-white rounded-full"></div>
+            </div>
+          ) : riskScore?.overall_risk_score !== null && riskScore?.overall_risk_score !== undefined ? (
+            <RiskMeter 
+              riskScore={riskScore.overall_risk_score} 
+              size="sm" 
+              showLabel={true}
+              className="justify-center"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-6">
+              <span className="text-xs text-zinc-500">Not Available</span>
+            </div>
+          )}
+          
         </div>
 
         {/* Side panel for alerts and positions */}

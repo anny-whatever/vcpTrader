@@ -424,18 +424,22 @@ function Screener() {
       const symbols = screenerData.map(stock => stock.symbol);
       console.log(`Calculating risk scores for ${symbols.length} stocks:`, symbols);
       
-      await calculateRiskScores(symbols);
+      const response = await calculateRiskScores(symbols);
+      console.log('Risk calculation response:', response);
       
-      // Refresh screener data to get updated risk scores
+      // Show success message for thread pool execution
+      alert(`Risk score calculation started in background. Processing ${symbols.length} stocks in thread pool.`);
+      
+      // Refresh screener data to get updated risk scores after some time
       setTimeout(() => {
         fetchScreenerData();
         setIsCalculatingRisk(false);
-      }, 2000); // Give backend time to calculate
+      }, 5000); // Give more time for thread pool calculation
       
     } catch (error) {
       console.error('Error calculating risk scores:', error);
       setIsCalculatingRisk(false);
-      alert('Error calculating risk scores. Please try again.');
+      alert('Error starting risk calculation. Please try again.');
     }
   }, [screenerData, isCalculatingRisk, fetchScreenerData]);
 

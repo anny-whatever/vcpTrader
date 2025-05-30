@@ -205,6 +205,11 @@ def update_live_data(df, live_data):
         # Recompute ATR over the last 50 rows
         tail_window = 50
         subset = group_updated.tail(tail_window).copy()
+        
+        # Debug logging for ATR calculation
+        logger.debug(f"ATR calculation for {last_row['symbol']} - subset shape: {subset.shape}")
+        logger.debug(f"ATR calculation - last 3 rows high/low/close: {subset[['high', 'low', 'close']].tail(3).to_dict()}")
+        
         new_atr_series = ta.atr(
             high=subset["high"],
             low=subset["low"],
@@ -212,6 +217,11 @@ def update_live_data(df, live_data):
             length=min(tail_window, len(subset))
         )
         new_atr_val = float(new_atr_series.iloc[-1] if not new_atr_series.empty else 0.0)
+        
+        # Debug logging for ATR result
+        logger.debug(f"ATR calculation for {last_row['symbol']} - new_atr_val: {new_atr_val}, series empty: {new_atr_series.empty}")
+        if new_atr_val == 0.0 and not new_atr_series.empty:
+            logger.warning(f"ATR is 0.0 but series not empty for {last_row['symbol']} - series: {new_atr_series.tail(3).to_dict()}")
 
         # Recompute 52-week highs/lows over last 252 rows
         subset_252 = group_updated.tail(252)

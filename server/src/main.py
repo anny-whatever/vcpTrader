@@ -1,5 +1,6 @@
 import logging.config
 import logging
+import atexit
 
 import uvicorn
 from fastapi import FastAPI
@@ -49,7 +50,7 @@ from controllers import (
     alerts_router,
     watchlist_router
 )
-from controllers.risk_scores import router as risk_scores_router
+from controllers.risk_scores import router as risk_scores_router, risk_calculation_executor
 
 app = FastAPI()
 
@@ -57,6 +58,18 @@ app = FastAPI()
 @app.get("/health")
 async def health_check():
     return JSONResponse(content={"status": "healthy"}, status_code=200)
+
+# Graceful shutdown for thread pool
+def cleanup_resources():
+    """Clean up resources on shutdown"""
+    try:
+        risk_calculation_executor.shutdown(wait=True, timeout=30)
+        logging.info("Thread pool executor shut down gracefully")
+    except Exception as e:
+        logging.error(f"Error during thread pool shutdown: {e}")
+
+# Register cleanup function
+atexit.register(cleanup_resources)
 
 app.add_middleware(
     CORSMiddleware,
