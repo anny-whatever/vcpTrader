@@ -50,6 +50,3 @@ server {
         add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
     }
 }
-
-
-Now along with docker, i need the backend to work on this nginx conf

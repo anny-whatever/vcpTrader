@@ -59,7 +59,7 @@ async def health_check():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change this in production
+    allow_origins=["https://devstatz.com"],  # Or ["*"] for all origins (less secure)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
