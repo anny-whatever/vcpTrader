@@ -62,7 +62,7 @@ async def callback(request_token: str):
         initialize_kite_ticker(access_token)
 
         logger.info("Kite authentication callback successful.")
-        return RedirectResponse(url="https://devstatz.com?login=true&kiteAuth=success")
+        return RedirectResponse(url="https://tradekeep.in?login=true&kiteAuth=success")
 
     except Exception as e:
         logger.error(f"Error in /callback endpoint: {e}")
