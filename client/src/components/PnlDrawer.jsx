@@ -44,25 +44,27 @@ const ToggleButton = styled(IconButton)(({ theme }) => ({
 
 const PnlDrawer = () => {
   const { positions, liveData } = useContext(DataContext);
-  const { token } = useContext(AuthContext);
+  const { token, multiplierEnabled } = useContext(AuthContext);
   const [isOpen, setIsOpen] = useState(true);
   const [totalPnl, setTotalPnl] = useState(0);
   const [capitalUsed, setCapitalUsed] = useState(0);
-  const [multiplier, setMultiplier] = useState(1);
 
-  // Determine multiplier based on user role
-  useEffect(() => {
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        if (decoded.role && decoded.role !== "admin") {
-          setMultiplier(25);
-        }
-      } catch (error) {
-        console.error("Failed to decode token:", error);
+  // Determine multiplier based on user role and toggle
+  let multiplier = 1;
+  if (token) {
+    try {
+      const decoded = jwtDecode(token);
+      const userRole = decoded.role || "";
+      // For admin users, use the toggle setting. For non-admin users, always use multiplier
+      if (userRole === "admin") {
+        multiplier = multiplierEnabled ? 25 : 1;
+      } else {
+        multiplier = 25; // Non-admin users always have multiplier
       }
+    } catch (error) {
+      console.error("Failed to decode token:", error);
     }
-  }, [token]);
+  }
 
   // Merge liveData into positions just like in AllPositions
   useEffect(() => {
@@ -91,7 +93,7 @@ const PnlDrawer = () => {
       setTotalPnl(runningPnl);
       setCapitalUsed(runningCap);
     }
-  }, [positions, liveData]);
+  }, [positions, liveData, multiplierEnabled]);
 
   // Animation variants for the drawer
   const variants = {

@@ -151,7 +151,7 @@ function computeTradeStats(trades, multiplier) {
     avgProfit: avgProfitLocal * multiplier,
     avgLoss: avgLossLocal * multiplier,
     avgPnl: avgPnlLocal * multiplier,
-    profitFactor: profitFactorLocal * multiplier,
+    profitFactor: profitFactorLocal, // Profit factor should NOT be multiplied
     avgProfitPercent, // in percent (%)
     avgLossPercent, // in percent (%)
   };
@@ -213,7 +213,7 @@ function paginateTrades(trades, page, pageSize) {
 
 function Dashboard() {
   const { historicalTrades } = useContext(DataContext);
-  const { token, logout } = useContext(AuthContext);
+  const { token, logout, multiplierEnabled } = useContext(AuthContext);
 
   // States for stats, chart data, and paginated trades
   const [stats, setStats] = useState({
@@ -245,8 +245,11 @@ function Dashboard() {
     try {
       const decoded = jwtDecode(token);
       userRole = decoded.role || "";
-      if (userRole !== "admin") {
-        multiplier = 25;
+      // For admin users, use the toggle setting. For non-admin users, always use multiplier
+      if (userRole === "admin") {
+        multiplier = multiplierEnabled ? 25 : 1;
+      } else {
+        multiplier = 25; // Non-admin users always have multiplier
       }
     } catch (error) {
       console.error("Failed to decode token:", error);
@@ -259,7 +262,7 @@ function Dashboard() {
       const computedStats = computeTradeStats(historicalTrades, multiplier);
       setStats(computedStats);
     }
-  }, [historicalTrades, multiplier]);
+  }, [historicalTrades, multiplier, multiplierEnabled]);
 
   // Only prepare chart data when historicalTrades data is available
   useEffect(() => {
@@ -274,7 +277,7 @@ function Dashboard() {
       setLineChartData([]);
       setBarChartData([]);
     }
-  }, [historicalTrades, multiplier]);
+  }, [historicalTrades, multiplier, multiplierEnabled]);
 
   // Only paginate trades when historicalTrades data is available
   useEffect(() => {

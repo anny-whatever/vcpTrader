@@ -55,7 +55,7 @@ function ChartModal({
   onBuy,
 }) {
   const { liveData, priceAlerts, positions } = useContext(DataContext);
-  const { token } = useContext(AuthContext);
+  const { token, multiplierEnabled } = useContext(AuthContext);
   const [chartData, setChartData] = useState(null);
   const [liveChange, setLiveChange] = useState(null);
   const [OHLC, setOHLC] = useState(null);
@@ -104,8 +104,11 @@ function ChartModal({
     try {
       const decoded = jwtDecode(token);
       userRole = decoded.role || "";
-      if (userRole !== "admin") {
-        multiplier = 25;
+      // For admin users, use the toggle setting. For non-admin users, always use multiplier
+      if (userRole === "admin") {
+        multiplier = multiplierEnabled ? 25 : 1;
+      } else {
+        multiplier = 25; // Non-admin users always have multiplier
       }
     } catch (error) {
       console.error("Failed to decode token:", error);

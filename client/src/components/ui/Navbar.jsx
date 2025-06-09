@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   AppBar,
@@ -22,6 +22,8 @@ import {
   styled,
   alpha,
   Button,
+  Switch,
+  FormControlLabel,
 } from "@mui/material";
 import { motion, AnimatePresence } from "framer-motion";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -39,6 +41,7 @@ import { useTheme } from "@mui/material/styles";
 import api from "../../utils/api";
 import { toast } from "sonner";
 import { PlayToastSound, PlayErrorSound } from "../../utils/PlaySound";
+import { AuthContext } from "../../utils/AuthContext";
 
 // Styled components
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
@@ -228,10 +231,16 @@ const Navbar = ({
   notificationCount = 0,
   alertMessages = [],
 }) => {
+  const { multiplierEnabled, toggleMultiplier } = useContext(AuthContext);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const location = useLocation();
   const currentPath = location.pathname;
+
+  // Debug log for role verification
+  React.useEffect(() => {
+    console.log('Navbar userRole:', userRole);
+  }, [userRole]);
 
   // State for mobile drawer
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -747,12 +756,41 @@ const Navbar = ({
         </MenuItem>
 
         {userRole === "admin" && (
-          <MenuItem
-            component="a"
-            href="https://api.tradekeep.in/api/auth"
-            onClick={handleAccountClose}
-          >
-            <Typography variant="body2">Zerodha Login</Typography>
+          <>
+            <MenuItem
+              component="a"
+              href="https://api.tradekeep.in/api/auth"
+              onClick={handleAccountClose}
+            >
+              <Typography variant="body2">Zerodha Login</Typography>
+            </MenuItem>
+            
+            <MenuItem onClick={(e) => e.stopPropagation()}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={multiplierEnabled}
+                    onChange={toggleMultiplier}
+                    size="small"
+                  />
+                }
+                label={
+                  <Typography variant="body2">
+                    Multiplier
+                  </Typography>
+                }
+                sx={{ margin: 0 }}
+              />
+            </MenuItem>
+          </>
+        )}
+
+        {/* Only show Zerodha login for admin users, no multiplier toggle for observers */}
+        {userRole === "observer" && (
+          <MenuItem onClick={handleAccountClose}>
+            <Typography variant="body2" sx={{ color: "#a1a1aa" }}>
+              Observer Mode
+            </Typography>
           </MenuItem>
         )}
 

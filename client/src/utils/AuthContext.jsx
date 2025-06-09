@@ -5,6 +5,8 @@ export const AuthContext = createContext({
   token: null,
   saveToken: () => {},
   logout: () => {},
+  multiplierEnabled: true,
+  toggleMultiplier: () => {},
 });
 
 export const AuthProvider = ({ children }) => {
@@ -45,6 +47,12 @@ export const AuthProvider = ({ children }) => {
   // Initialize token state from localStorage using the helper above.
   const [token, setToken] = useState(getInitialToken);
 
+  // Initialize multiplier state from localStorage with default true (enabled)
+  const [multiplierEnabled, setMultiplierEnabled] = useState(() => {
+    const saved = localStorage.getItem("multiplierEnabled");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
   // Function to save the token to state and localStorage.
   const saveToken = useCallback((newToken) => {
     localStorage.setItem("jwt", newToken);
@@ -57,7 +65,16 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
   }, []);
 
-  // Whenever the token changes, check if it’s expired and log out if needed.
+  // Function to toggle multiplier setting
+  const toggleMultiplier = useCallback(() => {
+    setMultiplierEnabled(prev => {
+      const newValue = !prev;
+      localStorage.setItem("multiplierEnabled", JSON.stringify(newValue));
+      return newValue;
+    });
+  }, []);
+
+  // Whenever the token changes, check if it's expired and log out if needed.
   useEffect(() => {
     if (token) {
       const payload = decodeJWT(token);
@@ -72,6 +89,8 @@ export const AuthProvider = ({ children }) => {
     const handleStorageChange = (event) => {
       if (event.key === "jwt") {
         setToken(event.newValue);
+      } else if (event.key === "multiplierEnabled") {
+        setMultiplierEnabled(event.newValue ? JSON.parse(event.newValue) : true);
       }
     };
     window.addEventListener("storage", handleStorageChange);
@@ -79,7 +98,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, saveToken, logout }}>
+    <AuthContext.Provider value={{ token, saveToken, logout, multiplierEnabled, toggleMultiplier }}>
       {children}
     </AuthContext.Provider>
   );

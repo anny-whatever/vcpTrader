@@ -34,7 +34,7 @@ import { getSimpleRiskScore } from "../utils/api.js";
 
 function AllPositions() {
   const { liveData, positions, riskpool } = useContext(DataContext);
-  const { token, logout } = useContext(AuthContext);
+  const { token, logout, multiplierEnabled } = useContext(AuthContext);
 
   // For storing row data when opening modals
   const [positionData, setPositionData] = useState(null);
@@ -67,8 +67,11 @@ function AllPositions() {
     try {
       const decoded = jwtDecode(token); // ✅ Use named import
       userRole = decoded.role || "";
-      if (userRole !== "admin") {
-        multiplier = 25;
+      // For admin users, use the toggle setting. For non-admin users, always use multiplier
+      if (userRole === "admin") {
+        multiplier = multiplierEnabled ? 25 : 1;
+      } else {
+        multiplier = 25; // Non-admin users always have multiplier
       }
     } catch (error) {
       console.error("Failed to decode token:", error);
