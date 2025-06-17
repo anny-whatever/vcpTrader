@@ -384,6 +384,7 @@ class SaveOHLC:
             WHERE interval = 'day'
             AND date >= NOW() - INTERVAL '365 days'
             AND segment != 'ALL'
+            AND segment != 'IPO'
             ORDER BY date DESC
         """
         

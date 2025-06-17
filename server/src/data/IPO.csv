@@ -1,6 +1,7 @@
 Company Name,Industry,Symbol,Series,ISIN Code
 ACME Solar Holdings Ltd.,Power,ACMESOLAR,EQ,INE622W01025
 Aadhar Housing Finance Ltd.,Financial Services,AADHARHFC,EQ,INE883F01010
+Aegis Vopak Terminals Ltd.,Oil Gas & Consumable Fuels,AEGISVOPAK,EQ,INE0INX01018
 Afcons Infrastructure Ltd.,Construction,AFCONS,EQ,INE101I01011
 Ajax Engineering Ltd.,Capital Goods,AJAXENGG,EQ,INE274Y01021
 Akme Fintrade (India) Ltd.,Financial Services,AFIL,EQ,INE916Y01027
@@ -73,6 +74,7 @@ P N Gadgil Jewellers Ltd.,Consumer Durables,PNGJL,EQ,INE953R01016
 Platinum Industries Ltd.,Chemicals,PLATIND,EQ,INE0PT501018
 Popular Vehicles and Services Ltd.,Automobile and Auto Components,PVSL,EQ,INE772T01024
 Premier Energies Ltd.,Capital Goods,PREMIERENE,EQ,INE0BS701011
+Prostarm Info Systems Ltd.,Capital Goods,PROSTARM,BE,INE0BX301013
 Quadrant Future Tek Ltd.,Capital Goods,QUADFUTURE,EQ,INE0LRY01011
 Quality Power Electrical Equipments Ltd.,Capital Goods,QPOWER,EQ,INE0SII01026
 R K Swamy Ltd.,Media Entertainment & Publication,RKSWAMY,EQ,INE0NQ801033
@@ -82,6 +84,8 @@ Sai Life Sciences Ltd.,Healthcare,SAILIFE,EQ,INE570L01029
 Sanathan Textiles Ltd.,Textiles,SANATHAN,EQ,INE0JPD01013
 Sanstar Ltd.,Fast Moving Consumer Goods,SANSTAR,EQ,INE08NE01025
 Saraswati Saree Depot Ltd.,Textiles,SSDL,EQ,INE0PQ101010
+Schloss Bangalore Ltd.,Consumer Services,THELEELA,EQ,INE0AQ201015
+Scoda Tubes Ltd.,Capital Goods,SCODATUBES,BE,INE090501011
 Senores Pharmaceuticals Ltd.,Healthcare,SENORES,EQ,INE0RB801010
 Shree Tirupati Balajee Agro Trading Company Ltd.,Capital Goods,BALAJEE,EQ,INE0S2G01011
 Stallion India Fluorochemicals Ltd.,Chemicals,STALLION,BE,INE0RYC01010
@@ -90,7 +94,7 @@ Stanley Lifestyles Ltd.,Consumer Durables,STANLEY,EQ,INE01A001028
 Suraksha Diagnostic Ltd.,Healthcare,SURAKSHA,EQ,INE877V01027
 Swiggy Ltd.,Consumer Services,SWIGGY,EQ,INE00H001014
 TBO Tek Ltd.,Consumer Services,TBOTEK,EQ,INE673O01025
-Tolins Tyres Ltd.,Automobile and Auto Components,TOLINS,BE,INE0RWQ01014
+Tolins Tyres Ltd.,Automobile and Auto Components,TOLINS,EQ,INE0RWQ01014
 Transrail Lighting Ltd.,Capital Goods,TRANSRAILL,EQ,INE454P01035
 Unicommerce Esolutions Ltd.,Information Technology,UNIECOM,EQ,INE00U401027
 Unimech Aerospace and Manufacturing Ltd.,Capital Goods,UNIMECH,EQ,INE0U3I01011

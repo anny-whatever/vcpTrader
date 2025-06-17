@@ -49,7 +49,7 @@ def load_precomputed_ohlc():
 
     conn, cur = get_trade_db_connection()
     try:
-        df = SaveOHLC.fetch_ohlc_exclude_ipo(cur)
+        df = SaveOHLC.fetch_ohlc_exclude_all_segment(cur)
         logger.info(f"Fetched {len(df)} rows of filtered data")
         
         if df.empty:
@@ -306,7 +306,7 @@ def screen_eligible_stocks_vcp(df):
                 passed = False
                 
             # 50 SMA > 150 SMA > 200 SMA (for uptrend)
-            elif not (last_row["sma_50"] > last_row["sma_150"] and last_row["sma_150"] > last_row["sma_200"]):
+            elif not (last_row["sma_50"] > last_row["sma_150"] and last_row["sma_50"] > last_row["sma_200"]):
                 rejected_counts["sma_not_aligned"] += 1
                 passed = False
                 
@@ -316,14 +316,14 @@ def screen_eligible_stocks_vcp(df):
                 passed = False
                 
             # Stock is within 30% of 52-week high (relaxed from 25%)
-            elif not (float(last_row["away_from_high"]) < 30):
+            elif not (float(last_row["away_from_high"]) < 50):
                 rejected_counts["too_extended"] += 1
                 passed = False
                 
-            # Stock is more than 40% above 52-week low (relaxed from 50%)
-            elif not (float(last_row["away_from_low"]) > 40):
-                rejected_counts["too_far_from_low"] += 1
-                passed = False
+            # # Stock is more than 40% above 52-week low (relaxed from 50%)
+            # elif not (float(last_row["away_from_low"]) > 40):
+            #     rejected_counts["too_far_from_low"] += 1
+            #     passed = False
                 
             if passed:
                 logger.info(f"{symbol} PASSED VCP criteria! Adding to eligible stocks")
