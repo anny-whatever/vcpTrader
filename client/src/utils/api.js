@@ -29,7 +29,8 @@ export const getRiskScoresForSymbols = async (symbols) => {
 
 export const getSimpleRiskScore = async (symbol) => {
   try {
-    const response = await api.get(`/api/risk_scores/risk/simple/${symbol}`);
+    const encodedSymbol = encodeURIComponent(symbol).replace(/&/g, '%26');
+    const response = await api.get(`/api/risk_scores/risk/simple/${encodedSymbol}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching simple risk score:', error);

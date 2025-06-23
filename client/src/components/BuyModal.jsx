@@ -41,8 +41,9 @@ function BuyModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol, ltp }) {
       qty = calculateQtyForRiskPool(intendedRisk, ltp);
     }
     try {
+      const encodedSymbol = encodeURIComponent(symbol).replace(/&/g, '%26');
       const response = await api.get(
-        `/api/order/buy?symbol=${symbol}&qty=${qty}`
+        `/api/order/buy?symbol=${encodedSymbol}&qty=${qty}`
       );
       PlayToastSound();
       toast.success(response?.data?.message, { duration: 5000 });

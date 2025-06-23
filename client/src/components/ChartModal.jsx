@@ -164,8 +164,9 @@ function ChartModal({
       setLiveChange(null);
       setOHLC(null);
       setLivePrice(null);
+      const encodedSymbol = encodeURIComponent(symbol).replace(/&/g, '%26');
       const response = await api.get(
-        `/api/data/chartdata?token=${instrumentToken}&symbol=${symbol}&interval=${interval}`
+        `/api/data/chartdata?token=${instrumentToken}&symbol=${encodedSymbol}&interval=${interval}`
       );
       const transformedData = response.data.map((item) => ({
         time: item.date.split("T")[0],
@@ -519,7 +520,8 @@ function ChartModal({
   const handleExitPosition = async () => {
     setIsExitLoading(true);
     try {
-      const response = await api.get(`/api/order/exit?symbol=${symbol}`);
+              const encodedSymbol = encodeURIComponent(symbol).replace(/&/g, '%26');
+      const response = await api.get(`/api/order/exit?symbol=${encodedSymbol}`);
       PlayToastSound();
       toast.success(
         response?.data?.message || "Position exited successfully!",

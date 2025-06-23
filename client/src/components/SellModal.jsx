@@ -16,7 +16,8 @@ import modalStyles from "./ui/ModalStyles";
 function SellModal({ isOpen, onClose, AvailableRisk, UsedRisk, symbol }) {
   const sendSellOrder = async () => {
     try {
-      const response = await api.get(`/api/order/exit?symbol=${symbol}`);
+      const encodedSymbol = encodeURIComponent(symbol).replace(/&/g, '%26');
+      const response = await api.get(`/api/order/exit?symbol=${encodedSymbol}`);
 
       PlayToastSound();
       toast.success(

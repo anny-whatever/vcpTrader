@@ -43,8 +43,9 @@ function ReduceModal({ isOpen, onClose, symbol, currentQty }) {
         return;
       }
 
+      const encodedSymbol = encodeURIComponent(symbol).replace(/&/g, '%26');
       const response = await api.get(
-        `/api/order/reduce?symbol=${symbol}&qty=${reduceQty}`
+        `/api/order/reduce?symbol=${encodedSymbol}&qty=${reduceQty}`
       );
       PlayToastSound();
       toast.success(

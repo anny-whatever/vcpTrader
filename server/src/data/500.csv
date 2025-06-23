@@ -143,7 +143,6 @@ Dixon Technologies (India) Ltd.,Consumer Durables,DIXON,EQ,INE935N01020
 Dr. Lal Path Labs Ltd.,Healthcare,LALPATHLAB,EQ,INE600L01024
 Dr. Reddy's Laboratories Ltd.,Healthcare,DRREDDY,EQ,INE089A01031
 Dummy Aditya Birla Fashion and Retail Ltd.,Consumer Services,DUMMYABFRL,BE,DUM647O01011
-Dummy Siemens Ltd.,Capital Goods,DUMMYSIEMS,EQ,DUM003A01024
 Dummy2 Raymond Ltd.,Realty,DUMMYRAYMN,BE,DUM2301A0101
 E.I.D. Parry (India) Ltd.,Fast Moving Consumer Goods,EIDPARRY,EQ,INE126A01031
 EIH Ltd.,Consumer Services,EIHOTEL,EQ,INE230A01023
@@ -395,7 +394,7 @@ Raymond Lifestyle Ltd.,Textiles,RAYMONDLSL,EQ,INE02ID01020
 Raymond Ltd.,Realty,RAYMOND,EQ,INE301A01014
 Redington Ltd.,Services,REDINGTON,EQ,INE891D01026
 Reliance Industries Ltd.,Oil Gas & Consumable Fuels,RELIANCE,EQ,INE002A01018
-Reliance Power Ltd.,Power,RPOWER,EQ,INE614G01033
+Reliance Power Ltd.,Power,RPOWER,BE,INE614G01033
 Route Mobile Ltd.,Telecommunication,ROUTE,EQ,INE450U01017
 SBFC Finance Ltd.,Financial Services,SBFC,EQ,INE423Y01016
 SBI Cards and Payment Services Ltd.,Financial Services,SBICARD,EQ,INE018E01016
@@ -411,12 +410,13 @@ Sapphire Foods India Ltd.,Consumer Services,SAPPHIRE,EQ,INE806T01020
 Sarda Energy and Minerals Ltd.,Metals & Mining,SARDAEN,EQ,INE385C01021
 Saregama India Ltd,Media Entertainment & Publication,SAREGAMA,EQ,INE979A01025
 Schaeffler India Ltd.,Automobile and Auto Components,SCHAEFFLER,EQ,INE513A01022
-Schneider Electric Infrastructure Ltd.,Capital Goods,SCHNEIDER,EQ,INE839M01018
+Schneider Electric Infrastructure Ltd.,Capital Goods,SCHNEIDER,BE,INE839M01018
 Shipping Corporation of India Ltd.,Services,SCI,EQ,INE109A01011
 Shree Cement Ltd.,Construction Materials,SHREECEM,EQ,INE070A01015
 Shree Renuka Sugars Ltd.,Fast Moving Consumer Goods,RENUKA,EQ,INE087H01022
 Shriram Finance Ltd.,Financial Services,SHRIRAMFIN,EQ,INE721A01047
 Shyam Metalics and Energy Ltd.,Capital Goods,SHYAMMETL,EQ,INE810G01011
+Siemens Energy India Ltd.,Capital Goods,ENRIN,BE,INE1NPP01017
 Siemens Ltd.,Capital Goods,SIEMENS,EQ,INE003A01024
 Signatureglobal (India) Ltd.,Realty,SIGNATURE,EQ,INE903U01023
 Sobha Ltd.,Realty,SOBHA,EQ,INE671H01015
@@ -451,7 +451,7 @@ Tata Motors Ltd.,Automobile and Auto Components,TATAMOTORS,EQ,INE155A01022
 Tata Power Co. Ltd.,Power,TATAPOWER,EQ,INE245A01021
 Tata Steel Ltd.,Metals & Mining,TATASTEEL,EQ,INE081A01020
 Tata Technologies Ltd.,Information Technology,TATATECH,EQ,INE142M01025
-Tata Teleservices (Maharashtra) Ltd.,Telecommunication,TTML,EQ,INE517B01013
+Tata Teleservices (Maharashtra) Ltd.,Telecommunication,TTML,BE,INE517B01013
 Tech Mahindra Ltd.,Information Technology,TECHM,EQ,INE669C01036
 Techno Electric & Engineering Company Ltd.,Construction,TECHNOE,EQ,INE285K01026
 Tejas Networks Ltd.,Telecommunication,TEJASNET,EQ,INE010J01012

@@ -52,8 +52,9 @@ function ModifySlModal({ isOpen, onClose, symbol, currentEntryPrice, currentSl }
         return;
       }
 
+      const encodedSymbol = encodeURIComponent(symbol).replace(/&/g, '%26');
       const response = await api.get(
-        `/api/order/change_sl?symbol=${symbol}&sl=${newSl}`
+        `/api/order/change_sl?symbol=${encodedSymbol}&sl=${newSl}`
       );
       PlayToastSound();
       toast.success(

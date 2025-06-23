@@ -47,8 +47,9 @@ function IncreaseModal({
       qty = calculateQtyForRiskPool(intendedRisk, ltp);
     }
     try {
+      const encodedSymbol = encodeURIComponent(symbol).replace(/&/g, '%26');
       const response = await api.get(
-        `/api/order/increase?symbol=${symbol}&qty=${qty}`
+        `/api/order/increase?symbol=${encodedSymbol}&qty=${qty}`
       );
       PlayToastSound();
       toast.success(

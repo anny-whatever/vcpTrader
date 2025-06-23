@@ -52,8 +52,9 @@ function ModifyTgtModal({ isOpen, onClose, symbol, currentEntryPrice, currentTar
         return;
       }
 
+      const encodedSymbol = encodeURIComponent(symbol).replace(/&/g, '%26');
       const response = await api.get(
-        `/api/order/change_tgt?symbol=${symbol}&tgt=${newTarget}`
+        `/api/order/change_tgt?symbol=${encodedSymbol}&tgt=${newTarget}`
       );
       PlayToastSound();
       toast.success(

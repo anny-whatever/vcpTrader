@@ -52,8 +52,9 @@ function SideChart({ symbol, token }) {
       setLiveChange(null);
       setOHLC(null);
       setLivePrice(null);
+      const encodedSymbol = encodeURIComponent(symbol).replace(/&/g, '%26');
       const response = await api.get(
-        `/api/data/chartdata?token=${token}&symbol=${symbol}`
+        `/api/data/chartdata?token=${token}&symbol=${encodedSymbol}`
       );
 
       // Transform your data to the structure needed by Lightweight Charts
