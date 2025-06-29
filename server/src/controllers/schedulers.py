@@ -85,9 +85,9 @@ def get_ohlc_on_schedule():
 
 def run_vcp_screener_on_schedule():
     try:
-        from services import run_vcp_screener
+        from services import run_advanced_vcp_scan
         # Run in a separate thread to avoid blocking the scheduler
-        screener_executor.submit(run_vcp_screener)
+        screener_executor.submit(run_advanced_vcp_scan)
         logger.info("VCP screener job submitted to thread pool")
     except Exception as e:
         logger.error(f"Error in run_vcp_screener_on_schedule: {e}")
@@ -244,27 +244,13 @@ def get_scheduler():
             id="vcp_trader_calculate_risk_scores"
         )
 
-        # VCP screener jobs => runs every 5 minutes during trading hours
+        # VCP screener jobs => runs every 30 minutes during trading hours (9:30 AM to 3:30 PM)
         scheduler.add_job(
             run_vcp_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='9', minute='15,20,25,30,35,40,45,50,55'),
+            CronTrigger(day_of_week='mon-fri', hour='9-15', minute='30,0'),
             max_instances=3,
             replace_existing=False,
-            id="run_vcp_screener_job_part1"
-        )
-        scheduler.add_job(
-            run_vcp_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='10-14', minute='0,5,10,15,20,25,30,35,40,45,50,55'),
-            max_instances=3,
-            replace_existing=False,
-            id="run_vcp_screener_job_part2"
-        )
-        scheduler.add_job(
-            run_vcp_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='15', minute='0,5,10,15,20,25,30'),
-            max_instances=3,
-            replace_existing=False,
-            id="run_vcp_screener_job_part3"
+            id="run_vcp_screener_job"
         )
         
         # IPO screener jobs => runs every 5 minutes too
