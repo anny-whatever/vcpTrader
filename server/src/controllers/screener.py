@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 # If you have an auth file for user authentication:
 from auth import get_current_user
 
-from services import fetch_screener_data, run_vcp_screener, load_precomputed_ohlc
+from services import fetch_screener_data, run_advanced_vcp_screener, load_precomputed_ohlc
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -37,17 +37,17 @@ async def screen_vcp(user: dict = Depends(get_current_user)):
             await asyncio.sleep(1)
 
         # If we still have no data, run the VCP screener to force generation
-        logger.debug("No data after 5 tries. Forcing a run of 'run_vcp_screener()'.")
+        logger.debug("No data after 5 tries. Forcing a run of the advanced VCP screener.")
         # Use our dedicated thread pool for manual screening
-        success = await asyncio.wrap_future(manual_screener_executor.submit(run_vcp_screener))
+        success = await asyncio.wrap_future(manual_screener_executor.submit(run_advanced_vcp_screener))
         
         if not success:
-            logger.error("VCP screener run failed. Will try one more time.")
+            logger.error("Advanced VCP screener run failed. Will try one more time.")
             # Try running it one more time immediately
-            success = await asyncio.wrap_future(manual_screener_executor.submit(run_vcp_screener))
+            success = await asyncio.wrap_future(manual_screener_executor.submit(run_advanced_vcp_screener))
             if not success:
-                logger.error("Second VCP screener run also failed.")
-                return JSONResponse(content={"error": "Failed to generate VCP screener data"}, status_code=500)
+                logger.error("Second advanced VCP screener run also failed.")
+                return JSONResponse(content={"error": "Failed to generate advanced VCP screener data"}, status_code=500)
 
         # After forcing the screener, fetch one more time
         data = await asyncio.to_thread(fetch_screener_data, "vcp")
@@ -56,11 +56,11 @@ async def screen_vcp(user: dict = Depends(get_current_user)):
             return JSONResponse(content=data)
             
         # If still no data, run the screener one more time
-        logger.debug("No data after first run. Running VCP screener one more time.")
-        success = await asyncio.wrap_future(manual_screener_executor.submit(run_vcp_screener))
+        logger.debug("No data after first run. Running advanced VCP screener one more time.")
+        success = await asyncio.wrap_future(manual_screener_executor.submit(run_advanced_vcp_screener))
         if not success:
-            logger.error("Final VCP screener run failed.")
-            return JSONResponse(content={"error": "Failed to generate VCP screener data after multiple attempts"}, status_code=500)
+            logger.error("Final advanced VCP screener run failed.")
+            return JSONResponse(content={"error": "Failed to generate advanced VCP screener data after multiple attempts"}, status_code=500)
         
         # Fetch data one final time
         data = await asyncio.to_thread(fetch_screener_data, "vcp")

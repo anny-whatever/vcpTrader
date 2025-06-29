@@ -6,7 +6,7 @@ import pandas_ta as ta
 import math
 import numpy as np
 from db import get_db_connection, close_db_connection
-from models import PriceAlert, AlertMessage, RiskPool, SaveTradeDetails, SaveHistoricalTradeDetails, SaveOHLC, ScreenerResult
+from models import PriceAlert, AlertMessage, RiskPool, SaveTradeDetails, SaveHistoricalTradeDetails, SaveOHLC, ScreenerResult, AdvancedVcpResult
 from controllers import kite  # Assumes you have a kite module for live quotes
 
 logger = logging.getLogger(__name__)
@@ -155,7 +155,7 @@ def get_combined_ohlc(instrument_token, symbol, interval='day'):
             # Add indicators if they're not already in the data (weekly already has them)
             if interval == 'week':
                 # These fields are already in the weekly data
-                for key in ['sma_50', 'sma_150', 'sma_200', 'atr']:
+                for key in ['sma_50', 'sma_100', 'sma_200', 'atr']:
                     if key in record:
                         formatted[key] = safe_float(record.get(key))
             
@@ -166,9 +166,9 @@ def get_combined_ohlc(instrument_token, symbol, interval='day'):
             df = pd.DataFrame(formatted_data)
             if not df.empty:
                 df['sma_50'] = ta.sma(df['close'], length=min(50, len(df)))
-                df['sma_150'] = ta.sma(df['close'], length=min(150, len(df)))
+                df['sma_100'] = ta.sma(df['close'], length=min(100, len(df)))
                 df['sma_200'] = ta.sma(df['close'], length=min(200, len(df)))
-                for col in ['sma_50', 'sma_150', 'sma_200']:
+                for col in ['sma_50', 'sma_100', 'sma_200']:
                     df[col] = df[col].replace([np.inf, -np.inf], np.nan)
                     df[col] = df[col].fillna(0)
                     df[col] = np.around(df[col], decimals=2)
@@ -220,92 +220,106 @@ def get_latest_alert_messages():
 
 def fetch_screener_data(screener_name: str) -> list:
     """
-    Fetch screener results from the screener_results table with risk scores.
-    Returns a list of dicts suitable for JSON response,
-    sorted in descending order by 'change'.
+    Fetch screener results. For 'vcp', it gets data from the new advanced
+    results table and enhances it with live quote data. For others, it uses the old table with risk scores.
     """
     logger.info(f"Fetching screener data for {screener_name}")
     conn, cur = get_db_connection()
     try:
-        # Modified query to include risk scores
-        query = """
-            SELECT 
-                sr.screener_name,
-                sr.instrument_token,
-                sr.symbol,
-                sr.last_price,
-                sr.change_pct,
-                sr.sma_50,
-                sr.sma_150,
-                sr.sma_200,
-                sr.atr,
-                sr.run_time,
-                rs.overall_risk_score,
-                rs.volatility_score,
-                rs.atr_risk_score,
-                rs.drawdown_risk_score,
-                rs.gap_risk_score,
-                rs.volume_consistency_score,
-                rs.trend_stability_score,
-                rs.data_points as risk_data_points,
-                rs.calculated_at as risk_calculated_at
-            FROM screener_results sr
-            LEFT JOIN risk_scores rs ON sr.instrument_token = rs.instrument_token
-            WHERE sr.screener_name = %s
-            ORDER BY sr.run_time DESC;
-        """
-        
-        cur.execute(query, (screener_name,))
-        rows = cur.fetchall()
-        logger.info(f"Retrieved {len(rows)} rows for screener: {screener_name}")
-        
-        if not rows:
-            logger.warning(f"No data found in screener_results for {screener_name}")
-            return []
+        if screener_name == "vcp":
+            # Fetch from the new, comprehensive advanced_vcp_results table
+            results = AdvancedVcpResult.fetch_all(cur)
+            logger.info(f"Retrieved {len(results)} rows for screener: {screener_name} from advanced table.")
             
-        data = []
-        for row in rows:
-            # Extended data structure with risk scores
-            item = {
-                "screener_name": row[0],
-                "instrument_token": row[1],
-                "symbol": row[2],
-                "last_price": safe_float(row[3]),
-                "change": safe_float(row[4]),
-                "sma_50": safe_float(row[5]),
-                "sma_150": safe_float(row[6]),
-                "sma_200": safe_float(row[7]),
-                "atr": safe_float(row[8]),
-                "run_time": row[9].isoformat() if row[9] else None,
-                "stored_last_price": safe_float(row[3]),  # Store original price for ATR calculation
-                # Risk score data
-                "risk_score": safe_float(row[10]) if row[10] is not None else None,
-                "risk_components": {
-                    "volatility": int(row[11]) if row[11] is not None else None,
-                    "atr_risk": int(row[12]) if row[12] is not None else None,
-                    "drawdown_risk": int(row[13]) if row[13] is not None else None,
-                    "gap_risk": int(row[14]) if row[14] is not None else None,
-                    "volume_consistency": int(row[15]) if row[15] is not None else None,
-                    "trend_stability": int(row[16]) if row[16] is not None else None,
-                } if any(row[11:17]) else None,
-                "risk_data_points": int(row[17]) if row[17] is not None else None,
-                "risk_calculated_at": row[18].isoformat() if row[18] else None
-            }
-            data.append(item)
+            if not results:
+                return []
+            
+            # Enhance with live quote data during market hours
+            enhanced_results = []
+            try:
+                # Check if market is open
+                import datetime
+                import pytz
+                TIMEZONE = pytz.timezone("Asia/Kolkata")
+                START_TIME = datetime.time(9, 15)
+                END_TIME = datetime.time(15, 30, 5)
+                now = datetime.datetime.now(TIMEZONE).time()
+                
+                if START_TIME <= now <= END_TIME:
+                    # Collect unique instrument tokens from the screener results
+                    unique_tokens = list({result['instrument_token'] for result in results if result.get('instrument_token')})
+                    
+                    # Fetch live quotes for all tokens
+                    live_quotes = {}
+                    if unique_tokens:
+                        try:
+                            from controllers import kite
+                            live_quotes = kite.quote(unique_tokens)
+                            logger.info(f"Fetched live quotes for {len(live_quotes)} screener stocks")
+                        except Exception as quote_error:
+                            logger.error(f"Error fetching quotes for screener stocks: {quote_error}")
+                
+                # Process each result and enhance with live data
+                for result in results:
+                    enhanced_result = result.copy()
+                    token_str = str(result.get('instrument_token', ''))
+                    quote_data = live_quotes.get(token_str, {})
+                    
+                    if quote_data:
+                        # Update with live price
+                        enhanced_result['last_price'] = float(quote_data.get('last_price', result.get('entry_price', 0)))
+                        enhanced_result['current_price'] = enhanced_result['last_price']
+                        
+                        # Calculate percentage change from live data
+                        ohlc = quote_data.get('ohlc', {})
+                        prev_close = ohlc.get('close', 0)
+                        current_price = enhanced_result['last_price']
+                        
+                        if prev_close and prev_close != 0:
+                            change_pct = ((current_price - prev_close) / prev_close) * 100
+                            enhanced_result['change'] = round(change_pct, 2)
+                        else:
+                            # Fallback to stored change_pct or 0
+                            enhanced_result['change'] = result.get('change_pct', 0)
+                        
+                        # Include additional live data
+                        enhanced_result['ohlc'] = ohlc
+                        enhanced_result['volume_today'] = quote_data.get('volume_today', 0)
+                    else:
+                        # No live data available, use stored values
+                        enhanced_result['last_price'] = result.get('entry_price', 0)
+                        enhanced_result['current_price'] = enhanced_result['last_price']
+                        enhanced_result['change'] = result.get('change_pct', 0)
+                    
+                    enhanced_results.append(enhanced_result)
+                
+                logger.info(f"Enhanced {len(enhanced_results)} VCP screener results with live data")
+                return enhanced_results
+                
+            except Exception as e:
+                logger.error(f"Error enhancing VCP screener results with live data: {e}")
+                # Return original results with fallback change calculation
+                for result in results:
+                    if 'change' not in result:
+                        result['change'] = result.get('change_pct', 0)
+                    if 'current_price' not in result:
+                        result['current_price'] = result.get('entry_price', 0)
+                    if 'last_price' not in result:
+                        result['last_price'] = result.get('entry_price', 0)
+                return results
 
-        # Sort the 'data' list in descending order by "change"
-        data.sort(key=lambda x: x["change"], reverse=True)
-        
-        # Log some of the results
-        if data:
-            symbols = ", ".join([item["symbol"] for item in data[:5]])
-            risk_count = sum(1 for item in data if item["risk_score"] is not None)
-            logger.info(f"Returning {len(data)} results for {screener_name}. Risk scores available for {risk_count} stocks. First few symbols: {symbols}...")
-        
-        return data
+        else:
+            # Preserving old logic for any other screeners
+            data = ScreenerResult.fetch_by_screener(cur, screener_name)
+            if not data:
+                return []
+            # Convert list of tuples to list of dicts for consistency
+            columns = [desc[0] for desc in cur.description]
+            return [dict(zip(columns, row)) for row in data]
 
     except Exception as e:
-        logger.error(f"Error fetching screener data for {screener_name}: {e}")
+        logger.error(f"Error fetching data for screener '{screener_name}': {e}", exc_info=True)
         return []
     finally:
-        close_db_connection()
+        if conn and cur:
+            close_db_connection()

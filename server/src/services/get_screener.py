@@ -11,8 +11,22 @@ from controllers import kite
 from db import get_trade_db_connection, release_trade_db_connection
 
 # Import your models
-from models import ScreenerResult
+from models import ScreenerResult, AdvancedVcpResult
 from models import SaveOHLC
+
+# Import the new advanced screener function
+from .advanced_vcp_screener import run_advanced_vcp_scan as run_advanced_vcp_scan_logic
+
+# Import the new display data functions
+from .get_display_data import (
+    fetch_risk_pool_for_display,
+    fetch_trade_details_for_display,
+    fetch_historical_trade_details_for_display,
+    get_combined_ohlc,
+    get_all_alerts,
+    get_latest_alert_messages,
+)
+from .get_token_data import download_nse_csv
 
 logger = logging.getLogger(__name__)
 TIMEZONE = pytz.timezone("Asia/Kolkata")
@@ -35,6 +49,9 @@ vcp_screener_lock = threading.Lock()
 # ipo_screener_lock = threading.Lock()  # REMOVED IPO screener lock
 # weekly_vcp_screener_lock = threading.Lock()  # REMOVED weekly VCP screener lock
 
+advanced_vcp_screener_running = False
+advanced_vcp_screener_lock = threading.Lock()
+
 logger.info("==== Screener module initialized ====")
 
 def load_precomputed_ohlc():
@@ -49,7 +66,7 @@ def load_precomputed_ohlc():
 
     conn, cur = get_trade_db_connection()
     try:
-        df = SaveOHLC.fetch_ohlc_exclude_all_segment(cur)
+        df = SaveOHLC.fetch_ohlc_exclude_ipo(cur)
         logger.info(f"Fetched {len(df)} rows of filtered data")
         
         if df.empty:
@@ -305,8 +322,8 @@ def screen_eligible_stocks_vcp(df):
                 rejected_counts["price_below_sma50"] += 1
                 passed = False
                 
-            # 50 SMA > 150 SMA > 200 SMA (for uptrend)
-            elif not (last_row["sma_50"] > last_row["sma_150"] and last_row["sma_50"] > last_row["sma_200"]):
+            # 50 SMA > 100 SMA > 200 SMA (for uptrend)
+            elif not (last_row["sma_50"] > last_row["sma_100"] and last_row["sma_50"] > last_row["sma_200"]):
                 rejected_counts["sma_not_aligned"] += 1
                 passed = False
                 
@@ -333,7 +350,7 @@ def screen_eligible_stocks_vcp(df):
                     "last_price": current_close,
                     "change": price_change,
                     "sma_50": float(last_row["sma_50"]),
-                    "sma_150": float(last_row["sma_150"]),
+                    "sma_100": float(last_row["sma_100"]),
                     "sma_200": float(last_row["sma_200"]),
                     "atr": float(last_row["atr"]),
                 })
@@ -462,3 +479,71 @@ def run_vcp_screener():
         # Reset running flag even if an exception occurs
         with vcp_screener_lock:
             vcp_screener_running = False
+
+def fetch_screener_data(screener_name):
+    """
+    Fetches the latest results for a given screener from the database.
+    Now directs 'vcp' requests to the new advanced results table.
+    """
+    conn, cur = get_trade_db_connection()
+    try:
+        logger.info(f"Fetching screener data for '{screener_name}'")
+        if screener_name == "vcp":
+            # This now correctly fetches from the advanced results table
+            data = AdvancedVcpResult.fetch_all(cur)
+            logger.info(f"Fetched {len(data)} results from 'advanced_vcp_results' table.")
+            return data
+        else:
+            # Preserving old logic for any other screeners
+            data = ScreenerResult.fetch_by_screener(cur, screener_name)
+            if not data:
+                return []
+            # Convert list of tuples to list of dicts for consistency
+            columns = [desc[0] for desc in cur.description]
+            return [dict(zip(columns, row)) for row in data]
+
+    except Exception as e:
+        logger.error(f"Error fetching data for screener '{screener_name}': {e}", exc_info=True)
+        return []
+    finally:
+        if conn:
+            release_trade_db_connection(conn, cur)
+
+def run_advanced_vcp_screener():
+    """
+    Orchestrates the advanced VCP screening process.
+    """
+    global advanced_vcp_screener_running
+    if advanced_vcp_screener_running:
+        logger.info("Advanced VCP screener is already running.")
+        return False
+
+    with advanced_vcp_screener_lock:
+        advanced_vcp_screener_running = True
+        logger.info("Starting Advanced VCP Screener...")
+        
+        try:
+            # 1. Load the precomputed OHLC data (this is our base data)
+            # It's cached globally by load_precomputed_ohlc, but we call it to ensure it's loaded.
+            df = load_precomputed_ohlc()
+            if df is None or df.empty:
+                logger.error("OHLC data is empty. Aborting advanced VCP scan.")
+                return False
+
+            # 2. Run the advanced screener logic
+            # This function now contains all the logic and will save results to the DB.
+            success = run_advanced_vcp_scan_logic(df)
+            
+            if success:
+                logger.info("Advanced VCP Screener run completed successfully.")
+            else:
+                logger.warning("Advanced VCP Screener run did not complete successfully.")
+            
+            return success
+
+        except Exception as e:
+            logger.error(f"FATAL ERROR in run_advanced_vcp_screener: {e}", exc_info=True)
+            return False
+        finally:
+            advanced_vcp_screener_running = False
+            logger.info("Advanced VCP Screener finished.")

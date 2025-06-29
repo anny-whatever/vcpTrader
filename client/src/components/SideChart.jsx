@@ -26,7 +26,7 @@ function SideChart({ symbol, token }) {
 
   // References for the three SMA line series
   const ma50SeriesRef = useRef(null);
-  const ma150SeriesRef = useRef(null);
+  const ma100SeriesRef = useRef(null);
   const ma200SeriesRef = useRef(null);
 
   // Reference to track the last candle we're updating
@@ -66,7 +66,7 @@ function SideChart({ symbol, token }) {
         close: item.close,
         volume: item.volume,
         ...(item.sma_50 !== 0 ? { sma_50: item.sma_50 } : {}),
-        ...(item.sma_150 !== 0 ? { sma_150: item.sma_150 } : {}),
+        ...(item.sma_100 !== 0 ? { sma_100: item.sma_100 } : {}),
         ...(item.sma_200 !== 0 ? { sma_200: item.sma_200 } : {}),
       }));
 
@@ -157,9 +157,9 @@ function SideChart({ symbol, token }) {
       time: item.time,
       value: item.sma_50,
     }));
-    const sma150Data = seriesData.map((item) => ({
+    const sma100Data = seriesData.map((item) => ({
       time: item.time,
-      value: item.sma_150,
+      value: item.sma_100,
     }));
     const sma200Data = seriesData.map((item) => ({
       time: item.time,
@@ -173,12 +173,12 @@ function SideChart({ symbol, token }) {
     ma50Series.setData(sma50Data);
     ma50SeriesRef.current = ma50Series;
 
-    const ma150Series = chart.addSeries(LineSeries, {
+    const ma100Series = chart.addSeries(LineSeries, {
       color: "#10b98180", // emerald-500 with transparency
       lineWidth: 2,
     });
-    ma150Series.setData(sma150Data);
-    ma150SeriesRef.current = ma150Series;
+    ma100Series.setData(sma100Data);
+    ma100SeriesRef.current = ma100Series;
 
     const ma200Series = chart.addSeries(LineSeries, {
       color: "#f59e0b80", // amber-500 with transparency
@@ -223,7 +223,7 @@ function SideChart({ symbol, token }) {
       !barSeriesRef.current ||
       !volumeSeriesRef.current ||
       !ma50SeriesRef.current ||
-      !ma150SeriesRef.current ||
+      !ma100SeriesRef.current ||
       !ma200SeriesRef.current ||
       !lastCandleRef.current
     ) {
@@ -239,7 +239,7 @@ function SideChart({ symbol, token }) {
     const newPrice = tick.last_price;
     const newVolume = tick.volume_traded;
     const newSma50 = tick.sma_50;
-    const newSma150 = tick.sma_150;
+    const newSma100 = tick.sma_100;
     const newSma200 = tick.sma_200;
 
     setLiveChange(tick.change);
@@ -259,8 +259,8 @@ function SideChart({ symbol, token }) {
     if (newSma50 !== undefined) {
       updatedCandle.sma_50 = newSma50;
     }
-    if (newSma150 !== undefined) {
-      updatedCandle.sma_150 = newSma150;
+    if (newSma100 !== undefined) {
+      updatedCandle.sma_100 = newSma100;
     }
     if (newSma200 !== undefined) {
       updatedCandle.sma_200 = newSma200;

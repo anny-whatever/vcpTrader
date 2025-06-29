@@ -24,6 +24,7 @@ import BuyModal from "../components/BuyModal";
 import SellModal from "../components/SellModal";
 import ChartModal from "../components/ChartModal";
 import AddAlertModal from "../components/AddAlertModal"; // New modal for adding alert
+import StockDetailModal from "../components/StockDetailModal"; // New modal for stock details
 import RiskMeter from "../components/RiskMeter"; // Risk meter component
 import api from "../utils/api";
 import { AuthContext } from "../utils/AuthContext";
@@ -43,17 +44,19 @@ function Screener() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(50);
 
-  // Modals for buy, sell, chart and now add alert
+  // Modals for buy, sell, chart, add alert, and stock details
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
   const [isAddAlertModalOpen, setIsAddAlertModalOpen] = useState(false);
+  const [isStockDetailModalOpen, setIsStockDetailModalOpen] = useState(false);
 
   // Data for modals
   const [buyData, setBuyData] = useState(null);
   const [sellData, setSellData] = useState(null);
   const [chartData, setChartData] = useState(null);
   const [addAlertData, setAddAlertData] = useState(null);
+  const [stockDetailData, setStockDetailData] = useState(null);
 
   // Current selected stock index for navigation
   const [currentStockIndex, setCurrentStockIndex] = useState(null);
@@ -129,12 +132,26 @@ function Screener() {
   const transformedScreenerData = useMemo(() => {
     if (!screenerData) return screenerData;
 
-    // If no live data, just ensure all items have stored_last_price
+    // If no live data, calculate change from stored data and ensure all items have stored_last_price
     if (!liveDataMap.size) {
-      return screenerData.map((item) => ({
-        ...item,
-        stored_last_price: item.stored_last_price || item.last_price,
-      }));
+      return screenerData.map((item) => {
+        // Use stored change_pct from database if available, otherwise calculate
+        let calculatedChange = item.change_pct || 0;
+        const currentPrice = item.current_price || item.entry_price || item.last_price || 0;
+        const storedLastPrice = item.stored_last_price || item.last_price;
+        
+        // If no stored change_pct, try to calculate from available price data
+        if (!calculatedChange && storedLastPrice && currentPrice && storedLastPrice !== currentPrice) {
+          calculatedChange = ((currentPrice - storedLastPrice) / storedLastPrice) * 100;
+        }
+        
+        return {
+          ...item,
+          stored_last_price: storedLastPrice || currentPrice,
+          last_price: currentPrice,
+          change: calculatedChange
+        };
+      });
     }
 
     let changed = false;
@@ -142,22 +159,54 @@ function Screener() {
       const liveDataItem = liveDataMap.get(item.instrument_token);
       
       // Ensure all items have stored_last_price for ATR calculation
+      const currentPrice = item.current_price || item.entry_price || item.last_price || 0;
       const baseItem = {
         ...item,
-        stored_last_price: item.stored_last_price || item.last_price,
+        stored_last_price: item.stored_last_price || currentPrice,
+        last_price: currentPrice
       };
 
-      if (!liveDataItem) return baseItem;
+      if (!liveDataItem) {
+        // Use stored change_pct from database if available, otherwise calculate
+        let calculatedChange = item.change_pct || 0;
+        const storedLastPrice = baseItem.stored_last_price;
+        if (!calculatedChange && storedLastPrice && currentPrice && storedLastPrice !== currentPrice) {
+          calculatedChange = ((currentPrice - storedLastPrice) / storedLastPrice) * 100;
+        }
+        return {
+          ...baseItem,
+          change: calculatedChange
+        };
+      }
+
+      // Calculate percentage change from live data
+      let liveChange = 0;
+      if (liveDataItem.change !== undefined) {
+        // Use the change from live data if available
+        liveChange = liveDataItem.change;
+      } else if (liveDataItem.last_price && liveDataItem.ohlc && liveDataItem.ohlc.close) {
+        // Calculate change manually from live price and previous close
+        const prevClose = liveDataItem.ohlc.close;
+        if (prevClose && prevClose !== 0) {
+          liveChange = ((liveDataItem.last_price - prevClose) / prevClose) * 100;
+        }
+      } else if (liveDataItem.last_price && baseItem.stored_last_price) {
+        // Fallback: calculate from current live price vs stored price
+        const storedPrice = baseItem.stored_last_price;
+        if (storedPrice && storedPrice !== 0) {
+          liveChange = ((liveDataItem.last_price - storedPrice) / storedPrice) * 100;
+        }
+      }
 
       // Only create a new object if there are actual changes
       if (
-        item.change !== liveDataItem.change ||
+        item.change !== liveChange ||
         item.last_price !== liveDataItem.last_price
       ) {
         changed = true;
         const updatedItem = {
           ...baseItem,
-          change: liveDataItem.change,
+          change: liveChange,
           last_price: liveDataItem.last_price,
         };
         
@@ -168,7 +217,12 @@ function Screener() {
         
         return updatedItem;
       }
-      return baseItem;
+      
+      // Ensure change is always set even if no changes
+      return {
+        ...baseItem,
+        change: liveChange
+      };
     });
 
     if (changed) {
@@ -176,7 +230,7 @@ function Screener() {
       return [...newData].sort((a, b) => (b.change || 0) - (a.change || 0));
     }
 
-    return newData; // Return newData instead of screenerData to maintain stored_last_price
+    return newData; // Return newData instead of screenerData to maintain stored_last_price and change
   }, [screenerData, liveDataMap]);
 
   // Calculate pagination values
@@ -284,6 +338,10 @@ function Screener() {
     });
   }, []);
 
+  const populateStockDetailData = useCallback((row) => {
+    setStockDetailData(row);
+  }, []);
+
   // Modal Handlers - memoized
   const handleOpenBuyModal = useCallback(() => setIsBuyModalOpen(true), []);
   const handleCloseBuyModal = useCallback(() => setIsBuyModalOpen(false), []);
@@ -303,6 +361,15 @@ function Screener() {
   );
   const handleCloseAddAlertModal = useCallback(
     () => setIsAddAlertModalOpen(false),
+    []
+  );
+
+  const handleOpenStockDetailModal = useCallback(
+    () => setIsStockDetailModalOpen(true),
+    []
+  );
+  const handleCloseStockDetailModal = useCallback(
+    () => setIsStockDetailModalOpen(false),
     []
   );
 
@@ -413,6 +480,14 @@ function Screener() {
     [populateAddAlertData, handleOpenAddAlertModal]
   );
 
+  const handleDetailAction = useCallback(
+    (row) => {
+      populateStockDetailData(row);
+      handleOpenStockDetailModal();
+    },
+    [populateStockDetailData, handleOpenStockDetailModal]
+  );
+
   // Add a function to calculate risk scores for all stocks in screener
   const handleCalculateRiskScores = useCallback(async () => {
     if (!screenerData || isCalculatingRisk) return;
@@ -449,30 +524,52 @@ function Screener() {
 
     return paginatedData.map((row, index) => {
       const colorClass = row.change > 0 ? "text-green-500" : "text-red-500";
-      // Use the stored price that ATR was calculated against for accurate percentage
-      const priceForATR = row?.stored_last_price || row?.last_price || 0;
-      const atrPercent = row?.atr && priceForATR > 0 
-        ? ((row.atr / priceForATR) * 100).toFixed(2) + "%" 
-        : "0.00%";
+      
+      // Format dates
+      const formatDate = (dateString) => {
+        if (!dateString) return "N/A";
+        try {
+          return new Date(dateString).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: '2-digit'
+          });
+        } catch {
+          return "N/A";
+        }
+      };
+
+      // Format currency
+      const formatCurrency = (value) => {
+        if (value == null || isNaN(value)) return "--";
+        return `₹${parseFloat(value).toFixed(2)}`;
+      };
+
+      // Get quality score color
+      const getQualityColor = (score) => {
+        if (score >= 7) return "text-green-400";
+        if (score >= 5) return "text-yellow-400";
+        if (score >= 3) return "text-orange-400";
+        return "text-red-400";
+      };
 
       return (
         <TableRow key={`${row.symbol}-${index}`}>
-          <TableCell>{row.symbol}</TableCell>
-          <TableCell>{row.last_price}</TableCell>
+          <TableCell className="font-medium">{row.symbol}</TableCell>
+          <TableCell className="text-sm">{formatDate(row.pattern_start_date)}</TableCell>
+          <TableCell className="text-sm">{formatDate(row.breakout_date)}</TableCell>
+          <TableCell>
+            <span className={`font-semibold ${getQualityColor(row.quality_score)}`}>
+              {row.quality_score || "N/A"}
+            </span>
+          </TableCell>
+          <TableCell className="text-sm">{formatCurrency(row.suggested_stop_loss)}</TableCell>
+          <TableCell className="font-medium">{formatCurrency(row.current_price || row.entry_price)}</TableCell>
           <TableCell>
             <span className={colorClass}>
               {row.change > 0 ? "+" : ""}
-              {row.change?.toFixed(2)}%
+              {row.change !== null && row.change !== undefined ? row.change.toFixed(2) : "0.00"}%
             </span>
-          </TableCell>
-          <TableCell>{atrPercent}</TableCell>
-          <TableCell>
-            <RiskMeter 
-              riskScore={row.risk_score} 
-              size="sm" 
-              showLabel={false}
-              className="justify-center"
-            />
           </TableCell>
           <TableCell>
             <ButtonGroup size="sm" variant="flat" className="rounded-lg">
@@ -564,31 +661,76 @@ function Screener() {
                       />
                     </svg>
                   </NextUIButton>
+                  <NextUIButton
+                    color="secondary"
+                    variant="flat"
+                    className="min-w-[40px] h-9 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400"
+                    onPress={() => handleDetailAction(row)}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"
+                      />
+                    </svg>
+                  </NextUIButton>
                 </>
               )}
               {userRole !== "admin" && (
-                <NextUIButton
-                  size="sm"
-                  color="warning"
-                  variant="flat"
-                  className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
-                  onPress={() => handleChartAction(row, index)}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-5 h-5"
+                <>
+                  <NextUIButton
+                    size="sm"
+                    color="warning"
+                    variant="flat"
+                    className="min-w-[40px] h-9 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
+                    onPress={() => handleChartAction(row, index)}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
-                    />
-                  </svg>
-                </NextUIButton>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
+                      />
+                    </svg>
+                  </NextUIButton>
+                  <NextUIButton
+                    size="sm"
+                    color="secondary"
+                    variant="flat"
+                    className="min-w-[40px] h-9 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400"
+                    onPress={() => handleDetailAction(row)}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.5}
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"
+                      />
+                    </svg>
+                  </NextUIButton>
+                </>
               )}
             </ButtonGroup>
           </TableCell>
@@ -602,6 +744,7 @@ function Screener() {
     handleSellAction,
     handleChartAction,
     handleAlertAction,
+    handleDetailAction,
   ]);
 
   // Memoize mobile card rendering
@@ -610,11 +753,34 @@ function Screener() {
 
     return paginatedData.map((row, index) => {
       const colorClass = row.change > 0 ? "text-green-500" : "text-red-500";
-      // Use the stored price that ATR was calculated against for accurate percentage
-      const priceForATR = row?.stored_last_price || row?.last_price || 0;
-      const atrPercent = row?.atr && priceForATR > 0 
-        ? ((row.atr / priceForATR) * 100).toFixed(2) + "%" 
-        : "0.00%";
+      
+      // Format dates
+      const formatDate = (dateString) => {
+        if (!dateString) return "N/A";
+        try {
+          return new Date(dateString).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: '2-digit'
+          });
+        } catch {
+          return "N/A";
+        }
+      };
+
+      // Format currency
+      const formatCurrency = (value) => {
+        if (value == null || isNaN(value)) return "--";
+        return `₹${parseFloat(value).toFixed(2)}`;
+      };
+
+      // Get quality score color
+      const getQualityColor = (score) => {
+        if (score >= 7) return "text-green-400";
+        if (score >= 5) return "text-yellow-400";
+        if (score >= 3) return "text-orange-400";
+        return "text-red-400";
+      };
 
       return (
         <div
@@ -626,152 +792,180 @@ function Screener() {
             <div className={`px-3 py-1 rounded-full ${row.change > 0 ? "bg-green-500/10" : "bg-red-500/10"}`}>
               <span className={`text-base font-semibold ${colorClass}`}>
                 {row.change > 0 ? "+" : ""}
-                {row.change?.toFixed(2)}%
+                {row.change !== null && row.change !== undefined ? row.change.toFixed(2) : "0.00"}%
               </span>
             </div>
           </div>
           
+          <div className="grid grid-cols-2 gap-3 mt-1">
+            <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+              <span className="text-xs text-zinc-400 font-medium mb-1">
+                Pattern Start
+              </span>
+              <span className="text-sm font-medium text-white">
+                {formatDate(row.pattern_start_date)}
+              </span>
+            </div>
+            <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+              <span className="text-xs text-zinc-400 font-medium mb-1">
+                Breakout Date
+              </span>
+              <span className="text-sm font-medium text-white">
+                {formatDate(row.breakout_date)}
+              </span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-3 gap-3 mt-1">
             <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
               <span className="text-xs text-zinc-400 font-medium mb-1">
-                Last Price
+                Quality Score
               </span>
-              <span className="text-sm font-medium text-white">
-                {row.last_price?.toFixed(2)}
-              </span>
-            </div>
-            <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
-              <span className="text-xs text-zinc-400 font-medium mb-1">
-                Change
-              </span>
-              <span className={`text-sm font-medium ${colorClass}`}>
-                {row.change?.toFixed(2)}%
+              <span className={`text-sm font-bold ${getQualityColor(row.quality_score)}`}>
+                {row.quality_score || "N/A"}
               </span>
             </div>
             <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
               <span className="text-xs text-zinc-400 font-medium mb-1">
-                ATR %
+                Stop Loss
+              </span>
+              <span className="text-sm font-medium text-red-400">
+                {formatCurrency(row.suggested_stop_loss)}
+              </span>
+            </div>
+            <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+              <span className="text-xs text-zinc-400 font-medium mb-1">
+                Current Price
               </span>
               <span className="text-sm font-medium text-white">
-                {atrPercent}
+                {formatCurrency(row.current_price || row.entry_price)}
               </span>
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-3 mt-2">
-            <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
-              <span className="text-xs text-zinc-400 font-medium mb-1">
-                Risk Score
-              </span>
-              <RiskMeter 
-                riskScore={row.risk_score} 
-                size="sm" 
-                showLabel={false}
-                className="mt-1"
-              />
-            </div>
-            <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
-              <span className="text-xs text-zinc-400 font-medium mb-1">
-                Actions
-              </span>
-              <div className="flex mt-1">
-                <ButtonGroup className="shadow-sm gap-1 flex flex-wrap">
-                  {userRole === "admin" && (
-                    <>
-                      <NextUIButton
-                        size="sm"
-                        color="success"
-                        variant="flat"
-                        className="min-w-[28px] w-7 h-7 p-0 bg-green-500/20 hover:bg-green-500/30 text-green-500"
-                        onPress={() => handleBuyAction(row)}
-                        isDisabled={userRole !== "admin"}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth={1.5}
-                          stroke="currentColor"
-                          className="w-3.5 h-3.5"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M12 4.5v15m7.5-7.5h-15"
-                          />
-                        </svg>
-                      </NextUIButton>
-                      <NextUIButton
-                        size="sm"
-                        color="danger"
-                        variant="flat"
-                        className="min-w-[28px] w-7 h-7 p-0 bg-red-500/20 hover:bg-red-500/30 text-red-500"
-                        onPress={() => handleSellAction(row)}
-                        isDisabled={userRole !== "admin"}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          strokeWidth={1.5}
-                          stroke="currentColor"
-                          className="w-3.5 h-3.5"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M5 12h14"
-                          />
-                        </svg>
-                      </NextUIButton>
-                    </>
-                  )}
-                  <NextUIButton
-                    size="sm"
-                    color="warning"
-                    variant="flat"
-                    className="min-w-[28px] w-7 h-7 p-0 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
-                    onPress={() => handleChartAction(row, index)}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                      className="w-3.5 h-3.5"
+          <div className="flex flex-col bg-zinc-950/30 p-3 rounded-lg">
+            <span className="text-xs text-zinc-400 font-medium mb-1">
+              Actions
+            </span>
+            <div className="flex mt-1">
+              <ButtonGroup className="shadow-sm gap-1 flex flex-wrap">
+                {userRole === "admin" && (
+                  <>
+                    <NextUIButton
+                      size="sm"
+                      color="success"
+                      variant="flat"
+                      className="min-w-[28px] w-7 h-7 p-0 bg-green-500/20 hover:bg-green-500/30 text-green-500"
+                      onPress={() => handleBuyAction(row)}
+                      isDisabled={userRole !== "admin"}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
-                      />
-                    </svg>
-                  </NextUIButton>
-                  <NextUIButton
-                    size="sm"
-                    color="primary"
-                    variant="flat"
-                    className="min-w-[28px] w-7 h-7 p-0 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
-                    onPress={() => handleAlertAction(row)}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
-                      className="w-3.5 h-3.5"
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                        className="w-3.5 h-3.5"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M12 4.5v15m7.5-7.5h-15"
+                        />
+                      </svg>
+                    </NextUIButton>
+                    <NextUIButton
+                      size="sm"
+                      color="danger"
+                      variant="flat"
+                      className="min-w-[28px] w-7 h-7 p-0 bg-red-500/20 hover:bg-red-500/30 text-red-500"
+                      onPress={() => handleSellAction(row)}
+                      isDisabled={userRole !== "admin"}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
-                      />
-                    </svg>
-                  </NextUIButton>
-                </ButtonGroup>
-              </div>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                        className="w-3.5 h-3.5"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M5 12h14"
+                        />
+                      </svg>
+                    </NextUIButton>
+                  </>
+                )}
+                <NextUIButton
+                  size="sm"
+                  color="warning"
+                  variant="flat"
+                  className="min-w-[28px] w-7 h-7 p-0 bg-amber-500/20 hover:bg-amber-500/30 text-amber-500"
+                  onPress={() => handleChartAction(row, index)}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-3.5 h-3.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0-.5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605"
+                    />
+                  </svg>
+                </NextUIButton>
+                <NextUIButton
+                  size="sm"
+                  color="primary"
+                  variant="flat"
+                  className="min-w-[28px] w-7 h-7 p-0 bg-blue-500/20 hover:bg-blue-500/30 text-blue-500"
+                  onPress={() => handleAlertAction(row)}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-3.5 h-3.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
+                    />
+                  </svg>
+                </NextUIButton>
+                <NextUIButton
+                  size="sm"
+                  color="secondary"
+                  variant="flat"
+                  className="min-w-[28px] w-7 h-7 p-0 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400"
+                  onPress={() => handleDetailAction(row)}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={1.5}
+                    stroke="currentColor"
+                    className="w-3.5 h-3.5"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"
+                    />
+                  </svg>
+                </NextUIButton>
+              </ButtonGroup>
             </div>
           </div>
         </div>
@@ -784,6 +978,7 @@ function Screener() {
     handleSellAction,
     handleChartAction,
     handleAlertAction,
+    handleDetailAction,
   ]);
 
   return (
@@ -823,6 +1018,11 @@ function Screener() {
         symbol={addAlertData?.symbol}
         instrument_token={addAlertData?.instrument_token}
         ltp={addAlertData?.ltp}
+      />
+      <StockDetailModal
+        isOpen={isStockDetailModalOpen}
+        onClose={handleCloseStockDetailModal}
+        stockData={stockDetailData}
       />
 
       {/* Top controls */}
@@ -895,10 +1095,12 @@ function Screener() {
             >
               <TableHeader>
                 <TableColumn>Symbol</TableColumn>
+                <TableColumn>Pattern Start</TableColumn>
+                <TableColumn>Breakout Date</TableColumn>
+                <TableColumn>Quality Score</TableColumn>
+                <TableColumn>Stop Loss</TableColumn>
                 <TableColumn>Last Price</TableColumn>
                 <TableColumn>Change</TableColumn>
-                <TableColumn>ATR %</TableColumn>
-                <TableColumn>Risk</TableColumn>
                 <TableColumn>Actions</TableColumn>
               </TableHeader>
               <TableBody>{renderTableRows}</TableBody>

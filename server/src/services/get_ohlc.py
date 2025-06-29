@@ -103,14 +103,14 @@ def get_ohlc(instrument_token, interval, symbol, segment):
                 # ---- Compute Indicators ----
                 # Use rolling windows that don't exceed the length of the dataset
                 length_50 = min(50, len(hist))
-                length_150 = min(150, len(hist))
+                length_100 = min(100, len(hist))
                 length_200 = min(200, len(hist))
                 length_252 = min(252, len(hist))
                 
-                logger.info(f"Computing technical indicators with adjusted lengths: SMA50={length_50}, SMA150={length_150}, SMA200={length_200}, 52W={length_252}")
+                logger.info(f"Computing technical indicators with adjusted lengths: SMA50={length_50}, SMA100={length_100}, SMA200={length_200}, 52W={length_252}")
                 
                 hist["sma_50"] = ta.sma(hist["close"], length=length_50)
-                hist["sma_150"] = ta.sma(hist["close"], length=length_150)
+                hist["sma_100"] = ta.sma(hist["close"], length=length_100)
                 hist["sma_200"] = ta.sma(hist["close"], length=length_200)
                 hist["atr"] = ta.atr(
                     hist["high"],
@@ -158,7 +158,7 @@ def get_ohlc(instrument_token, interval, symbol, segment):
                         row['volume'],
                         segment,
                         row["sma_50"],
-                        row["sma_150"],
+                        row["sma_100"],
                         row["sma_200"],
                         row["atr"],
                         row["52_week_high"],
@@ -173,7 +173,7 @@ def get_ohlc(instrument_token, interval, symbol, segment):
                     INSERT INTO ohlc (
                         instrument_token, symbol, interval, date,
                         open, high, low, close, volume, segment,
-                        sma_50, sma_150, sma_200, atr,
+                        sma_50, sma_100, sma_200, atr,
                         "52_week_high", "52_week_low",
                         away_from_high, away_from_low
                     )

@@ -1,3 +1,121 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom Modal Styling and Z-Index Management */
+.modal-overlay {
+  z-index: 99999 !important;
+}
+
+.stock-detail-modal {
+  z-index: 100000 !important;
+}
+
+/* NextUI Modal Overrides for Enhanced Appearance */
+[data-nextui-modal="true"] {
+  z-index: 99999 !important;
+}
+
+[data-nextui-modal-backdrop="true"] {
+  z-index: 99998 !important;
+  backdrop-filter: blur(16px) !important;
+  background: rgba(9, 9, 11, 0.8) !important;
+}
+
+[data-nextui-modal-wrapper="true"] {
+  z-index: 99999 !important;
+}
+
+/* Force maximum z-index for all modal-related NextUI components */
+[data-slot="backdrop"],
+[data-slot="wrapper"],
+[data-slot="base"],
+[data-slot="content"] {
+  z-index: 99999 !important;
+}
+
+/* Specific overrides for any remaining z-index conflicts */
+.nextui-modal-backdrop,
+.nextui-modal-wrapper,
+.nextui-modal-content {
+  z-index: 99999 !important;
+}
+
+/* VCP Detail Modal - Maximum Priority Z-Index */
+.vcp-detail-modal,
+.vcp-modal-backdrop,
+.vcp-modal-wrapper,
+.vcp-modal-base {
+  z-index: 2147483647 !important; /* Maximum safe z-index value */
+}
+
+/* Additional insurance for VCP modal visibility */
+.vcp-detail-modal * {
+  position: relative !important;
+}
+
+.vcp-detail-modal [data-slot="backdrop"] {
+  z-index: 2147483646 !important;
+}
+
+.vcp-detail-modal [data-slot="wrapper"] {
+  z-index: 2147483647 !important;
+}
+
+/* Enhanced scrollbar styling for modal content */
+.modal-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-scrollbar::-webkit-scrollbar-track {
+  background: rgba(39, 39, 42, 0.5);
+  border-radius: 3px;
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(113, 113, 122, 0.8);
+  border-radius: 3px;
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(113, 113, 122, 1);
+}
+
+/* Glass effect for modal cards */
+.glass-card {
+  backdrop-filter: blur(12px);
+  background: rgba(39, 39, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Animation enhancements */
+.modal-enter {
+  animation: modalEnter 0.3s ease-out;
+}
+
+.modal-exit {
+  animation: modalExit 0.2s ease-in;
+}
+
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalExit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+}

@@ -14,7 +14,12 @@ from .place_exit import sell_order_execute
 from .place_adjust import adjust_order_execute
 # Import the order_manager explicitly
 from .order_manager import execute_buy, execute_sell, execute_adjust, get_order_status
-from .get_screener import run_vcp_screener, fetch_live_quotes, load_precomputed_ohlc
+from .get_screener import (
+    run_vcp_screener,
+    fetch_live_quotes,
+    load_precomputed_ohlc,
+    run_advanced_vcp_screener,
+)
 from .manage_risk_pool import (
     update_risk_pool_on_increase,
     update_risk_pool_on_decrease,
@@ -69,6 +74,7 @@ __all__ = [
     "execute_adjust",
     "get_order_status",
     "run_vcp_screener",
+    "run_advanced_vcp_screener",
     "update_risk_pool_on_increase",
     "update_risk_pool_on_decrease",
     "update_risk_pool_on_exit",
@@ -95,4 +101,5 @@ __all__ = [
     "filtered_tokens",
     "save_tradable_ticks",
     "save_nontradable_ticks",
+    "fetch_screener_data",
 ]
