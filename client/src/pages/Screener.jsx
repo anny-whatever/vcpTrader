@@ -61,10 +61,7 @@ function Screener() {
   // Current selected stock index for navigation
   const [currentStockIndex, setCurrentStockIndex] = useState(null);
 
-  // For debouncing updates
-  const updateTimeoutRef = useRef(null);
-  const lastUpdateTime = useRef(0);
-  const UPDATE_THROTTLE = 500; // ms
+
 
   // Risk calculation state
   const [isCalculatingRisk, setIsCalculatingRisk] = useState(false);
@@ -116,138 +113,106 @@ function Screener() {
     fetchScreenerData();
   }, [fetchScreenerData]);
 
-  // Create a memoized map of instrument tokens to live data for faster lookups
-  const liveDataMap = useMemo(() => {
-    if (!liveData) return new Map();
-    const map = new Map();
-    liveData.forEach((item) => {
-      if (item && item.instrument_token) {
-        map.set(item.instrument_token, item);
+  // Add periodic refresh during market hours for live updates
+  useEffect(() => {
+    const isMarketHours = () => {
+      const now = new Date();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      const currentTime = hours * 100 + minutes;
+      // Market hours: 9:15 AM to 3:30 PM
+      return currentTime >= 915 && currentTime <= 1530;
+    };
+
+    let intervalId;
+    if (isMarketHours()) {
+      // Refresh screener data every 2 minutes during market hours
+      intervalId = setInterval(() => {
+        fetchScreenerData();
+      }, 2 * 60 * 1000); // 2 minutes
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
       }
-    });
-    return map;
-  }, [liveData]);
+    };
+  }, [fetchScreenerData]);
 
-  // Memoize the screener data transformation to prevent unnecessary recalculations
-  const transformedScreenerData = useMemo(() => {
-    if (!screenerData) return screenerData;
-
-    // If no live data, calculate change from stored data and ensure all items have stored_last_price
-    if (!liveDataMap.size) {
-      return screenerData.map((item) => {
-        // Use stored change_pct from database if available, otherwise calculate
-        let calculatedChange = item.change_pct || 0;
-        const currentPrice = item.current_price || item.entry_price || item.last_price || 0;
-        const storedLastPrice = item.stored_last_price || item.last_price;
-        
-        // If no stored change_pct, try to calculate from available price data
-        if (!calculatedChange && storedLastPrice && currentPrice && storedLastPrice !== currentPrice) {
-          calculatedChange = ((currentPrice - storedLastPrice) / storedLastPrice) * 100;
+  // Merge live data into screener data and force React to detect changes
+  useEffect(() => {
+    if (screenerData && liveData) {
+      let hasUpdates = false;
+      
+      screenerData.forEach((stock) => {
+        const liveDataItem = liveData.find(
+          (liveItem) => liveItem.instrument_token === stock.instrument_token
+        );
+        if (liveDataItem) {
+          // Check if we have actual updates to avoid unnecessary re-renders
+          const oldPrice = stock.last_price;
+          const oldChange = stock.change;
+          
+          // Update last_price directly from live data
+          stock.last_price = liveDataItem.last_price;
+          stock.current_price = liveDataItem.last_price;
+          
+          // Update change percentage if available in live data
+          if (liveDataItem.change !== undefined) {
+            stock.change = liveDataItem.change;
+          }
+          
+          // Update ATR if available
+          if (liveDataItem.atr !== undefined) {
+            stock.atr = liveDataItem.atr;
+          }
+          
+          // Check if we had actual changes
+          if (oldPrice !== stock.last_price || oldChange !== stock.change) {
+            hasUpdates = true;
+          }
         }
-        
-        return {
-          ...item,
-          stored_last_price: storedLastPrice || currentPrice,
-          last_price: currentPrice,
-          change: calculatedChange
-        };
       });
+      
+      // Force React to re-render by updating state if we had changes
+      if (hasUpdates) {
+        setScreenerData([...screenerData]);
+      }
     }
+  }, [screenerData, liveData]);
 
-    let changed = false;
-    const newData = screenerData.map((item) => {
-      const liveDataItem = liveDataMap.get(item.instrument_token);
-      
-      // Ensure all items have stored_last_price for ATR calculation
-      const currentPrice = item.current_price || item.entry_price || item.last_price || 0;
-      const baseItem = {
-        ...item,
-        stored_last_price: item.stored_last_price || currentPrice,
-        last_price: currentPrice
-      };
-
-      if (!liveDataItem) {
-        // Use stored change_pct from database if available, otherwise calculate
-        let calculatedChange = item.change_pct || 0;
-        const storedLastPrice = baseItem.stored_last_price;
-        if (!calculatedChange && storedLastPrice && currentPrice && storedLastPrice !== currentPrice) {
-          calculatedChange = ((currentPrice - storedLastPrice) / storedLastPrice) * 100;
-        }
-        return {
-          ...baseItem,
-          change: calculatedChange
-        };
+  // Memoize sorted screener data
+  const sortedScreenerData = useMemo(() => {
+    if (!screenerData) return screenerData;
+    
+    // Always sort by breakout date (latest first) and quality score (highest first)
+    return [...screenerData].sort((a, b) => {
+      // First sort by breakout_date (latest first)
+      const dateA = new Date(a.breakout_date || 0);
+      const dateB = new Date(b.breakout_date || 0);
+      if (dateB.getTime() !== dateA.getTime()) {
+        return dateB.getTime() - dateA.getTime();
       }
-
-      // Calculate percentage change from live data
-      let liveChange = 0;
-      if (liveDataItem.change !== undefined) {
-        // Use the change from live data if available
-        liveChange = liveDataItem.change;
-      } else if (liveDataItem.last_price && liveDataItem.ohlc && liveDataItem.ohlc.close) {
-        // Calculate change manually from live price and previous close
-        const prevClose = liveDataItem.ohlc.close;
-        if (prevClose && prevClose !== 0) {
-          liveChange = ((liveDataItem.last_price - prevClose) / prevClose) * 100;
-        }
-      } else if (liveDataItem.last_price && baseItem.stored_last_price) {
-        // Fallback: calculate from current live price vs stored price
-        const storedPrice = baseItem.stored_last_price;
-        if (storedPrice && storedPrice !== 0) {
-          liveChange = ((liveDataItem.last_price - storedPrice) / storedPrice) * 100;
-        }
-      }
-
-      // Only create a new object if there are actual changes
-      if (
-        item.change !== liveChange ||
-        item.last_price !== liveDataItem.last_price
-      ) {
-        changed = true;
-        const updatedItem = {
-          ...baseItem,
-          change: liveChange,
-          last_price: liveDataItem.last_price,
-        };
-        
-        // Include ATR from live data if available, otherwise keep original
-        if (liveDataItem.atr !== undefined) {
-          updatedItem.atr = liveDataItem.atr;
-        }
-        
-        return updatedItem;
-      }
-      
-      // Ensure change is always set even if no changes
-      return {
-        ...baseItem,
-        change: liveChange
-      };
+      // If dates are equal, sort by quality_score (highest first)
+      return (b.quality_score || 0) - (a.quality_score || 0);
     });
-
-    if (changed) {
-      // Sort only if there were changes
-      return [...newData].sort((a, b) => (b.change || 0) - (a.change || 0));
-    }
-
-    return newData; // Return newData instead of screenerData to maintain stored_last_price and change
-  }, [screenerData, liveDataMap]);
+  }, [screenerData]);
 
   // Calculate pagination values
   const paginatedData = useMemo(() => {
-    if (!transformedScreenerData) return null;
+    if (!sortedScreenerData) return null;
 
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
 
-    return transformedScreenerData.slice(indexOfFirstItem, indexOfLastItem);
-  }, [transformedScreenerData, currentPage, itemsPerPage]);
+    return sortedScreenerData.slice(indexOfFirstItem, indexOfLastItem);
+  }, [sortedScreenerData, currentPage, itemsPerPage]);
 
   // Calculate total pages
   const totalPages = useMemo(() => {
-    if (!transformedScreenerData) return 0;
-    return Math.ceil(transformedScreenerData.length / itemsPerPage);
-  }, [transformedScreenerData, itemsPerPage]);
+    if (!sortedScreenerData) return 0;
+    return Math.ceil(sortedScreenerData.length / itemsPerPage);
+  }, [sortedScreenerData, itemsPerPage]);
 
   // Handle page change
   const handlePageChange = useCallback((page) => {
@@ -259,35 +224,7 @@ function Screener() {
     });
   }, []);
 
-  // Update screenerData using transformedData, but with throttling
-  useEffect(() => {
-    if (transformedScreenerData === screenerData) return;
 
-    const now = Date.now();
-    if (now - lastUpdateTime.current < UPDATE_THROTTLE) {
-      // Clear any existing timeout
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
-
-      // Set a new timeout
-      updateTimeoutRef.current = setTimeout(() => {
-        setScreenerData(transformedScreenerData);
-        lastUpdateTime.current = Date.now();
-      }, UPDATE_THROTTLE);
-    } else {
-      // It's been long enough since the last update, update immediately
-      setScreenerData(transformedScreenerData);
-      lastUpdateTime.current = now;
-    }
-
-    // Cleanup timeout on unmount
-    return () => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
-    };
-  }, [transformedScreenerData, screenerData]);
 
   // Memoize handlers to prevent recreating functions on each render
   const populateBuyData = useCallback(

@@ -245,19 +245,18 @@ def fetch_screener_data(screener_name: str) -> list:
                 END_TIME = datetime.time(15, 30, 5)
                 now = datetime.datetime.now(TIMEZONE).time()
                 
-                if START_TIME <= now <= END_TIME:
-                    # Collect unique instrument tokens from the screener results
-                    unique_tokens = list({result['instrument_token'] for result in results if result.get('instrument_token')})
-                    
-                    # Fetch live quotes for all tokens
-                    live_quotes = {}
-                    if unique_tokens:
-                        try:
-                            from controllers import kite
-                            live_quotes = kite.quote(unique_tokens)
-                            logger.info(f"Fetched live quotes for {len(live_quotes)} screener stocks")
-                        except Exception as quote_error:
-                            logger.error(f"Error fetching quotes for screener stocks: {quote_error}")
+                # Collect unique instrument tokens from the screener results
+                unique_tokens = list({result['instrument_token'] for result in results if result.get('instrument_token') and result.get('instrument_token') != -1})
+                
+                # Fetch live quotes for all tokens (try regardless of market hours for live data updates)
+                live_quotes = {}
+                if unique_tokens:
+                    try:
+                        from controllers import kite
+                        live_quotes = kite.quote(unique_tokens)
+                        logger.info(f"Fetched live quotes for {len(live_quotes)} screener stocks")
+                    except Exception as quote_error:
+                        logger.error(f"Error fetching quotes for screener stocks: {quote_error}")
                 
                 # Process each result and enhance with live data
                 for result in results:

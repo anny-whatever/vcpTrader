@@ -168,6 +168,11 @@ class AdvancedVcpResult:
         try:
             cur.execute(select_query)
             
+            # Check if cursor description is None (query failed)
+            if cur.description is None:
+                logger.warning("Query executed but no description available - likely no results or query failed")
+                return []
+            
             # Fetch column names from cursor description
             colnames = [desc[0] for desc in cur.description]
             

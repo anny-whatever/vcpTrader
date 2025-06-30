@@ -750,6 +750,11 @@ def run_advanced_vcp_scan(ohlc_df: pd.DataFrame, max_results: int = 50) -> bool:
             # Clear previous results before inserting new ones
             AdvancedVcpResult.delete_all(cur)
             AdvancedVcpResult.batch_save(cur, breakouts)
+            
+            # Send NOTIFY to trigger WebSocket subscription updates
+            cur.execute("NOTIFY data_changed, 'advanced_vcp_results'")
+            logger.info("Sent NOTIFY to update ticker subscriptions with advanced VCP screener tokens")
+            
             conn.commit()
             logger.info("Successfully saved advanced VCP results to database.")
             return True
@@ -768,6 +773,11 @@ def run_advanced_vcp_scan(ohlc_df: pd.DataFrame, max_results: int = 50) -> bool:
         try:
             conn, cur = get_trade_db_connection()
             AdvancedVcpResult.delete_all(cur)
+            
+            # Send NOTIFY even when clearing old results to update subscriptions
+            cur.execute("NOTIFY data_changed, 'advanced_vcp_results'")
+            logger.info("Sent NOTIFY to update ticker subscriptions after clearing advanced VCP results")
+            
             conn.commit()
             logger.info("No new breakouts found. Cleared old advanced VCP results from database.")
         except Exception as e:

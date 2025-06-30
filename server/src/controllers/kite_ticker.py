@@ -51,6 +51,10 @@ def get_instrument_token():
 
         cur.execute("SELECT instrument_token FROM screener_results;")
         screener_tokens = cur.fetchall()
+        
+        cur.execute("SELECT instrument_token FROM advanced_vcp_results WHERE instrument_token != -1;")
+        advanced_screener_tokens = cur.fetchall()
+        screener_tokens.extend(advanced_screener_tokens)
 
         cur.execute("SELECT instrument_token FROM price_alerts;")
         price_alert_tokens = cur.fetchall()

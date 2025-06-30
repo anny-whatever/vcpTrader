@@ -755,35 +755,34 @@ const Navbar = ({
           </Box>
         </MenuItem>
 
-        {userRole === "admin" && (
-          <>
-            <MenuItem
-              component="a"
-              href="https://api.tradekeep.in/api/auth"
-              onClick={handleAccountClose}
-            >
-              <Typography variant="body2">Zerodha Login</Typography>
-            </MenuItem>
-            
-            <MenuItem onClick={(e) => e.stopPropagation()}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={multiplierEnabled}
-                    onChange={toggleMultiplier}
-                    size="small"
-                  />
-                }
-                label={
-                  <Typography variant="body2">
-                    Multiplier
-                  </Typography>
-                }
-                sx={{ margin: 0 }}
-              />
-            </MenuItem>
-          </>
-        )}
+        {userRole === "admin" && [
+          <MenuItem
+            key="zerodha-login"
+            component="a"
+            href="https://api.tradekeep.in/api/auth"
+            onClick={handleAccountClose}
+          >
+            <Typography variant="body2">Zerodha Login</Typography>
+          </MenuItem>,
+          
+          <MenuItem key="multiplier-toggle" onClick={(e) => e.stopPropagation()}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={multiplierEnabled}
+                  onChange={toggleMultiplier}
+                  size="small"
+                />
+              }
+              label={
+                <Typography variant="body2">
+                  Multiplier
+                </Typography>
+              }
+              sx={{ margin: 0 }}
+            />
+          </MenuItem>
+        ]}
 
         {/* Only show Zerodha login for admin users, no multiplier toggle for observers */}
         {userRole === "observer" && (

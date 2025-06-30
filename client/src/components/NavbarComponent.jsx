@@ -404,80 +404,79 @@ export default function NavbarComponent() {
               },
             }}
           >
-            {alertMessages && alertMessages.length > 0 ? (
-              <>
-                {alertMessages.map((alert) => (
-                  <MenuItem
-                    key={alert.id}
-                    onClick={handleNotificationClose}
-                    sx={{ py: 1 }}
-                  >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        width: "100%",
-                      }}
-                    >
-                      <Typography variant="subtitle2" fontWeight="bold">
-                        {alert.symbol}
-                      </Typography>
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", mt: 0.5 }}
-                      >
-                        <Chip
-                          label={
-                            alert.alert_type === "sl" ? "Stop Loss" : "Target"
-                          }
-                          size="small"
-                          sx={{
-                            mr: 1,
-                            bgcolor:
-                              alert.alert_type === "sl" ? "#ef4444" : "#22c55e",
-                            color: "white",
-                          }}
-                        />
-                        <Chip
-                          label={alert.triggered_price}
-                          size="small"
-                          sx={{
-                            bgcolor: "#4b5563",
-                            color: "white",
-                          }}
-                        />
-                      </Box>
-                    </Box>
-                  </MenuItem>
-                ))}
-                <Box
-                  sx={{
-                    borderTop: "1px solid rgba(255,255,255,0.1)",
-                    p: 1,
-                    textAlign: "center",
-                  }}
+            {alertMessages && alertMessages.length > 0 ? [
+              ...alertMessages.map((alert) => (
+                <MenuItem
+                  key={alert.id}
+                  onClick={handleNotificationClose}
+                  sx={{ py: 1 }}
                 >
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={handleClearAllNotifications}
+                  <Box
                     sx={{
-                      color: "white",
-                      borderColor: "rgba(255,255,255,0.3)",
-                      "&:hover": {
-                        borderColor: "white",
-                        bgcolor: "rgba(255,255,255,0.1)",
-                      },
+                      display: "flex",
+                      flexDirection: "column",
+                      width: "100%",
                     }}
                   >
-                    Clear All
-                  </Button>
-                </Box>
-              </>
-            ) : (
-              <MenuItem onClick={handleNotificationClose}>
+                    <Typography variant="subtitle2" fontWeight="bold">
+                      {alert.symbol}
+                    </Typography>
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", mt: 0.5 }}
+                    >
+                      <Chip
+                        label={
+                          alert.alert_type === "sl" ? "Stop Loss" : "Target"
+                        }
+                        size="small"
+                        sx={{
+                          mr: 1,
+                          bgcolor:
+                            alert.alert_type === "sl" ? "#ef4444" : "#22c55e",
+                          color: "white",
+                        }}
+                      />
+                      <Chip
+                        label={alert.triggered_price}
+                        size="small"
+                        sx={{
+                          bgcolor: "#4b5563",
+                          color: "white",
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                </MenuItem>
+              )),
+              <Box
+                key="clear-button"
+                sx={{
+                  borderTop: "1px solid rgba(255,255,255,0.1)",
+                  p: 1,
+                  textAlign: "center",
+                }}
+              >
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleClearAllNotifications}
+                  sx={{
+                    color: "white",
+                    borderColor: "rgba(255,255,255,0.3)",
+                    "&:hover": {
+                      borderColor: "white",
+                      bgcolor: "rgba(255,255,255,0.1)",
+                    },
+                  }}
+                >
+                  Clear All
+                </Button>
+              </Box>
+            ] : [
+              <MenuItem key="no-notifications" onClick={handleNotificationClose}>
                 <Typography variant="body2">No notifications</Typography>
               </MenuItem>
-            )}
+            ]}
           </Menu>
           {/* Alert Modal Dialog */}
           <Dialog
