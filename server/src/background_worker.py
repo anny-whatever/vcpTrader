@@ -124,22 +124,22 @@ class BackgroundWorker:
         logger.info(f"OHLC collection process started with PID: {process.pid}")
     
     async def _start_vcp_screening(self):
-        """Start VCP screening in separate process"""
-        logger.info("Starting VCP screening process...")
+        """Start VCP screening in separate process using sequential processing"""
+        logger.info("Starting sequential VCP screening process...")
         
         def run_vcp_screening():
             try:
                 from services.get_screener import run_advanced_vcp_screener
-                result = run_advanced_vcp_screener()
-                logger.info(f"VCP screening completed with result: {result}")
+                result = run_advanced_vcp_screener()  # Now uses sequential processing by default
+                logger.info(f"Sequential VCP screening completed with result: {result}")
             except Exception as e:
-                logger.error(f"Error in VCP screening process: {e}")
+                logger.error(f"Error in sequential VCP screening process: {e}")
         
         process = mp.Process(target=run_vcp_screening, name="vcp_screening")
         process.start()
         self.processes['vcp_screening'] = process
         
-        logger.info(f"VCP screening process started with PID: {process.pid}")
+        logger.info(f"Sequential VCP screening process started with PID: {process.pid}")
     
     async def _start_risk_calculation(self):
         """Start risk calculation in separate process"""

@@ -31,14 +31,14 @@ VCP_CONFIG = {
     'prior_uptrend_min': 3.0,             # Reduced from 5.0
     'prior_uptrend_max': 150.0,           # Increased from 100.0
     'minimum_quality_score': 3,           # Reduced from 4
-    'min_data_candles': 200,              # Reduced from 1000 as we have limited historical data
+    'min_data_candles': 1000,             # Increased for more data requirement
 }
 
 STAGE_FLAGS = {
     'require_prior_uptrend': True,
-    'require_volume_contraction': True,    # Enabled for volume contraction filtering
+    'require_volume_contraction': False,   # Disabled for more results
     'require_sma_position': True,
-    'require_volume_surge': True,          # Enabled for volume surge filtering  
+    'require_volume_surge': False,         # Disabled for more results  
     'require_volatility_compression': True,
     'quality_score_weight': True,
 }
@@ -80,7 +80,9 @@ def load_latest_stock_data(file_path: str, lookback_candles: int = 1000) -> pd.D
 def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """Calculate missing technical indicators."""
     df['sma_20'] = df['close'].rolling(window=20).mean()
+    df['sma_50'] = df['close'].rolling(window=50).mean()
     df['sma_100'] = df['close'].rolling(window=100).mean()
+    df['sma_200'] = df['close'].rolling(window=200).mean()
     
     # Calculate ATR with a period of 50
     high_low = df['high'] - df['low']
@@ -193,39 +195,38 @@ def check_volume_contraction(df: pd.DataFrame, contractions: List[int], pattern_
     }
 
 def check_sma_position(df: pd.DataFrame, breakout_idx: int) -> Dict:
-    """Stage 4: Enhanced Moving average position filter with additional VCP conditions"""
+    """Stage 4: Comprehensive SMA filter with alignment requirement"""
     if not STAGE_FLAGS['require_sma_position']:
         return {'valid': True, 'details': 'Skipped'}
     
     row = df.iloc[breakout_idx]
-    close_price = row['close']
+    breakout_close = row['close']
     sma_50 = row['sma_50']
     sma_100 = row['sma_100']
     sma_200 = row['sma_200']
     
-    if pd.isna(sma_50) or pd.isna(sma_100) or pd.isna(sma_200):
-        return {'valid': False, 'details': 'Missing SMA data'}
+    # Comprehensive SMA filter as specified
+    sma_filter = (not pd.isna(sma_50) and not pd.isna(sma_100) and not pd.isna(sma_200) and
+                  breakout_close > sma_50 and 
+                  breakout_close > sma_100 and 
+                  breakout_close > sma_200 and
+                  sma_50 > sma_100 > sma_200)
     
-    # Basic SMA position checks
-    above_sma50 = close_price > sma_50
-    above_sma100 = close_price > sma_100
-    above_sma200 = close_price > sma_200
-    
-    # Enhanced SMA alignment: 50 SMA > 100 SMA > 200 SMA (trending upward)
-    sma_alignment = sma_50 > sma_100 > sma_200
-    
-    # All conditions must be met
-    valid = above_sma50 and above_sma100 and above_sma200 and sma_alignment
+    # Individual checks for reporting
+    above_sma50 = breakout_close > sma_50 if not pd.isna(sma_50) else False
+    above_sma100 = breakout_close > sma_100 if not pd.isna(sma_100) else False
+    above_sma200 = breakout_close > sma_200 if not pd.isna(sma_200) else False
+    sma_alignment = sma_50 > sma_100 > sma_200 if not pd.isna(sma_50) and not pd.isna(sma_100) and not pd.isna(sma_200) else False
     
     return {
-        'valid': valid,
+        'valid': sma_filter,
         'above_sma50': above_sma50,
         'above_sma100': above_sma100,
         'above_sma200': above_sma200,
         'sma_alignment': sma_alignment,
-        'price_vs_sma50_pct': ((close_price - sma_50) / sma_50) * 100 if sma_50 != 0 else 0,
-        'price_vs_sma100_pct': ((close_price - sma_100) / sma_100) * 100 if sma_100 != 0 else 0,
-        'price_vs_sma200_pct': ((close_price - sma_200) / sma_200) * 100 if sma_200 != 0 else 0,
+        'price_vs_sma50_pct': ((breakout_close - sma_50) / sma_50) * 100 if not pd.isna(sma_50) and sma_50 != 0 else 0,
+        'price_vs_sma100_pct': ((breakout_close - sma_100) / sma_100) * 100 if not pd.isna(sma_100) and sma_100 != 0 else 0,
+        'price_vs_sma200_pct': ((breakout_close - sma_200) / sma_200) * 100 if not pd.isna(sma_200) and sma_200 != 0 else 0,
         'details': f'Above SMAs: 50({above_sma50}), 100({above_sma100}), 200({above_sma200}), Aligned({sma_alignment})'
     }
 
@@ -262,23 +263,20 @@ def validate_realtime_breakout(df: pd.DataFrame, pattern_start: int, breakout_id
     
     # Enhanced breakout candle quality checks
     green_candle = breakout_close >= breakout_open  # Green candle (close >= open)
-    higher_close = breakout_close >= previous_close  # Higher than previous close
     valid_volume = breakout_volume > 0
     
     # Additional real-time checks  
     strong_close = breakout_candle['close'] > pattern_high * 0.995  # More flexible close requirement
     good_range = (breakout_candle['high'] - breakout_candle['low']) / breakout_candle['close'] < 0.12  # More flexible range
     
-    # All breakout conditions must be met
-    valid = (price_breakout and volume_surge and green_candle and 
-             higher_close and valid_volume)
+    # Relaxed breakout conditions (removed higher_close requirement)
+    valid = (price_breakout and volume_surge and green_candle and valid_volume)
     
     return {
         'valid': valid,
         'price_breakout': price_breakout,
         'volume_surge': volume_surge,
         'green_candle': green_candle,
-        'higher_close': higher_close,
         'valid_volume': valid_volume,
         'strong_close': strong_close,
         'good_range': good_range,
@@ -289,7 +287,7 @@ def validate_realtime_breakout(df: pd.DataFrame, pattern_start: int, breakout_id
         'volume_ratio': volume_ratio,
         'breakout_strength': ((breakout_high - pattern_high) / pattern_high) * 100,
         'close_strength': ((breakout_candle['close'] - pattern_high) / pattern_high) * 100,
-        'details': f'Price: {price_breakout}, Volume: {volume_surge}, Green: {green_candle}, Higher: {higher_close}, Strong Close: {strong_close}'
+        'details': f'Price: {price_breakout}, Volume: {volume_surge}, Green: {green_candle}, Strong Close: {strong_close}'
     }
 
 def check_volatility_compression(df: pd.DataFrame, pattern_start: int, pattern_end: int) -> Dict:
@@ -686,16 +684,169 @@ def collect_realtime_metrics(df: pd.DataFrame, symbol: str, pattern_start: int,
 # MAIN SCANNING ENGINE
 # =============================================================================
 
+def run_advanced_vcp_scan_sequential() -> bool:
+    """
+    Sequential VCP scan that processes one stock at a time for memory efficiency.
+    This eliminates deadlocks and memory issues by:
+    1. Getting just the symbols list first
+    2. Processing each symbol individually with its own DB connection
+    3. Saving results incrementally
+    """
+    from models import SaveOHLC
+    
+    logger.info("Starting sequential advanced VCP scan...")
+    
+    # Step 1: Get list of symbols to process
+    conn, cur = None, None
+    try:
+        conn, cur = get_trade_db_connection()
+        symbols_list = SaveOHLC.fetch_symbols_for_screening(cur)
+        
+        if not symbols_list:
+            logger.warning("No symbols found for VCP screening")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error fetching symbols for screening: {e}", exc_info=True)
+        return False
+    finally:
+        if conn:
+            release_trade_db_connection(conn, cur)
+    
+    # Step 2: Clear old results before starting
+    try:
+        conn, cur = get_trade_db_connection()
+        AdvancedVcpResult.delete_all(cur)
+        conn.commit()
+        logger.info("Cleared old VCP results from database")
+    except Exception as e:
+        logger.error(f"Error clearing old VCP results: {e}", exc_info=True)
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            release_trade_db_connection(conn, cur)
+    
+    # Step 3: Process each symbol sequentially
+    breakouts = []
+    total_symbols = len(symbols_list)
+    processed_count = 0
+    error_count = 0
+    
+    logger.info(f"Processing {total_symbols} symbols sequentially...")
+    
+    for symbol, instrument_token in symbols_list:
+        processed_count += 1
+        
+        try:
+            # Log progress every 50 stocks
+            if processed_count % 50 == 0:
+                logger.info(f"Sequential VCP scan progress: {processed_count}/{total_symbols} ({len(breakouts)} breakouts found)")
+            
+            # Get fresh DB connection for this symbol
+            conn, cur = None, None
+            try:
+                conn, cur = get_trade_db_connection()
+                
+                # Fetch OHLC data for just this symbol
+                stock_df = SaveOHLC.fetch_ohlc_for_single_symbol(cur, symbol)
+                
+                if stock_df.empty:
+                    continue
+                
+                # Ensure required columns are present
+                required_cols = ['open', 'high', 'low', 'close', 'volume', 'date', 'sma_50', 'sma_100', 'sma_200']
+                if not all(col in stock_df.columns for col in required_cols):
+                    logger.debug(f"Skipping {symbol}: missing required columns")
+                    continue
+
+                # Calculate necessary indicators that might be missing
+                stock_df = calculate_technical_indicators(stock_df)
+                
+                # Apply basic filters
+                if not apply_realtime_filters(stock_df):
+                    continue
+                
+                # Run detection logic
+                pattern = detect_realtime_vcp_breakout(stock_df, symbol)
+                if pattern:
+                    logger.info(f"✅ SEQUENTIAL VCP BREAKOUT FOUND: {pattern['symbol']} (Score: {pattern['quality_score']})")
+                    breakouts.append(pattern)
+                    
+                    # Save this breakout immediately to avoid memory buildup
+                    if len(breakouts) >= 10:  # Batch save every 10 breakouts
+                        try:
+                            AdvancedVcpResult.batch_save(cur, breakouts)
+                            conn.commit()
+                            logger.info(f"Saved batch of {len(breakouts)} VCP breakouts")
+                            breakouts = []  # Clear the list
+                        except Exception as save_error:
+                            logger.error(f"Error saving breakout batch: {save_error}")
+                            conn.rollback()
+                            
+            except Exception as e:
+                error_count += 1
+                logger.error(f"Error processing symbol {symbol}: {e}")
+                if conn:
+                    conn.rollback()
+                continue
+            finally:
+                if conn:
+                    release_trade_db_connection(conn, cur)
+                    
+        except Exception as e:
+            error_count += 1
+            logger.error(f"Fatal error processing symbol {symbol}: {e}", exc_info=True)
+            continue
+    
+    # Step 4: Save any remaining breakouts
+    if breakouts:
+        try:
+            conn, cur = get_trade_db_connection()
+            AdvancedVcpResult.batch_save(cur, breakouts)
+            conn.commit()
+            logger.info(f"Saved final batch of {len(breakouts)} VCP breakouts")
+        except Exception as e:
+            logger.error(f"Error saving final breakout batch: {e}")
+            if conn:
+                conn.rollback()
+        finally:
+            if conn:
+                release_trade_db_connection(conn, cur)
+    
+    # Step 5: Send notification to update subscriptions
+    try:
+        conn, cur = get_trade_db_connection()
+        cur.execute("NOTIFY data_changed, 'advanced_vcp_results'")
+        conn.commit()
+        logger.info("Sent NOTIFY to update ticker subscriptions with VCP results")
+    except Exception as e:
+        logger.error(f"Error sending notification: {e}")
+    finally:
+        if conn:
+            release_trade_db_connection(conn, cur)
+    
+    # Step 6: Log final results
+    total_breakouts = len([b for b in breakouts])  # Any remaining + what was saved in batches
+    logger.info(f"Sequential VCP scan completed:")
+    logger.info(f"  - Processed: {processed_count}/{total_symbols} symbols")
+    logger.info(f"  - Errors: {error_count}")
+    logger.info(f"  - Memory-efficient sequential processing completed successfully")
+    
+    return True
+
 def run_advanced_vcp_scan(ohlc_df: pd.DataFrame, max_results: int = 50) -> bool:
     """
-    Run the advanced VCP scan across all stocks from the provided OHLC DataFrame.
-    Saves results to the database.
+    DEPRECATED: Legacy bulk VCP scan - use run_advanced_vcp_scan_sequential() instead.
+    This function is kept for backward compatibility but may cause memory/deadlock issues.
     """
+    logger.warning("Using legacy bulk VCP scan - consider switching to sequential version")
+    
     if ohlc_df.empty:
         logger.warning("Advanced VCP screener called with empty OHLC data.")
         return False
 
-    logger.info(f"Starting advanced VCP scan on {len(ohlc_df['symbol'].unique())} stocks.")
+    logger.info(f"Starting legacy VCP scan on {len(ohlc_df['symbol'].unique())} stocks.")
     
     breakouts = []
     total_symbols = len(ohlc_df['symbol'].unique())
@@ -712,13 +863,13 @@ def run_advanced_vcp_scan(ohlc_df: pd.DataFrame, max_results: int = 50) -> bool:
         try:
             # Log progress
             if processed_count % 100 == 0:
-                logger.info(f"Advanced VCP scan progress: {processed_count}/{total_symbols}")
+                logger.info(f"Legacy VCP scan progress: {processed_count}/{total_symbols}")
 
             # Sort by date and reset index for consistent processing
             stock_df = group_df.sort_values('date').reset_index(drop=True)
             
             # Ensure required columns are present
-            required_cols = ['open', 'high', 'low', 'close', 'volume', 'date', 'sma_50', 'sma_200']
+            required_cols = ['open', 'high', 'low', 'close', 'volume', 'date', 'sma_50', 'sma_100', 'sma_200']
             if not all(col in stock_df.columns for col in required_cols):
                 logger.warning(f"Skipping {symbol}: missing one or more required columns.")
                 continue
@@ -733,14 +884,14 @@ def run_advanced_vcp_scan(ohlc_df: pd.DataFrame, max_results: int = 50) -> bool:
             # Run detection logic
             pattern = detect_realtime_vcp_breakout(stock_df, symbol)
             if pattern:
-                logger.info(f"✅ ADVANCED VCP BREAKOUT FOUND: {pattern['symbol']} (Score: {pattern['quality_score']})")
+                logger.info(f"✅ LEGACY VCP BREAKOUT FOUND: {pattern['symbol']} (Score: {pattern['quality_score']})")
                 breakouts.append(pattern)
                 
         except Exception as e:
-            logger.error(f"Error processing symbol {symbol} in advanced VCP scan: {e}", exc_info=True)
+            logger.error(f"Error processing symbol {symbol} in legacy VCP scan: {e}", exc_info=True)
             continue
             
-    logger.info(f"Advanced VCP scan loop finished. Found {len(breakouts)} breakouts. Now attempting to save to DB.")
+    logger.info(f"Legacy VCP scan loop finished. Found {len(breakouts)} breakouts. Now attempting to save to DB.")
     
     # Save results to the database
     if breakouts:

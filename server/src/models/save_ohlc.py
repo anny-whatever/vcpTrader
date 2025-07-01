@@ -439,6 +439,113 @@ class SaveOHLC:
             ])
 
     @classmethod
+    def fetch_symbols_for_screening(cls, cur):
+        """
+        Fetch just the list of symbols and tokens for VCP screening.
+        This is memory-efficient as it only gets symbol metadata, not OHLC data.
+        
+        Args:
+            cur: Database cursor
+            
+        Returns:
+            List of tuples: (symbol, instrument_token)
+        """
+        logger.info("Fetching symbols list for sequential VCP screening")
+        
+        query = """
+            SELECT DISTINCT symbol, instrument_token
+            FROM ohlc
+            WHERE interval = 'day'
+            AND segment != 'IPO'
+            AND date >= NOW() - INTERVAL '30 days'
+            ORDER BY symbol ASC
+        """
+        
+        try:
+            cur.execute(query)
+            results = cur.fetchall()
+            logger.info(f"Found {len(results)} symbols for VCP screening")
+            return results
+        except Exception as e:
+            logger.error(f"Error fetching symbols for screening: {e}", exc_info=True)
+            return []
+
+    @classmethod
+    def fetch_ohlc_for_single_symbol(cls, cur, symbol, lookback_days=1000):
+        """
+        Fetch OHLC data for a single symbol with all required indicators.
+        This is memory-efficient for sequential processing.
+        
+        Args:
+            cur: Database cursor
+            symbol: Stock symbol to fetch
+            lookback_days: Number of days to look back
+            
+        Returns:
+            DataFrame with OHLC data for the single symbol
+        """
+        query = """
+            SELECT 
+                instrument_token,
+                symbol,
+                interval,
+                date,
+                open,
+                high,
+                low,
+                close,
+                volume,
+                segment,
+                sma_50,
+                sma_100,
+                sma_200,
+                atr,
+                "52_week_high",
+                "52_week_low",
+                away_from_high,
+                away_from_low
+            FROM ohlc
+            WHERE symbol = %s
+            AND interval = 'day'
+            AND date >= NOW() - INTERVAL '%s days'
+            ORDER BY date ASC
+        """
+        
+        try:
+            cur.execute(query, (symbol, lookback_days))
+            rows = cur.fetchall()
+            
+            if not rows:
+                return pd.DataFrame()
+
+            # Convert to DataFrame
+            columns = [
+                "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
+                "volume", "segment", "sma_50", "sma_100", "sma_200", "atr", "52_week_high",
+                "52_week_low", "away_from_high", "away_from_low"
+            ]
+            df = pd.DataFrame(rows, columns=columns)
+
+            # Convert all numeric columns in one vectorized step
+            float_cols = [
+                "open", "high", "low", "close", "volume",
+                "sma_50", "sma_100", "sma_200", "atr",
+                "52_week_high", "52_week_low", "away_from_high", "away_from_low"
+            ]
+            df[float_cols] = df[float_cols].apply(pd.to_numeric, errors='coerce').fillna(0.0)
+
+            # Parse the date column
+            df["date"] = pd.to_datetime(df["date"], errors='coerce')
+
+            # Replace infinite values
+            df.replace({float('inf'): 0.0, float('-inf'): 0.0}, inplace=True)
+            
+            return df
+        except Exception as e:
+            logger.error(f"Error fetching OHLC data for symbol {symbol}: {e}", exc_info=True)
+            return pd.DataFrame()
+
+    @classmethod
     def fetch_ohlc_exclude_ipo_and_all(cls, cur):
         """
         Fetch precomputed OHLC data excluding both IPO and ALL segments.

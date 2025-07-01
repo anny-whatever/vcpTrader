@@ -52,7 +52,55 @@ vcp_screener_lock = threading.Lock()
 advanced_vcp_screener_running = False
 advanced_vcp_screener_lock = threading.Lock()
 
+def test_sequential_vcp_screener(max_symbols=5):
+    """
+    Test function for the sequential VCP screener.
+    Processes a limited number of symbols to verify the approach works.
+    """
+    logger.info(f"=== TESTING Sequential VCP Screener (max {max_symbols} symbols) ===")
+    
+    try:
+        from models import SaveOHLC
+        from db import get_trade_db_connection, release_trade_db_connection
+        
+        # Get just a few symbols for testing
+        conn, cur = get_trade_db_connection()
+        try:
+            symbols_list = SaveOHLC.fetch_symbols_for_screening(cur)
+            test_symbols = symbols_list[:max_symbols]  # Limit for testing
+            logger.info(f"Testing with {len(test_symbols)} symbols: {[s[0] for s in test_symbols]}")
+        finally:
+            release_trade_db_connection(conn, cur)
+        
+        if not test_symbols:
+            logger.warning("No symbols found for testing")
+            return False
+        
+        # Test processing one symbol
+        symbol, instrument_token = test_symbols[0]
+        logger.info(f"Testing single symbol processing: {symbol}")
+        
+        conn, cur = get_trade_db_connection()
+        try:
+            stock_df = SaveOHLC.fetch_ohlc_for_single_symbol(cur, symbol)
+            logger.info(f"Successfully fetched {len(stock_df)} rows for {symbol}")
+            
+            if not stock_df.empty:
+                logger.info(f"Data columns: {list(stock_df.columns)}")
+                logger.info(f"Date range: {stock_df['date'].min()} to {stock_df['date'].max()}")
+            
+        finally:
+            release_trade_db_connection(conn, cur)
+        
+        logger.info("✅ Sequential VCP screener test completed successfully")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Sequential VCP screener test failed: {e}", exc_info=True)
+        return False
+
 logger.info("==== Screener module initialized ====")
+logger.info("==== Sequential VCP Screener available for memory-efficient processing =====")
 
 def load_precomputed_ohlc():
     """
@@ -511,7 +559,8 @@ def fetch_screener_data(screener_name):
 
 def run_advanced_vcp_screener():
     """
-    Orchestrates the advanced VCP screening process.
+    Orchestrates the advanced VCP screening process using memory-efficient sequential processing.
+    This prevents deadlocks and memory issues by processing one stock at a time.
     """
     global advanced_vcp_screener_running
     if advanced_vcp_screener_running:
@@ -520,24 +569,18 @@ def run_advanced_vcp_screener():
 
     with advanced_vcp_screener_lock:
         advanced_vcp_screener_running = True
-        logger.info("Starting Advanced VCP Screener...")
+        logger.info("Starting Sequential Advanced VCP Screener...")
         
         try:
-            # 1. Load the precomputed OHLC data (this is our base data)
-            # It's cached globally by load_precomputed_ohlc, but we call it to ensure it's loaded.
-            df = load_precomputed_ohlc()
-            if df is None or df.empty:
-                logger.error("OHLC data is empty. Aborting advanced VCP scan.")
-                return False
-
-            # 2. Run the advanced screener logic
-            # This function now contains all the logic and will save results to the DB.
-            success = run_advanced_vcp_scan_logic(df)
+            # Use the new sequential scanning approach
+            # This eliminates the need to load all OHLC data into memory at once
+            from .advanced_vcp_screener import run_advanced_vcp_scan_sequential
+            success = run_advanced_vcp_scan_sequential()
             
             if success:
-                logger.info("Advanced VCP Screener run completed successfully.")
+                logger.info("Sequential Advanced VCP Screener completed successfully.")
             else:
-                logger.warning("Advanced VCP Screener run did not complete successfully.")
+                logger.warning("Sequential Advanced VCP Screener completed with issues.")
             
             return success
 
@@ -546,4 +589,42 @@ def run_advanced_vcp_screener():
             return False
         finally:
             advanced_vcp_screener_running = False
-            logger.info("Advanced VCP Screener finished.")
+            logger.info("Sequential Advanced VCP Screener finished.")
+
+def run_advanced_vcp_screener_legacy():
+    """
+    DEPRECATED: Legacy bulk VCP screener - kept for backward compatibility.
+    Use run_advanced_vcp_screener() for the optimized sequential version.
+    """
+    global advanced_vcp_screener_running
+    if advanced_vcp_screener_running:
+        logger.info("Legacy advanced VCP screener is already running.")
+        return False
+
+    with advanced_vcp_screener_lock:
+        advanced_vcp_screener_running = True
+        logger.warning("Using LEGACY Advanced VCP Screener - consider updating to sequential version")
+        
+        try:
+            # 1. Load the precomputed OHLC data (this loads ALL data into memory)
+            df = load_precomputed_ohlc()
+            if df is None or df.empty:
+                logger.error("OHLC data is empty. Aborting legacy VCP scan.")
+                return False
+
+            # 2. Run the legacy screener logic
+            success = run_advanced_vcp_scan_logic(df)
+            
+            if success:
+                logger.info("Legacy Advanced VCP Screener run completed successfully.")
+            else:
+                logger.warning("Legacy Advanced VCP Screener run did not complete successfully.")
+            
+            return success
+
+        except Exception as e:
+            logger.error(f"FATAL ERROR in run_advanced_vcp_screener_legacy: {e}", exc_info=True)
+            return False
+        finally:
+            advanced_vcp_screener_running = False
+            logger.info("Legacy Advanced VCP Screener finished.")

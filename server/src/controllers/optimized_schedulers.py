@@ -111,16 +111,16 @@ def run_vcp_screener_on_schedule_optimized():
     update_task_status('vcp_screening', True)
     
     try:
-        logger.info("Starting advanced VCP screener...")
+        logger.info("Starting sequential advanced VCP screener...")
         from services.get_screener import run_advanced_vcp_screener
         
-        success = run_advanced_vcp_screener()
+        success = run_advanced_vcp_screener()  # Now uses memory-efficient sequential processing
         
         duration = (datetime.now() - start_time).total_seconds()
         if success:
-            logger.info(f"Advanced VCP screener completed successfully in {duration:.2f} seconds")
+            logger.info(f"Sequential advanced VCP screener completed successfully in {duration:.2f} seconds")
         else:
-            logger.warning(f"Advanced VCP screener completed with issues in {duration:.2f} seconds")
+            logger.warning(f"Sequential advanced VCP screener completed with issues in {duration:.2f} seconds")
         
     except Exception as e:
         logger.error(f"Error in advanced VCP screener: {e}")
