@@ -229,7 +229,7 @@ def get_scheduler():
         )
         scheduler.add_job(
             get_ohlc_on_schedule,
-            CronTrigger(minute='31', hour='15', day_of_week='mon-fri'),
+            CronTrigger(minute='35', hour='15', day_of_week='mon-fri'),
             max_instances=1,
             replace_existing=True,
             id="vcp_trader_get_ohlc"
@@ -238,7 +238,7 @@ def get_scheduler():
         # Risk calculation job - runs at 3:35 PM after OHLC data collection
         scheduler.add_job(
             calculate_daily_risk_scores,
-            CronTrigger(minute='35', hour='15', day_of_week='mon-fri'),
+            CronTrigger(minute='00', hour='18', day_of_week='mon-fri'),
             max_instances=1,
             replace_existing=True,
             id="vcp_trader_calculate_risk_scores"

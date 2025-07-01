@@ -39,6 +39,11 @@ class AdvancedVcpResult:
             logger.info("No advanced VCP results to save.")
             return
 
+        # Check if cursor is valid before proceeding
+        if cur.closed:
+            logger.error("Cursor is closed - cannot save advanced VCP results")
+            raise Exception("Database cursor is closed")
+
         insert_query = """
             INSERT INTO advanced_vcp_results (
                 instrument_token, symbol, scan_date, quality_score, pattern_duration_days,
@@ -124,6 +129,12 @@ class AdvancedVcpResult:
             # Look up instrument_token if missing
             if not record['instrument_token']:
                 try:
+                    # Check cursor state before token lookup
+                    if cur.closed:
+                        logger.warning(f"Cursor closed during token lookup for {record['symbol']}")
+                        record['instrument_token'] = -1
+                        continue
+                        
                     cur.execute("SELECT instrument_token FROM equity_tokens WHERE tradingsymbol = %s LIMIT 1;", (record['symbol'],))
                     token_row = cur.fetchone()
                     if token_row:
@@ -139,6 +150,11 @@ class AdvancedVcpResult:
                 record['instrument_token'] = -1
 
         try:
+            # Final cursor check before batch insert
+            if cur.closed:
+                logger.error("Cursor closed before batch insert operation")
+                raise Exception("Database cursor was closed before batch insert")
+                
             logger.info(f"Attempting to batch insert {len(records_to_insert)} advanced VCP results.")
             cur.executemany(insert_query, records_to_insert)
             logger.info(f"Successfully inserted {cur.rowcount} records into advanced_vcp_results.")
@@ -151,6 +167,11 @@ class AdvancedVcpResult:
         """
         Delete all rows from the advanced_vcp_results table.
         """
+        # Check if cursor is valid before proceeding
+        if cur.closed:
+            logger.error("Cursor is closed - cannot delete from advanced_vcp_results")
+            raise Exception("Database cursor is closed")
+            
         delete_query = "DELETE FROM advanced_vcp_results;"
         try:
             cur.execute(delete_query)
@@ -166,6 +187,11 @@ class AdvancedVcpResult:
         """
         select_query = "SELECT * FROM advanced_vcp_results ORDER BY quality_score DESC, run_time DESC;"
         try:
+            # Check if cursor is closed before executing
+            if cur.closed:
+                logger.error("Cursor is already closed before executing query")
+                return []
+            
             cur.execute(select_query)
             
             # Check if cursor description is None (query failed)
@@ -173,14 +199,33 @@ class AdvancedVcpResult:
                 logger.warning("Query executed but no description available - likely no results or query failed")
                 return []
             
+            # Check if cursor is still open before fetching
+            if cur.closed:
+                logger.error("Cursor was closed after execute but before fetchall")
+                return []
+            
             # Fetch column names from cursor description
             colnames = [desc[0] for desc in cur.description]
             
-            # Fetch all rows and convert them to dictionaries
-            rows = [dict(zip(colnames, row)) for row in cur.fetchall()]
+            # Fetch all rows with additional error handling
+            try:
+                rows = cur.fetchall()
+                if not rows:
+                    logger.info("No records found in advanced_vcp_results table")
+                    return []
+                
+                # Convert rows to dictionaries
+                result_rows = [dict(zip(colnames, row)) for row in rows]
+                
+            except Exception as fetch_error:
+                if "cursor already closed" in str(fetch_error):
+                    logger.error("Cursor was closed during fetchall operation")
+                    return []
+                else:
+                    raise fetch_error
             
             # Convert datetime objects to strings for JSON serialization
-            for row in rows:
+            for row in result_rows:
                 for key, value in row.items():
                     if isinstance(value, datetime):
                         row[key] = value.isoformat()
@@ -188,8 +233,9 @@ class AdvancedVcpResult:
                         # Convert Decimal to float for JSON serialization
                         row[key] = float(value)
             
-            logger.info(f"Fetched {len(rows)} records from advanced_vcp_results.")
-            return rows
+            logger.info(f"Fetched {len(result_rows)} records from advanced_vcp_results.")
+            return result_rows
+            
         except Exception as e:
             logger.error(f"Error fetching from advanced_vcp_results: {e}", exc_info=True)
             return [] 

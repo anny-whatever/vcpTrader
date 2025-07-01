@@ -5,7 +5,7 @@ import pandas as pd
 import pandas_ta as ta
 import math
 import numpy as np
-from db import get_db_connection, close_db_connection
+from db import get_db_connection, release_main_db_connection
 from models import PriceAlert, AlertMessage, RiskPool, SaveTradeDetails, SaveHistoricalTradeDetails, SaveOHLC, ScreenerResult, AdvancedVcpResult
 from controllers import kite  # Assumes you have a kite module for live quotes
 
@@ -40,7 +40,7 @@ def fetch_risk_pool_for_display():
         raise
     finally:
         if conn and cur:
-            close_db_connection()
+            release_main_db_connection(conn, cur)
 
 def format_trade_record(trade):
     return {
@@ -82,7 +82,7 @@ def fetch_trade_details_for_display():
         raise
     finally:
         if conn and cur:
-            close_db_connection()
+            release_main_db_connection(conn, cur)
 
 def format_historical_trade_record(trade):
     return {
@@ -105,7 +105,7 @@ def fetch_historical_trade_details_for_display():
         raise
     finally:
         if conn and cur:
-            close_db_connection()
+            release_main_db_connection(conn, cur)
 
 def get_combined_ohlc(instrument_token, symbol, interval='day'):
     try:
@@ -186,7 +186,7 @@ def get_combined_ohlc(instrument_token, symbol, interval='day'):
         raise
     finally:
         if conn and cur:
-            close_db_connection()
+            release_main_db_connection(conn, cur)
 
 def get_all_alerts():
     try:
@@ -201,7 +201,7 @@ def get_all_alerts():
         return []
     finally:
         if conn and cur:
-            close_db_connection()
+            release_main_db_connection(conn, cur)
 
 def get_latest_alert_messages():
     try:
@@ -216,7 +216,7 @@ def get_latest_alert_messages():
         return []
     finally:
         if conn and cur:
-            close_db_connection()
+            release_main_db_connection(conn, cur)
 
 def fetch_screener_data(screener_name: str) -> list:
     """
@@ -321,4 +321,4 @@ def fetch_screener_data(screener_name: str) -> list:
         return []
     finally:
         if conn and cur:
-            close_db_connection()
+            release_main_db_connection(conn, cur)
