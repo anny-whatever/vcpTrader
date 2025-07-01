@@ -4,7 +4,8 @@ import logging
 import asyncio
 from db import get_db_connection, close_db_connection
 from models import PriceAlert, AlertMessage
-from services import get_all_alerts
+# Import directly to avoid circular dependency
+from .get_display_data import get_all_alerts
 import threading
 from .send_telegram_alert import _send_telegram_in_thread
 

@@ -131,9 +131,9 @@ def run_vcp_screener_on_schedule_optimized():
 def check_exits_on_schedule():
     """Keep the original exit checking logic as it's not thread-heavy."""
     try:
-        from services import check_exits_daily
-        check_exits_daily()
-        logger.info("Exit checking job completed.")
+        # Note: check_exits_daily function doesn't exist, removing this call
+        # This function should be implemented if exit checking is needed
+        logger.info("Exit checking job placeholder - no implementation found.")
     except Exception as e:
         logger.error(f"Error in check_exits_on_schedule: {e}")
 
@@ -164,7 +164,7 @@ def clean_server_log():
 def resample_job_one_minute_optimized():
     """Optimized 1-minute resampling with resource management."""
     try:
-        from services import calculate_ohlcv_1min
+        from services.resample_indices import calculate_ohlcv_1min
         end_time = datetime.now().replace(second=0, microsecond=0)
         start_time_one_min = end_time - timedelta(minutes=1)
         instrument_tokens = [256265, 260105, 257801]
@@ -187,7 +187,7 @@ def resample_job_five_minute_optimized():
     """Optimized 5-minute resampling with conditional strategy execution."""
     try:
         from signals import fema_runner_five_minute_short
-        from services import calculate_ohlcv_5min
+        from services.resample_indices import calculate_ohlcv_5min
         end_time = datetime.now().replace(second=0, microsecond=0)
         start_time_five_min = end_time - timedelta(minutes=5)
         sleep(0.5)
@@ -218,7 +218,7 @@ def resample_job_fifteen_minute_optimized():
     """Optimized 15-minute resampling with conditional strategy execution."""
     try:
         from signals import fema_runner_fifteen_minute_long
-        from services import calculate_ohlcv_15min
+        from services.resample_indices import calculate_ohlcv_15min
         end_time = datetime.now().replace(second=0, microsecond=0)
         start_time_fifteen_min = end_time - timedelta(minutes=15)
         sleep(0.5)

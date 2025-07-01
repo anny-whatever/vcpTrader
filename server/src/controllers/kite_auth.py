@@ -42,8 +42,10 @@ async def auth():
 @router.get("/callback")
 async def callback(request_token: str):
     """Handles the callback after the user logs in via Kite."""
-    from services import get_instrument_indices, get_instrument_equity, get_instrument_fno, generate_option_chain_nifty, generate_option_chain_fin_nifty, generate_option_chain_bank_nifty, filter_expiry_dates
     try:
+        # Lazy import to avoid circular dependencies
+        from services import get_instrument_indices, get_instrument_equity, get_instrument_fno, generate_option_chain_nifty, generate_option_chain_fin_nifty, generate_option_chain_bank_nifty, filter_expiry_dates
+        
         current_scheduler = get_scheduler()
         
         # Generate session asynchronously

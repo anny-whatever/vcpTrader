@@ -1,7 +1,6 @@
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
-from services import toggle_auto_exit_flag, adjust_trade_parameters  # Keep existing imports that we still need
 from services.order_manager import execute_buy, execute_sell, execute_adjust, get_order_status  # Import order status function
 from auth import require_admin
 
@@ -55,6 +54,8 @@ async def increase_stock(symbol: str, qty: int, user: dict = Depends(require_adm
 @router.get("/change_sl")
 async def change_sl(symbol: str, sl, user: dict = Depends(require_admin)):
     try:
+        # Import locally to avoid circular dependency
+        from services.manage_trade_params import adjust_trade_parameters
         response = adjust_trade_parameters(symbol, new_stop_loss=sl)
         if response.get("status") == "success":
             # For this method, we still need to manually trigger an update via WebSocket
@@ -68,6 +69,8 @@ async def change_sl(symbol: str, sl, user: dict = Depends(require_admin)):
 @router.get("/change_tgt")
 async def change_tgt(symbol: str, tgt, user: dict = Depends(require_admin)):
     try:
+        # Import locally to avoid circular dependency
+        from services.manage_trade_params import adjust_trade_parameters
         response = adjust_trade_parameters(symbol, new_target=tgt)
         if response.get("status") == "success":
             # For this method, we still need to manually trigger an update via WebSocket
@@ -85,6 +88,8 @@ async def toggle_auto_exit(trade_id: int, auto_exit: bool, user: dict = Depends(
     This endpoint allows the frontend to update the auto_exit setting.
     """
     try:
+        # Import locally to avoid circular dependency
+        from services.auto_exit import toggle_auto_exit_flag
         result = toggle_auto_exit_flag(trade_id, auto_exit)
         if result.get("status") == "success":
             # For this method, we still need to manually trigger an update via WebSocket

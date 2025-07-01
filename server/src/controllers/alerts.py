@@ -6,12 +6,7 @@ import json
 import decimal
 import datetime
 from auth import require_admin, require_user
-from services import (
-    get_all_alerts,
-    get_latest_alert_messages,
-    add_alert,
-    remove_alert
-)
+# Import directly to avoid circular dependencies - moved to local imports
 from .ws_clients import process_and_send_alert_update_message
 
 router = APIRouter()
@@ -47,6 +42,8 @@ async def api_add_alert(alert_data: AlertData, user: dict = Depends(require_admi
     Endpoint to add a new alert.
     """
     try:
+        # Import locally to avoid circular dependency
+        from services.manage_alerts import add_alert
         response = add_alert(
             instrument_token=alert_data.instrument_token,
             symbol=alert_data.symbol,
@@ -68,6 +65,8 @@ async def api_remove_alert(
     Endpoint to remove an alert.
     """
     try:
+        # Import locally to avoid circular dependency
+        from services.manage_alerts import remove_alert
         response = remove_alert(alert_id)
         # Send an update event so clients know the alerts list was modified.
         await process_and_send_alert_update_message(response)
@@ -81,6 +80,8 @@ async def api_list_alerts(user: dict = Depends(require_user)):
     Endpoint to retrieve all active alerts.
     """
     try:
+        # Import locally to avoid circular dependency
+        from services.get_display_data import get_all_alerts
         alerts = get_all_alerts()
         # If the rows are not dicts, convert them.
         if alerts and not isinstance(alerts[0], dict):
@@ -97,6 +98,8 @@ async def api_list_alert_messages(user: dict = Depends(require_user)):
     Endpoint to retrieve the latest 10 alert messages.
     """
     try:
+        # Import locally to avoid circular dependency
+        from services.get_display_data import get_latest_alert_messages
         messages = get_latest_alert_messages()
         if messages and not isinstance(messages[0], dict):
             messages = convert_rows_to_objects_messages(messages)

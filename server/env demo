@@ -5,6 +5,7 @@ DB_PORT = 5432
 DB_USER = postgres
 DB_PASSWORD = 
 DB_NAME = vcp
+DB_SSLMODE = disable
 JWT_SECRET = 
 ADMIN_PASS = 
 OBSERVER_PASS = 

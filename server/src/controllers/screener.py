@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 # If you have an auth file for user authentication:
 from auth import get_current_user
 
-from services import fetch_screener_data, load_precomputed_ohlc
+# Import directly to avoid circular dependencies - moved to local imports
 from services.optimized_vcp_screener import run_optimized_vcp_screener_scheduled
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,8 @@ async def screen_vcp(user: dict = Depends(get_current_user)):
     try:
         max_tries = 5
         for attempt in range(1, max_tries + 1):
+            # Import locally to avoid circular dependency
+            from services.get_display_data import fetch_screener_data
             # Make the fetch call in a thread so we don't block the event loop
             data = await asyncio.to_thread(fetch_screener_data, "vcp")
             if data:  # If we got results, return them immediately
@@ -51,6 +53,8 @@ async def screen_vcp(user: dict = Depends(get_current_user)):
                 return JSONResponse(content={"error": "Failed to generate advanced VCP screener data"}, status_code=500)
 
         # After forcing the screener, fetch one more time
+        # Import locally to avoid circular dependency
+        from services.get_display_data import fetch_screener_data
         data = await asyncio.to_thread(fetch_screener_data, "vcp")
         if data:
             logger.info(f"Returning VCP screener data with {len(data)} results after forced run")
@@ -64,6 +68,8 @@ async def screen_vcp(user: dict = Depends(get_current_user)):
             return JSONResponse(content={"error": "Failed to generate advanced VCP screener data after multiple attempts"}, status_code=500)
         
         # Fetch data one final time
+        # Import locally to avoid circular dependency
+        from services.get_display_data import fetch_screener_data
         data = await asyncio.to_thread(fetch_screener_data, "vcp")
         if data:
             logger.info(f"Returning VCP screener data with {len(data)} results after second forced run")
@@ -85,6 +91,8 @@ async def test_screener_data(user: dict = Depends(get_current_user)):
     try:
         # Testing the regular OHLC data
         logger.info("Loading OHLC data for diagnostics...")
+        # Import locally to avoid circular dependency
+        from services.get_screener import load_precomputed_ohlc
         regular_ohlc = await asyncio.to_thread(load_precomputed_ohlc)
         
         # Collect diagnostics info

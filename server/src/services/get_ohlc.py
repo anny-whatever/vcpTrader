@@ -3,7 +3,7 @@ import time
 import pandas as pd
 import pandas_ta as ta
 import logging
-from controllers import kite
+from controllers.kite_auth import kite  # Direct import to avoid circular dependency
 from db import get_db_connection, close_db_connection
 from models import SaveOHLC
 

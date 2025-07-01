@@ -145,7 +145,9 @@ def start_kite_ticker():
 
     # Import additional service modules
     from .ws_clients import process_and_send_live_ticks
-    from services import process_live_alerts, process_live_auto_exit
+    # Import locally to avoid circular dependencies
+    from services.manage_alerts import process_live_alerts
+    from services.auto_exit import process_live_auto_exit
 
 
     tokens = get_instrument_token()

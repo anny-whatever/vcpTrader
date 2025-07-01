@@ -17,15 +17,15 @@ from models import SaveOHLC
 # Import the new advanced screener function
 from .optimized_vcp_screener import run_optimized_vcp_scan as run_advanced_vcp_scan_logic
 
-# Import the new display data functions
-from .get_display_data import (
-    fetch_risk_pool_for_display,
-    fetch_trade_details_for_display,
-    fetch_historical_trade_details_for_display,
-    get_combined_ohlc,
-    get_all_alerts,
-    get_latest_alert_messages,
-)
+# Import the new display data functions - removed to avoid circular dependencies
+# from .get_display_data import (
+#     fetch_risk_pool_for_display,
+#     fetch_trade_details_for_display,
+#     fetch_historical_trade_details_for_display,
+#     get_combined_ohlc,
+#     get_all_alerts,
+#     get_latest_alert_messages,
+# )
 from .get_token_data import download_nse_csv
 
 logger = logging.getLogger(__name__)

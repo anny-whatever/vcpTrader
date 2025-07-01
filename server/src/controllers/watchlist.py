@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from pydantic import BaseModel
 from typing import List
 from db import get_db_connection, close_db_connection
-from services import add_stock_to_watchlist, get_watchlist_entries, search_equity
+# Import directly to avoid circular dependencies - moved to local imports
 from auth import require_admin, require_user
 
 # Import the WebSocket helper for sending watchlist updates.
@@ -47,6 +47,8 @@ def add_to_watchlist(
     """
     
     try:
+        # Import locally to avoid circular dependency
+        from services.get_watchlist import add_stock_to_watchlist
         conn, cur = get_db_connection()
         saved_entry = add_stock_to_watchlist(
             cur,
@@ -118,6 +120,8 @@ def get_watchlist(watchlist_name: str, user: dict = Depends(require_user)):
     """
     
     try:
+        # Import locally to avoid circular dependency
+        from services.get_watchlist import get_watchlist_entries
         conn, cur = get_db_connection()
         entries = get_watchlist_entries(cur, watchlist_name)
         return entries
@@ -135,6 +139,8 @@ def search_equities(query: str, user: dict = Depends(require_admin)):
     """
     
     try:
+        # Import locally to avoid circular dependency
+        from services.get_watchlist import search_equity
         conn, cur = get_db_connection()
         logger.info(f"Search query received: {query}")
         results = search_equity(cur, query)

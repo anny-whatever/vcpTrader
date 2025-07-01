@@ -7,7 +7,8 @@ logger = logging.getLogger(__name__)
 from .get_instruments_list import get_instrument_indices
 from .get_equity_list import get_instrument_equity
 from .get_historical_data import get_historical_data
-from .get_ohlc import get_equity_ohlc_data_loop
+# Removed get_equity_ohlc_data_loop import to avoid circular dependencies
+# Import directly when needed: from services.get_ohlc import get_equity_ohlc_data_loop
 # Keep these imports for backward compatibility but users should migrate to order_manager
 from .place_buy import buy_order_execute
 from .place_exit import sell_order_execute
@@ -20,7 +21,8 @@ from .get_screener import (
     load_precomputed_ohlc,
     run_advanced_vcp_screener,
 )
-from .optimized_vcp_screener import run_optimized_vcp_screener_scheduled
+# Removed optimized_vcp_screener import to avoid circular dependencies
+# Import directly when needed: from services.optimized_vcp_screener import run_optimized_vcp_screener_scheduled
 from .manage_risk_pool import (
     update_risk_pool_on_increase,
     update_risk_pool_on_decrease,
@@ -46,7 +48,9 @@ from .manage_alerts import (
     process_live_alerts,
 )
 from .send_telegram_alert import _send_telegram_in_thread
-from .auto_exit import process_live_auto_exit, toggle_auto_exit_flag
+# Temporarily commented out to avoid circular imports for streaming VCP test
+# from .auto_exit import process_live_auto_exit, toggle_auto_exit_flag
+# Import directly when needed: from services.auto_exit import process_live_auto_exit, toggle_auto_exit_flag
 from .get_watchlist import add_stock_to_watchlist, get_watchlist_entries, search_equity
 
 # IMPORTANT: import and re-export these so that "from services import filtered_tokens"
@@ -64,7 +68,7 @@ __all__ = [
     "get_instrument_indices",
     "get_instrument_equity",
     "get_historical_data",
-    "get_equity_ohlc_data_loop",
+    # "get_equity_ohlc_data_loop",  # Removed to avoid circular imports
     # Old order functions
     "buy_order_execute",
     "sell_order_execute",
@@ -93,8 +97,8 @@ __all__ = [
     "process_live_alerts",
     "get_all_alerts",
     "get_latest_alert_messages",
-    "process_live_auto_exit",
-    "toggle_auto_exit_flag",
+    # "process_live_auto_exit",      # Temporarily commented out to avoid circular imports
+    # "toggle_auto_exit_flag",       # Temporarily commented out to avoid circular imports
     "add_stock_to_watchlist",
     "get_watchlist_entries",
     "search_equity",

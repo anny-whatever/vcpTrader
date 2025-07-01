@@ -59,11 +59,9 @@ def check_exits_on_schedule():
 def get_ohlc_on_schedule():
     try:
         # Import only inside the function to avoid circular imports
-        from services import (
-            get_equity_ohlc_data_loop,
-            download_nse_csv,
-            load_precomputed_ohlc
-        )
+        from services.get_token_data import download_nse_csv
+        from services.get_screener import load_precomputed_ohlc
+        from services.get_ohlc import get_equity_ohlc_data_loop
         download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv", "500")
         download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_niftymicrocap250_list.csv", "250")
         download_nse_csv("https://www.niftyindices.com/IndexConstituent/ind_niftyIPO_list.csv", "IPO")
@@ -109,7 +107,7 @@ def resample_job_one_minute():
     Grabs last 1 minute's raw ticks, resamples to 1-min candles, stores in 'ohlc_resampled'.
     """
     try:
-        from services import calculate_ohlcv_1min
+        from services.resample_indices import calculate_ohlcv_1min
         end_time = datetime.now().replace(second=0, microsecond=0)
         start_time_one_min = end_time - timedelta(minutes=1)
         instrument_tokens = [256265, 260105, 257801]  # Example tokens
@@ -136,7 +134,7 @@ def resample_job_five_minute():
     """
     try:
         from signals import fema_runner_five_minute_short, fema_runner_fifteen_minute_long
-        from services import calculate_ohlcv_5min
+        from services.resample_indices import calculate_ohlcv_5min
         end_time = datetime.now().replace(second=0, microsecond=0)
         start_time_five_min = end_time - timedelta(minutes=5)
         sleep(0.5)  # Small delay if needed
@@ -164,7 +162,7 @@ def resample_job_fifteen_minute():
     """
     try:
         from signals import fema_runner_five_minute_short, fema_runner_fifteen_minute_long
-        from services import calculate_ohlcv_15min
+        from services.resample_indices import calculate_ohlcv_15min
         end_time = datetime.now().replace(second=0, microsecond=0)
         start_time_fifteen_min = end_time - timedelta(minutes=15)
         sleep(0.5)  # Small delay if needed

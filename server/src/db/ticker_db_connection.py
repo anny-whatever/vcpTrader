@@ -15,14 +15,27 @@ def initialize_pool():
     global ticker_conn_pool
     try:
         if ticker_conn_pool is None:
+            # Connection parameters with SSL configuration
+            connection_params = {
+                'host': os.getenv("DB_HOST"),
+                'port': os.getenv("DB_PORT"),
+                'user': os.getenv("DB_USER"),
+                'password': os.getenv("DB_PASSWORD"),
+                'database': os.getenv("DB_NAME"),
+                # Add connection timeout and keepalive settings
+                'connect_timeout': 10,
+                'keepalives_idle': 600,
+                'keepalives_interval': 30,
+                'keepalives_count': 3,
+                'application_name': 'vcpTrader_ticker',
+                # SSL configuration - disable SSL for localhost connections
+                'sslmode': os.getenv("DB_SSLMODE", "disable" if os.getenv("DB_HOST") == "localhost" else "prefer")
+            }
+            
             ticker_conn_pool = psycopg2.pool.ThreadedConnectionPool(
                 minconn=1,  # Minimum number of connections in the pool
                 maxconn=20,  # Maximum number of connections in the pool
-                host=os.getenv("DB_HOST"),
-                port=os.getenv("DB_PORT"),
-                user=os.getenv("DB_USER"),
-                password=os.getenv("DB_PASSWORD"),
-                database=os.getenv("DB_NAME"),
+                **connection_params
             )
 
     except Exception as e:

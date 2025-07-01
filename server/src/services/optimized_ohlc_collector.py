@@ -452,9 +452,13 @@ def get_ohlc_on_schedule_optimized():
         from services.get_screener import load_precomputed_ohlc
         load_precomputed_ohlc()
         
-        # Run VCP screener after data collection
-        from services.optimized_vcp_screener import run_optimized_vcp_screener_scheduled
-        vcp_result = run_optimized_vcp_screener_scheduled()
+        # Run VCP screener after data collection (lazy import to avoid circular dependencies)
+        try:
+            from services.optimized_vcp_screener import run_optimized_vcp_screener_scheduled
+            vcp_result = run_optimized_vcp_screener_scheduled()
+        except ImportError as e:
+            logger.warning(f"Could not import VCP screener: {e}. Skipping VCP screening.")
+            vcp_result = False
         
         # Calculate risk scores
         from controllers.schedulers import calculate_daily_risk_scores

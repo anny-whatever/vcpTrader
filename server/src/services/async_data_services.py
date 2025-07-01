@@ -247,8 +247,8 @@ async def execute_trade_operation_async(operation: str, symbol: str, quantity: i
 async def adjust_trade_parameters_async(symbol: str, new_stop_loss: float = None, new_target: float = None) -> Dict[str, Any]:
     """Async wrapper for trade parameter adjustments"""
     try:
-        # Import the synchronous function
-        from services import adjust_trade_parameters
+        # Import directly to avoid circular dependency
+        from services.manage_trade_params import adjust_trade_parameters
         
         # Run in thread pool to prevent blocking
         loop = asyncio.get_event_loop()
@@ -266,8 +266,8 @@ async def adjust_trade_parameters_async(symbol: str, new_stop_loss: float = None
 async def toggle_auto_exit_flag_async(trade_id: int, auto_exit: bool) -> Dict[str, Any]:
     """Async wrapper for toggling auto exit flag"""
     try:
-        # Import the synchronous function
-        from services import toggle_auto_exit_flag
+        # Import directly to avoid circular dependency
+        from services.auto_exit import toggle_auto_exit_flag
         
         # Run in thread pool to prevent blocking
         loop = asyncio.get_event_loop()

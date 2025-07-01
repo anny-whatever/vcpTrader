@@ -61,8 +61,8 @@ def listen_for_data_changes():
     try:
         # Grab a connection from the pool
         listen_conn, listen_cur = get_trade_db_connection()
-        # Set autocommit for LISTEN/NOTIFY usage
-        listen_conn.set_session(autocommit=True)
+        # Set autocommit for LISTEN/NOTIFY usage - use set_isolation_level(0) instead of set_session
+        listen_conn.set_isolation_level(0)
         logger.info("Acquired dedicated connection for LISTEN/NOTIFY.")
 
         # Start listening on the channel

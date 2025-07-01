@@ -292,7 +292,7 @@ class SaveOHLC:
                 away_from_low
             FROM ohlc
             WHERE interval = 'day'
-            AND date >= NOW() - INTERVAL '365 days'
+            AND date >= NOW() - INTERVAL '1000 days'
             AND segment != 'IPO'
             ORDER BY date DESC
         """
@@ -382,7 +382,7 @@ class SaveOHLC:
                 away_from_low
             FROM ohlc
             WHERE interval = 'day'
-            AND date >= NOW() - INTERVAL '365 days'
+            AND date >= NOW() - INTERVAL '1000 days'
             AND segment != 'ALL'
             AND segment != 'IPO'
             ORDER BY date DESC
@@ -473,7 +473,7 @@ class SaveOHLC:
                 away_from_low
             FROM ohlc
             WHERE interval = 'day'
-            AND date >= NOW() - INTERVAL '365 days'
+            AND date >= NOW() - INTERVAL '1000 days'
             AND segment NOT IN ('IPO', 'ALL')
             ORDER BY date DESC
         """

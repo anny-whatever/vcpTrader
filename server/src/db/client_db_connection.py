@@ -21,6 +21,13 @@ def get_client_db_connection():
                 user=os.getenv("DB_USER"),
                 password=os.getenv("DB_PASSWORD"),
                 database=os.getenv("DB_NAME"),
+                connect_timeout=10,
+                keepalives_idle=600,
+                keepalives_interval=30,
+                keepalives_count=3,
+                application_name='vcpTrader_client',
+                # SSL configuration - disable SSL for localhost connections
+                sslmode=os.getenv("DB_SSLMODE", "disable" if os.getenv("DB_HOST") == "localhost" else "prefer")
             )
 
         

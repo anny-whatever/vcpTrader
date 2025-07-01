@@ -31,7 +31,9 @@ def initialize_main_pool():
                 'keepalives_idle': 600,  # Start keepalives after 10 minutes of inactivity
                 'keepalives_interval': 30,  # Send keepalive every 30 seconds
                 'keepalives_count': 3,  # Drop connection after 3 failed keepalives
-                'application_name': 'vcpTrader_main'
+                'application_name': 'vcpTrader_main',
+                # SSL configuration - disable SSL for localhost connections
+                'sslmode': os.getenv("DB_SSLMODE", "disable" if os.getenv("DB_HOST") == "localhost" else "prefer")
             }
             
             main_conn_pool = psycopg2.pool.ThreadedConnectionPool(
@@ -47,13 +49,21 @@ def initialize_main_pool():
 def _validate_connection(conn):
     """Validate that the connection is still alive and working."""
     try:
+        # Check if connection is closed
+        if conn.closed != 0:
+            logger.warning("Connection is closed")
+            return False
+            
         # Simple query to check if connection is alive
         with conn.cursor() as test_cur:
             test_cur.execute("SELECT 1")
             test_cur.fetchone()
         return True
-    except Exception as e:
+    except (psycopg2.OperationalError, psycopg2.InterfaceError, psycopg2.DatabaseError) as e:
         logger.warning(f"Connection validation failed: {e}")
+        return False
+    except Exception as e:
+        logger.warning(f"Connection validation failed with unexpected error: {e}")
         return False
 
 def get_db_connection():
