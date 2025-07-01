@@ -83,10 +83,10 @@ def get_ohlc_on_schedule():
 
 def run_vcp_screener_on_schedule():
     try:
-        from services.optimized_vcp_screener import run_optimized_vcp_screener_scheduled
+        from services.get_screener import run_advanced_vcp_screener
         # Run in a separate thread to avoid blocking the scheduler
-        screener_executor.submit(run_optimized_vcp_screener_scheduled)
-        logger.info("Optimized VCP screener job submitted to thread pool")
+        screener_executor.submit(run_advanced_vcp_screener)
+        logger.info("Advanced VCP screener job submitted to thread pool")
     except Exception as e:
         logger.error(f"Error in run_vcp_screener_on_schedule: {e}")
 

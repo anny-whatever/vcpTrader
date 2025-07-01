@@ -20,7 +20,6 @@ sys.path.append(os.path.dirname(__file__))
 
 from controllers.optimized_schedulers import OptimizedScheduler
 from services.optimized_ohlc_collector import OptimizedOHLCCollector
-from services.optimized_vcp_screener import OptimizedVCPScreener
 from services.optimized_risk_calculator import OptimizedRiskCalculator
 
 # Configure logging
@@ -45,7 +44,6 @@ class BackgroundWorker:
         
         # Initialize optimized services
         self.ohlc_collector = OptimizedOHLCCollector()
-        self.vcp_screener = OptimizedVCPScreener()
         self.risk_calculator = OptimizedRiskCalculator()
         
         # Setup signal handlers for graceful shutdown
@@ -131,8 +129,9 @@ class BackgroundWorker:
         
         def run_vcp_screening():
             try:
-                import asyncio
-                asyncio.run(self.vcp_screener.screen_all_stocks())
+                from services.get_screener import run_advanced_vcp_screener
+                result = run_advanced_vcp_screener()
+                logger.info(f"VCP screening completed with result: {result}")
             except Exception as e:
                 logger.error(f"Error in VCP screening process: {e}")
         

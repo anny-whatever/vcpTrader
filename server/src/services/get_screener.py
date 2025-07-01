@@ -14,8 +14,8 @@ from db import get_trade_db_connection, release_trade_db_connection
 from models import ScreenerResult, AdvancedVcpResult
 from models import SaveOHLC
 
-# Import the new advanced screener function
-from .optimized_vcp_screener import run_optimized_vcp_scan as run_advanced_vcp_scan_logic
+# Import the advanced screener function
+from .advanced_vcp_screener import run_advanced_vcp_scan as run_advanced_vcp_scan_logic
 
 # Import the new display data functions - removed to avoid circular dependencies
 # from .get_display_data import (

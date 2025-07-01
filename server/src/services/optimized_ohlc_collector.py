@@ -454,8 +454,8 @@ def get_ohlc_on_schedule_optimized():
         
         # Run VCP screener after data collection (lazy import to avoid circular dependencies)
         try:
-            from services.optimized_vcp_screener import run_optimized_vcp_screener_scheduled
-            vcp_result = run_optimized_vcp_screener_scheduled()
+            from services.get_screener import run_advanced_vcp_screener
+            vcp_result = run_advanced_vcp_screener()
         except ImportError as e:
             logger.warning(f"Could not import VCP screener: {e}. Skipping VCP screening.")
             vcp_result = False

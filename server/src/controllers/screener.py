@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from auth import get_current_user
 
 # Import directly to avoid circular dependencies - moved to local imports
-from services.optimized_vcp_screener import run_optimized_vcp_screener_scheduled
+from services.get_screener import run_advanced_vcp_screener
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -42,12 +42,12 @@ async def screen_vcp(user: dict = Depends(get_current_user)):
         # If we still have no data, run the VCP screener to force generation
         logger.debug("No data after 5 tries. Forcing a run of the advanced VCP screener.")
         # Use our dedicated thread pool for manual screening
-        success = await asyncio.wrap_future(manual_screener_executor.submit(run_optimized_vcp_screener_scheduled))
+        success = await asyncio.wrap_future(manual_screener_executor.submit(run_advanced_vcp_screener))
         
         if not success:
             logger.error("Advanced VCP screener run failed. Will try one more time.")
             # Try running it one more time immediately
-            success = await asyncio.wrap_future(manual_screener_executor.submit(run_optimized_vcp_screener_scheduled))
+            success = await asyncio.wrap_future(manual_screener_executor.submit(run_advanced_vcp_screener))
             if not success:
                 logger.error("Second advanced VCP screener run also failed.")
                 return JSONResponse(content={"error": "Failed to generate advanced VCP screener data"}, status_code=500)
@@ -62,7 +62,7 @@ async def screen_vcp(user: dict = Depends(get_current_user)):
             
         # If still no data, run the screener one more time
         logger.debug("No data after first run. Running advanced VCP screener one more time.")
-        success = await asyncio.wrap_future(manual_screener_executor.submit(run_optimized_vcp_screener_scheduled))
+        success = await asyncio.wrap_future(manual_screener_executor.submit(run_advanced_vcp_screener))
         if not success:
             logger.error("Final advanced VCP screener run failed.")
             return JSONResponse(content={"error": "Failed to generate advanced VCP screener data after multiple attempts"}, status_code=500)
