@@ -78,18 +78,19 @@ def fetch_ohlc_for_token(token_data: Tuple, interval: str) -> Dict:
         # Apply rate limiting
         rate_limiter.wait_if_needed()
         
-        # Determine fetch parameters based on interval
+        # Determine fetch parameters based on interval - use full API capacity
         if interval == "week":
             day_count = 2000
-            loop_count = 3
+            loop_count = 1  # Single call for weekly data
         else:
-            day_count = 500
-            loop_count = 2
+            day_count = 2000  # Use full API capacity in single call
+            loop_count = 1    # Only one call needed for 2000 days
         
         hist = []
         to_date = datetime.datetime.now()
         
-        # Fetch historical data in chunks
+        # Fetch historical data using full 2000-day API capacity in single call
+        # This ensures sufficient data for accurate SMA calculations  
         for i in range(loop_count):
             time_window_to = to_date.isoformat()[:10]
             time_window_from = (to_date - datetime.timedelta(days=day_count)).isoformat()[:10]

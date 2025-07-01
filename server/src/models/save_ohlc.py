@@ -161,7 +161,7 @@ class SaveOHLC:
             FROM ohlc
             WHERE instrument_token = %s
             AND interval = 'day'
-            AND date >= NOW() - INTERVAL '1800 days'
+            AND date >= NOW() - INTERVAL '2000 days'
             ORDER BY date ASC;
             """, (instrument_token,))
             results = cur.fetchall()
@@ -201,7 +201,7 @@ class SaveOHLC:
             FROM ohlc
             WHERE instrument_token = %s
             AND interval = 'week'
-            AND date >= NOW() - INTERVAL '1800 days'
+            AND date >= NOW() - INTERVAL '2000 days'
             ORDER BY date ASC;
             """, (instrument_token,))
             results = cur.fetchall()
@@ -292,7 +292,7 @@ class SaveOHLC:
                 away_from_low
             FROM ohlc
             WHERE interval = 'day'
-            AND date >= NOW() - INTERVAL '1000 days'
+            AND date >= NOW() - INTERVAL '2000 days'
             AND segment != 'IPO'
             ORDER BY date DESC
         """
@@ -382,7 +382,7 @@ class SaveOHLC:
                 away_from_low
             FROM ohlc
             WHERE interval = 'day'
-            AND date >= NOW() - INTERVAL '1000 days'
+            AND date >= NOW() - INTERVAL '2000 days'
             AND segment != 'ALL'
             AND segment != 'IPO'
             ORDER BY date DESC
@@ -471,7 +471,7 @@ class SaveOHLC:
             return []
 
     @classmethod
-    def fetch_ohlc_for_single_symbol(cls, cur, symbol, lookback_days=1000):
+    def fetch_ohlc_for_single_symbol(cls, cur, symbol, lookback_days=2000):
         """
         Fetch OHLC data for a single symbol with all required indicators.
         This is memory-efficient for sequential processing.
@@ -580,7 +580,7 @@ class SaveOHLC:
                 away_from_low
             FROM ohlc
             WHERE interval = 'day'
-            AND date >= NOW() - INTERVAL '1000 days'
+            AND date >= NOW() - INTERVAL '2000 days'
             AND segment NOT IN ('IPO', 'ALL')
             ORDER BY date DESC
         """

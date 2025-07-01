@@ -31,7 +31,7 @@ VCP_CONFIG = {
     'prior_uptrend_min': 3.0,             # Reduced from 5.0
     'prior_uptrend_max': 150.0,           # Increased from 100.0
     'minimum_quality_score': 3,           # Reduced from 4
-    'min_data_candles': 1000,             # Increased for more data requirement
+    'min_data_candles': 500,              # Minimum data requirement (we collect 2000 days)
 }
 
 STAGE_FLAGS = {

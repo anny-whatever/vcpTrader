@@ -35,19 +35,19 @@ def get_ohlc(instrument_token, interval, symbol, segment):
         
         if interval == "week":
             day_count = 2000
-            loop_count = 3
+            loop_count = 1  # Single call for weekly data
         else:
-            day_count = 500
-            loop_count = 2
-        logger.info(f"Using day_count of {day_count} for interval {interval}")
+            day_count = 2000  # Use full API capacity in single call
+            loop_count = 1    # Only one call needed for 2000 days
+        logger.info(f"Using day_count of {day_count} for interval {interval} with {loop_count} loop = {day_count * loop_count} days total")
 
-        # 2) Fetch historical data from the API
+        # 2) Fetch historical data from the API using full 2000-day capacity in single call
+        # This ensures we have sufficient historical data for accurate SMA calculations
         for i in range(loop_count):
             time_window_to = to_date.isoformat()[:10]
-            # Example: fetch ~2000 days in one go if your subscription/data source allows
             time_window_from = (to_date - datetime.timedelta(days=day_count)).isoformat()[:10]
             logger.info(f"Fetching OHLC data from {time_window_from} to {time_window_to} "
-                        f"for instrument {instrument_token}, loop {i+1}/{loop_count}")
+                        f"for instrument {instrument_token} (collecting {day_count} days total)")
             try:
                 logger.info(f"Calling kite.historical_data for {symbol} ({instrument_token})")
                 data = kite.historical_data(

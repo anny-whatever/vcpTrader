@@ -25,23 +25,21 @@ def get_historical_data(instrument_token, interval, symbol):
     if not kite.access_token:
         return {"error": "Access token not found"}
     
-    loop_count = 1  # Number of 100-day windows
+    # Use full API capacity in single call
     hist = []
-    to_date = datetime.datetime.now()  # Current date for the initial time window
+    to_date = datetime.datetime.now()
     
-    for _ in range(loop_count):
-        time_window_to = to_date.isoformat()[:10]
-        time_window_from = (to_date - datetime.timedelta(days=700)).isoformat()[:10]
-        logger.info(f"Fetching historical data from {time_window_from} to {time_window_to}")
-        try:
-            data = kite.historical_data(instrument_token, time_window_from, time_window_to, interval)
-            if data:
-                hist.extend(data)  # Accumulate the data across all requests
-        except Exception as err:
-            logger.error(f"Error fetching historical data for instrument {instrument_token} between {time_window_from} and {time_window_to}: {err}")
-            return {"error": str(err)}
-        to_date = to_date - datetime.timedelta(days=701)
-        delay(200)
+    time_window_to = to_date.isoformat()[:10]
+    time_window_from = (to_date - datetime.timedelta(days=2000)).isoformat()[:10]
+    logger.info(f"Fetching historical data from {time_window_from} to {time_window_to} using full 2000-day capacity")
+    
+    try:
+        data = kite.historical_data(instrument_token, time_window_from, time_window_to, interval)
+        if data:
+            hist.extend(data)
+    except Exception as err:
+        logger.error(f"Error fetching historical data for instrument {instrument_token} between {time_window_from} and {time_window_to}: {err}")
+        return {"error": str(err)}
         
     if hist:
         try:
