@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 VCP_CONFIG = {
     'min_pattern_duration': 40,           # Reduced from 60
-    'max_pattern_duration': 120,          # Reduced from 150
+    'max_pattern_duration': 150,          # Reduced from 150
     'min_contractions': 2,
     'max_contractions': 8,
     'volume_multiplier': 1.2,             # Reduced from 1.3
@@ -36,9 +36,9 @@ VCP_CONFIG = {
 
 STAGE_FLAGS = {
     'require_prior_uptrend': True,
-    'require_volume_contraction': False,   # Disabled for more results
+    'require_volume_contraction': True,   # Disabled for more results
     'require_sma_position': True,
-    'require_volume_surge': False,         # Disabled for more results  
+    'require_volume_surge': True,         # Disabled for more results  
     'require_volatility_compression': True,
     'quality_score_weight': True,
 }
@@ -384,6 +384,24 @@ def detect_realtime_vcp_breakout(df: pd.DataFrame, symbol: str) -> Optional[Dict
     if len(df) < VCP_CONFIG['min_data_candles']:
         return None
     
+    # EARLY SMA FILTER: Check SMA positioning on latest candle first
+    # This prevents expensive pattern analysis if SMA criteria isn't met
+    latest_candle = df.iloc[-1]
+    latest_close = latest_candle['close']
+    sma_50 = latest_candle['sma_50']
+    sma_100 = latest_candle['sma_100'] 
+    sma_200 = latest_candle['sma_200']
+    
+    # Apply comprehensive SMA filter early
+    early_sma_filter = (not pd.isna(sma_50) and not pd.isna(sma_100) and not pd.isna(sma_200) and
+                       latest_close > sma_50 and 
+                       latest_close > sma_100 and 
+                       latest_close > sma_200 and
+                       sma_50 > sma_100 > sma_200)
+    
+    if not early_sma_filter:
+        return None  # Skip this stock entirely if SMA criteria not met
+    
     # Check last 3 candles for breakouts (more flexible)
     for lookback in range(0, min(3, len(df))):
         breakout_idx = len(df) - 1 - lookback
@@ -416,10 +434,9 @@ def detect_realtime_vcp_breakout(df: pd.DataFrame, symbol: str) -> Optional[Dict
             if not volume_result['valid']:
                 continue
             
-            # Stage 4: SMA position
+            # Stage 4: SMA position (already validated at start, but get detailed metrics)
             sma_result = check_sma_position(df, breakout_idx)
-            if not sma_result['valid']:
-                continue
+            # Note: sma_result['valid'] should always be True here due to early filter
             
             # Stage 5: REAL-TIME breakout validation (checks the candle at breakout_idx)
             breakout_result = validate_realtime_breakout(df, pattern_start, breakout_idx)

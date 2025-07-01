@@ -57,9 +57,9 @@ function SideChart({ symbol, token }) {
         `/api/data/chartdata?token=${token}&symbol=${encodedSymbol}`
       );
 
-      // Transform your data to the structure needed by Lightweight Charts
-      const transformedData = response.data.map((item) => ({
-        time: item.date.split("T")[0], // e.g. "YYYY-MM-DD"
+      // Process and sort data to ensure proper time ordering
+      const processedData = response.data.map((item) => ({
+        time: item.date.split("T")[0], // Extract date part for daily charts
         open: item.open,
         high: item.high,
         low: item.low,
@@ -68,7 +68,27 @@ function SideChart({ symbol, token }) {
         ...(item.sma_50 !== 0 ? { sma_50: item.sma_50 } : {}),
         ...(item.sma_100 !== 0 ? { sma_100: item.sma_100 } : {}),
         ...(item.sma_200 !== 0 ? { sma_200: item.sma_200 } : {}),
+        originalDate: item.date, // Keep original for sorting
       }));
+
+      // Sort by original datetime to maintain proper order
+      processedData.sort((a, b) => new Date(a.originalDate) - new Date(b.originalDate));
+
+      // Remove duplicates by keeping the latest entry for each date
+      const uniqueData = [];
+      const seenDates = new Set();
+      
+      // Process in reverse order to keep the latest entry for each date
+      for (let i = processedData.length - 1; i >= 0; i--) {
+        const item = processedData[i];
+        if (!seenDates.has(item.time)) {
+          seenDates.add(item.time);
+          const { originalDate, ...cleanItem } = item; // Remove originalDate field
+          uniqueData.unshift(cleanItem); // Add to beginning to maintain order
+        }
+      }
+
+      const transformedData = uniqueData;
 
       setChartData(transformedData);
     } catch (error) {
