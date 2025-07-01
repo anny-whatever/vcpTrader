@@ -15,7 +15,7 @@ from models import ScreenerResult, AdvancedVcpResult
 from models import SaveOHLC
 
 # Import the new advanced screener function
-from .advanced_vcp_screener import run_advanced_vcp_scan as run_advanced_vcp_scan_logic
+from .optimized_vcp_screener import run_optimized_vcp_scan as run_advanced_vcp_scan_logic
 
 # Import the new display data functions
 from .get_display_data import (
@@ -208,7 +208,7 @@ def update_live_data(df, live_data):
             "segment": last_row["segment"],
             # Old indicators
             "sma_50": last_row["sma_50"],
-            "sma_150": last_row["sma_150"],
+            "sma_100": last_row["sma_100"],
             "sma_200": last_row["sma_200"],
             "atr": last_row["atr"],
             "52_week_high": last_row["52_week_high"],
@@ -453,7 +453,7 @@ def run_vcp_screener():
                     last_price=stock["last_price"],
                     change_pct=stock["change"],
                     sma_50=stock["sma_50"],
-                    sma_150=stock["sma_150"],
+                    sma_100=stock["sma_100"],
                     sma_200=stock["sma_200"],
                     atr=stock["atr"]
                 )

@@ -18,7 +18,7 @@ class ScreenerResult:
         last_price=0.0,
         change_pct=0.0,
         sma_50=0.0,
-        sma_150=0.0,
+        sma_100=0.0,
         sma_200=0.0,
         atr=0.0,
         run_time=None,
@@ -29,7 +29,7 @@ class ScreenerResult:
         self.last_price = last_price
         self.change_pct = change_pct
         self.sma_50 = sma_50
-        self.sma_150 = sma_150
+        self.sma_100 = sma_100
         self.sma_200 = sma_200
         self.atr = atr
         # Default to "now" if run_time is not given
@@ -47,7 +47,7 @@ class ScreenerResult:
                 last_price,
                 change_pct,
                 sma_50,
-                sma_150,
+                sma_100,
                 sma_200,
                 atr,
                 run_time
@@ -64,7 +64,7 @@ class ScreenerResult:
                     self.last_price,
                     self.change_pct,
                     self.sma_50,
-                    self.sma_150,
+                    self.sma_100,
                     self.sma_200,
                     self.atr,
                     self.run_time
@@ -105,7 +105,7 @@ class ScreenerResult:
                 last_price,
                 change_pct,
                 sma_50,
-                sma_150,
+                sma_100,
                 sma_200,
                 atr,
                 run_time

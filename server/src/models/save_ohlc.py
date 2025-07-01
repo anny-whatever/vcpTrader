@@ -17,7 +17,7 @@ class SaveOHLC:
         close,
         volume,
         sma_50=0.0,
-        sma_150=0.0,
+        sma_100=0.0,
         sma_200=0.0,
         atr=0.0,
         week52_high=0.0,
@@ -36,7 +36,7 @@ class SaveOHLC:
         self.volume = volume
         # New columns for indicators
         self.sma_50 = sma_50
-        self.sma_150 = sma_150
+        self.sma_100 = sma_100
         self.sma_200 = sma_200
         self.atr = atr
         self.week52_high = week52_high
@@ -53,7 +53,7 @@ class SaveOHLC:
         INSERT INTO ohlc (
             instrument_token, symbol, interval, date,
             open, high, low, close, volume,
-            sma_50, sma_150, sma_200, atr,
+            sma_50, sma_100, sma_200, atr,
             "52_week_high", "52_week_low",
             away_from_high, away_from_low
         )
@@ -75,7 +75,7 @@ class SaveOHLC:
                 self.close,
                 self.volume,
                 self.sma_50,
-                self.sma_150,
+                self.sma_100,
                 self.sma_200,
                 self.atr,
                 self.week52_high,
@@ -191,7 +191,7 @@ class SaveOHLC:
                 volume,
                 segment,
                 sma_50,
-                sma_150,
+                sma_100,
                 sma_200,
                 atr,
                 "52_week_high",
@@ -283,7 +283,7 @@ class SaveOHLC:
                 volume,
                 segment,
                 sma_50,
-                sma_150,
+                sma_100,
                 sma_200,
                 atr,
                 "52_week_high",
@@ -306,14 +306,14 @@ class SaveOHLC:
                 logger.warning("No rows returned. Returning empty DataFrame.")
                 return pd.DataFrame(columns=[
                     "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
-                    "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                    "volume", "segment", "sma_50", "sma_100", "sma_200", "atr", "52_week_high",
                     "52_week_low", "away_from_high", "away_from_low"
                 ])
 
             # Convert to DataFrame
             columns = [
                 "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
-                "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                "volume", "segment", "sma_50", "sma_100", "sma_200", "atr", "52_week_high",
                 "52_week_low", "away_from_high", "away_from_low"
             ]
             df = pd.DataFrame(rows, columns=columns)
@@ -321,7 +321,7 @@ class SaveOHLC:
             # Convert all numeric columns in one vectorized step
             float_cols = [
                 "open", "high", "low", "close", "volume",
-                "sma_50", "sma_150", "sma_200", "atr",
+                "sma_50", "sma_100", "sma_200", "atr",
                 "52_week_high", "52_week_low", "away_from_high", "away_from_low"
             ]
             df[float_cols] = df[float_cols].apply(pd.to_numeric, errors='coerce').fillna(0.0)
@@ -343,7 +343,7 @@ class SaveOHLC:
             logger.error("Returning empty DataFrame due to error")
             return pd.DataFrame(columns=[
                 "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
-                "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                "volume", "segment", "sma_50", "sma_100", "sma_200", "atr", "52_week_high",
                 "52_week_low", "away_from_high", "away_from_low"
             ])
 
@@ -373,7 +373,7 @@ class SaveOHLC:
                 volume,
                 segment,
                 sma_50,
-                sma_150,
+                sma_100,
                 sma_200,
                 atr,
                 "52_week_high",
@@ -397,14 +397,14 @@ class SaveOHLC:
                 logger.warning("No rows returned. Returning empty DataFrame.")
                 return pd.DataFrame(columns=[
                     "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
-                    "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                    "volume", "segment", "sma_50", "sma_100", "sma_200", "atr", "52_week_high",
                     "52_week_low", "away_from_high", "away_from_low"
                 ])
 
             # Convert to DataFrame
             columns = [
                 "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
-                "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                "volume", "segment", "sma_50", "sma_100", "sma_200", "atr", "52_week_high",
                 "52_week_low", "away_from_high", "away_from_low"
             ]
             df = pd.DataFrame(rows, columns=columns)
@@ -412,7 +412,7 @@ class SaveOHLC:
             # Convert all numeric columns in one vectorized step
             float_cols = [
                 "open", "high", "low", "close", "volume",
-                "sma_50", "sma_150", "sma_200", "atr",
+                "sma_50", "sma_100", "sma_200", "atr",
                 "52_week_high", "52_week_low", "away_from_high", "away_from_low"
             ]
             df[float_cols] = df[float_cols].apply(pd.to_numeric, errors='coerce').fillna(0.0)
@@ -434,7 +434,7 @@ class SaveOHLC:
             logger.error("Returning empty DataFrame due to error")
             return pd.DataFrame(columns=[
                 "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
-                "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                "volume", "segment", "sma_50", "sma_100", "sma_200", "atr", "52_week_high",
                 "52_week_low", "away_from_high", "away_from_low"
             ])
 
@@ -464,7 +464,7 @@ class SaveOHLC:
                 volume,
                 segment,
                 sma_50,
-                sma_150,
+                sma_100,
                 sma_200,
                 atr,
                 "52_week_high",
@@ -487,14 +487,14 @@ class SaveOHLC:
                 logger.warning("No rows returned. Returning empty DataFrame.")
                 return pd.DataFrame(columns=[
                     "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
-                    "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                    "volume", "segment", "sma_50", "sma_100", "sma_200", "atr", "52_week_high",
                     "52_week_low", "away_from_high", "away_from_low"
                 ])
 
             # Convert to DataFrame
             columns = [
                 "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
-                "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                "volume", "segment", "sma_50", "sma_100", "sma_200", "atr", "52_week_high",
                 "52_week_low", "away_from_high", "away_from_low"
             ]
             df = pd.DataFrame(rows, columns=columns)
@@ -502,7 +502,7 @@ class SaveOHLC:
             # Convert all numeric columns in one vectorized step
             float_cols = [
                 "open", "high", "low", "close", "volume",
-                "sma_50", "sma_150", "sma_200", "atr",
+                "sma_50", "sma_100", "sma_200", "atr",
                 "52_week_high", "52_week_low", "away_from_high", "away_from_low"
             ]
             df[float_cols] = df[float_cols].apply(pd.to_numeric, errors='coerce').fillna(0.0)
@@ -524,7 +524,7 @@ class SaveOHLC:
             logger.error("Returning empty DataFrame due to error")
             return pd.DataFrame(columns=[
                 "instrument_token", "symbol", "interval", "date", "open", "high", "low", "close",
-                "volume", "segment", "sma_50", "sma_150", "sma_200", "atr", "52_week_high",
+                "volume", "segment", "sma_50", "sma_100", "sma_200", "atr", "52_week_high",
                 "52_week_low", "away_from_high", "away_from_low"
             ])
 

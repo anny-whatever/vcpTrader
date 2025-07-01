@@ -50,7 +50,7 @@ class AdvancedVcpResult:
                 pattern_start_date, pattern_end_date, pattern_high, pattern_low,
                 num_contractions, compression_ratio, breakout_date, breakout_price,
                 breakout_high, breakout_volume, breakout_strength, volume_surge_ratio,
-                sma_50, sma_150, sma_200, atr, entry_price, suggested_stop_loss,
+                sma_50, sma_100, sma_200, atr, entry_price, suggested_stop_loss,
                 suggested_take_profit, risk_reward_ratio, duration_score, contraction_score,
                 compression_score, volume_score, prior_uptrend_gain, price_breakout,
                 volume_surge, green_breakout_candle, above_sma50, above_sma100,
@@ -60,7 +60,7 @@ class AdvancedVcpResult:
                 %(pattern_start_date)s, %(pattern_end_date)s, %(pattern_high)s, %(pattern_low)s,
                 %(num_contractions)s, %(compression_ratio)s, %(breakout_date)s, %(breakout_price)s,
                 %(breakout_high)s, %(breakout_volume)s, %(breakout_strength)s, %(volume_surge_ratio)s,
-                %(sma_50)s, %(sma_150)s, %(sma_200)s, %(atr)s, %(entry_price)s, %(suggested_stop_loss)s,
+                %(sma_50)s, %(sma_100)s, %(sma_200)s, %(atr)s, %(entry_price)s, %(suggested_stop_loss)s,
                 %(suggested_take_profit)s, %(risk_reward_ratio)s, %(duration_score)s, %(contraction_score)s,
                 %(compression_score)s, %(volume_score)s, %(prior_uptrend_gain)s, %(price_breakout)s,
                 %(volume_surge)s, %(green_breakout_candle)s, %(above_sma50)s, %(above_sma100)s,
@@ -93,7 +93,7 @@ class AdvancedVcpResult:
                 'breakout_strength': cls._clean_value(res.get('breakout_strength_vs_pattern_high')),
                 'volume_surge_ratio': cls._clean_value(res.get('volume_surge_ratio')),
                 'sma_50': cls._clean_value(res.get('sma_50')),
-                'sma_150': cls._clean_value(res.get('sma_150')), # Placeholder, script doesn't calculate this
+                'sma_100': cls._clean_value(res.get('sma_100')), # Placeholder, script doesn't calculate this
                 'sma_200': cls._clean_value(res.get('sma_200')),
                 'atr': cls._clean_value(res.get('atr_50')), # Using atr_50 from screener
                 'entry_price': cls._clean_value(res.get('entry_price')),

@@ -20,6 +20,7 @@ from .get_screener import (
     load_precomputed_ohlc,
     run_advanced_vcp_screener,
 )
+from .optimized_vcp_screener import run_optimized_vcp_screener_scheduled
 from .manage_risk_pool import (
     update_risk_pool_on_increase,
     update_risk_pool_on_decrease,
