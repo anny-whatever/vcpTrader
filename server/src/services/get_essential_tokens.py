@@ -40,6 +40,12 @@ def refresh_tokens():
         for row in cur.fetchall():
             new_set.add(row['instrument_token'])
         
+        # 5) advanced_vcp_results - VCP screener stocks
+        cur.execute("SELECT instrument_token FROM advanced_vcp_results WHERE instrument_token != -1;")
+        for row in cur.fetchall():
+            new_set.add(row['instrument_token'])
+        
+        # 6) indices_instruments
         cur.execute("SELECT instrument_token FROM indices_instruments;")
         for row in cur.fetchall():
             new_set.add(row['instrument_token'])

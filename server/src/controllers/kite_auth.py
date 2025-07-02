@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
 
 from .kite_ticker import initialize_kite_ticker
-from .schedulers import get_scheduler
+from .optimized_schedulers import get_optimized_scheduler as get_scheduler
 
 load_dotenv()
 logger = logging.getLogger(__name__)

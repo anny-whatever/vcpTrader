@@ -12,42 +12,47 @@ import os
 logger = logging.getLogger(__name__)
 scheduler = None
 
+# DEPRECATED: This scheduler is kept for backward compatibility only
+# Use controllers.optimized_schedulers.get_optimized_scheduler() instead
+logger.warning("DEPRECATED: Using legacy scheduler - consider switching to optimized_schedulers.py")
+
 # Dedicated thread pool for screeners
 screener_executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="screener")
 
 #
-# Existing Jobs
+# DEPRECATED Legacy Jobs - These functions redirect to optimized versions
 #
 
 def calculate_daily_risk_scores():
     """
-    Calculate risk scores for all stocks after daily OHLC data collection.
-    This runs after the get_ohlc_on_schedule job completes.
+    DEPRECATED: Legacy risk calculation - automatically redirects to optimized version.
+    This function is kept for backward compatibility but now calls the optimized version.
+    """
+    logger.warning("Legacy function called - redirecting to optimized risk calculation")
+    return calculate_daily_risk_scores_optimized()
+
+def calculate_daily_risk_scores_optimized():
+    """
+    Optimized daily risk score calculation using parallel processing.
+    This runs after the OHLC data collection completes and provides much better performance.
     """
     try:
-        logger.info("Starting daily risk scores calculation...")
-        from services.risk_calculator import get_bulk_risk_scores
-        from models.risk_scores import RiskScore
-        from db import get_db_connection, close_db_connection
+        logger.info("Starting optimized daily risk scores calculation...")
+        from services.optimized_risk_calculator import calculate_daily_risk_scores_optimized as calc_optimized
         
-        conn, cur = get_db_connection()
+        # Run the optimized risk calculation
+        processed_count = calc_optimized()
         
-        # Calculate risk scores for all available stocks
-        # This will process all stocks in the database with OHLC data
-        risk_results = get_bulk_risk_scores(symbols_list=None, limit=None)
-        
-        if risk_results:
-            # Save to database
-            RiskScore.bulk_save_risk_scores(cur, risk_results)
-            conn.commit()
-            logger.info(f"Daily risk calculation completed: {len(risk_results)} stocks processed")
+        if processed_count > 0:
+            logger.info(f"✅ Optimized daily risk calculation completed: {processed_count} stocks processed")
         else:
-            logger.warning("No risk scores calculated - check if OHLC data is available")
-            
-        close_db_connection()
+            logger.warning("⚠️ No risk scores calculated - check if OHLC data is available")
+        
+        return processed_count
         
     except Exception as e:
-        logger.error(f"Error in calculate_daily_risk_scores: {e}")
+        logger.error(f"❌ Error in optimized daily risk calculation: {e}", exc_info=True)
+        return 0
 
 def check_exits_on_schedule():
     try:
@@ -57,36 +62,29 @@ def check_exits_on_schedule():
         logger.error(f"Error in check_exits_on_schedule: {e}")
 
 def get_ohlc_on_schedule():
+    """
+    DEPRECATED: Legacy OHLC collection - redirects to optimized version.
+    This function now uses optimized modules for better performance.
+    """
+    logger.warning("Legacy OHLC function called - redirecting to optimized version")
     try:
-        # Import only inside the function to avoid circular imports
-        from services.get_token_data import download_nse_csv
-        from services.get_screener import load_precomputed_ohlc
-        from services.get_ohlc import get_equity_ohlc_data_loop
-        download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv", "500")
-        download_nse_csv("https://nsearchives.nseindia.com/content/indices/ind_niftymicrocap250_list.csv", "250")
-        download_nse_csv("https://www.niftyindices.com/IndexConstituent/ind_niftyIPO_list.csv", "IPO")
-        download_nse_csv("https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv", "ALL")
-
-        get_equity_ohlc_data_loop("day")
-        # get_equity_ohlc_data_loop("week")  # REMOVED weekly data collection
-        load_precomputed_ohlc()
-
-        run_vcp_screener_on_schedule()
-        # run_ipo_screener_on_schedule()  # REMOVED IPO screener
-        # run_weekly_vcp_screener_on_schedule()  # REMOVED weekly VCP screener
-
-        calculate_daily_risk_scores()
-
-        logger.info("OHLC data retrieval job completed.")
+        # Import optimized modules
+        from services.optimized_ohlc_collector import get_ohlc_on_schedule_optimized
+        return get_ohlc_on_schedule_optimized()
+        
     except Exception as e:
-        logger.error(f"Error in get_ohlc_on_schedule: {e}")
+        logger.error(f"❌ Error in redirected OHLC collection: {e}", exc_info=True)
 
 def run_vcp_screener_on_schedule():
+    """
+    DEPRECATED: Legacy VCP screener - redirects to optimized version.
+    """
+    logger.warning("Legacy VCP screener called - redirecting to optimized version")
     try:
         from services.get_screener import run_advanced_vcp_screener
         # Run in a separate thread to avoid blocking the scheduler
         screener_executor.submit(run_advanced_vcp_screener)
-        logger.info("Advanced VCP screener job submitted to thread pool")
+        logger.info("Advanced VCP screener job submitted to thread pool (legacy redirect)")
     except Exception as e:
         logger.error(f"Error in run_vcp_screener_on_schedule: {e}")
 
@@ -210,62 +208,68 @@ def clean_server_log():
 #
 def get_scheduler():
     """
-    Returns a running scheduler. If the global scheduler is None or not running,
-    it creates a new one, adds all jobs, and starts it.
+    DEPRECATED: Legacy scheduler - Use get_optimized_scheduler() from optimized_schedulers.py instead.
+    This function is kept for backward compatibility but now redirects to optimized version.
     """
-    global scheduler
-    if scheduler is None or scheduler.state != STATE_RUNNING:
-        scheduler = BackgroundScheduler()
-
-        # -- Existing daily jobs --
-        scheduler.add_job(
-            check_exits_on_schedule,
-            CronTrigger(minute='25', hour='15', day_of_week='mon-fri'),
-            max_instances=1,
-            replace_existing=True,
-            id="vcp_trader_check_exits"
-        )
-        scheduler.add_job(
-            get_ohlc_on_schedule,
-            CronTrigger(minute='35', hour='15', day_of_week='mon-fri'),
-            max_instances=1,
-            replace_existing=True,
-            id="vcp_trader_get_ohlc"
-        )
+    logger.warning("⚠️ DEPRECATED: Legacy scheduler being used. Consider switching to optimized_schedulers.get_optimized_scheduler()")
+    logger.warning("🔄 Redirecting to optimized scheduler...")
+    
+    try:
+        from .optimized_schedulers import get_optimized_scheduler
+        return get_optimized_scheduler()
+    except ImportError as e:
+        logger.error(f"Could not import optimized scheduler: {e}")
+        logger.warning("Falling back to legacy scheduler implementation")
         
-        # Risk calculation job - runs at 3:35 PM after OHLC data collection
-        scheduler.add_job(
-            calculate_daily_risk_scores,
-            CronTrigger(minute='00', hour='18', day_of_week='mon-fri'),
-            max_instances=1,
-            replace_existing=True,
-            id="vcp_trader_calculate_risk_scores"
-        )
+        # Fallback to legacy implementation
+        global scheduler
+        if scheduler is None or scheduler.state != STATE_RUNNING:
+            scheduler = BackgroundScheduler()
 
-        # VCP screener jobs => runs every 30 minutes during trading hours (9:30 AM to 3:30 PM)
-        scheduler.add_job(
-            run_vcp_screener_on_schedule,
-            CronTrigger(day_of_week='mon-fri', hour='9-15', minute='30,0'),
-            max_instances=3,
-            replace_existing=False,
-            id="run_vcp_screener_job"
-        )
-        
-        # IPO screener jobs => runs every 5 minutes too
-        # run_ipo_screener_on_schedule()  # REMOVED IPO screener
-        # run_weekly_vcp_screener_on_schedule()  # REMOVED weekly VCP screener
+            # Only add essential jobs with optimized functions
+            scheduler.add_job(
+                check_exits_on_schedule,
+                CronTrigger(minute='25', hour='15', day_of_week='mon-fri'),
+                max_instances=1,
+                replace_existing=True,
+                id="legacy_check_exits"
+            )
+            scheduler.add_job(
+                get_ohlc_on_schedule,  # This now redirects to optimized
+                CronTrigger(minute='40', hour='22', day_of_week='mon-fri'),
+                max_instances=1,
+                replace_existing=True,
+                id="legacy_get_ohlc"
+            )
+            
+            # Use optimized risk calculation
+            scheduler.add_job(
+                calculate_daily_risk_scores_optimized,
+                CronTrigger(minute='00', hour='18', day_of_week='mon-fri'),
+                max_instances=1,
+                replace_existing=True,
+                id="legacy_calculate_risk_scores"
+            )
 
-        # Log cleaning job - runs every day at 6 PM
-        scheduler.add_job(
-            clean_server_log,
-            CronTrigger(minute='0', hour='18'),  # 6:00 PM every day
-            max_instances=1,
-            replace_existing=True,
-            id="vcp_trader_clean_log"
-        )
+            # Use optimized VCP screener
+            scheduler.add_job(
+                run_vcp_screener_on_schedule,  # This now redirects to optimized
+                CronTrigger(day_of_week='mon-fri', hour='9-15', minute='30,0'),
+                max_instances=3,
+                replace_existing=False,
+                id="legacy_vcp_screener_job"
+            )
 
-        # Start the scheduler
-        scheduler.start()
-        logger.info("Scheduler started.")
+            # Log cleaning job
+            scheduler.add_job(
+                clean_server_log,
+                CronTrigger(minute='0', hour='18'),
+                max_instances=1,
+                replace_existing=True,
+                id="legacy_clean_log"
+            )
 
-    return scheduler
+            scheduler.start()
+            logger.info("Legacy scheduler started with optimized job redirects.")
+
+        return scheduler

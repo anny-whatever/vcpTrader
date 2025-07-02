@@ -22,13 +22,12 @@ class AsyncDatabaseManager:
             'password': os.getenv("DB_PASSWORD"),
             'database': os.getenv("DB_NAME"),
             'connect_timeout': 10,
-            'command_timeout': 30,
-            'server_settings': {
-                'application_name': 'vcpTrader_async',
-                'tcp_keepalives_idle': '600',
-                'tcp_keepalives_interval': '30',
-                'tcp_keepalives_count': '3'
-            }
+            'application_name': 'vcpTrader_async',
+            'keepalives_idle': 600,
+            'keepalives_interval': 30,
+            'keepalives_count': 3,
+            # SSL configuration - disable SSL for localhost connections
+            'sslmode': os.getenv("DB_SSLMODE", "disable" if os.getenv("DB_HOST") == "localhost" else "prefer")
         }
     
     async def initialize_pools(self):

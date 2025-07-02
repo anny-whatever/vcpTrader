@@ -234,16 +234,61 @@ def get_equity_ohlc_data_loop(interval):
     except Exception as err:
         logger.error(f"Error deleting OHLC data: {err}")
         return {"error": str(err)}
+    
     try:
         select_query = "SELECT * FROM equity_tokens;"
         cur.execute(select_query)
         tokens = cur.fetchall()
-        #Remove existing OHLC data for this token + interval (if that's your desired logic)
         
-        for token in tokens:
-        # for token in tokens[:1]:
-            get_ohlc(token[0], interval, token[1], token[4])
-        return {"data": "Done"}
+        total_tokens = len(tokens)
+        successful_count = 0
+        failed_count = 0
+        failed_symbols = []
+        
+        logger.info(f"Starting OHLC data collection for {total_tokens} tokens with interval: {interval}")
+        
+        for i, token in enumerate(tokens, 1):
+            instrument_token = token[0]
+            symbol = token[1] 
+            segment = token[4]
+            
+            try:
+                logger.info(f"Processing token {i}/{total_tokens}: {symbol} ({instrument_token})")
+                result = get_ohlc(instrument_token, interval, symbol, segment)
+                
+                if result and "error" in result:
+                    logger.error(f"Failed to process {symbol} ({instrument_token}): {result['error']}")
+                    failed_count += 1
+                    failed_symbols.append(symbol)
+                else:
+                    logger.info(f"Successfully processed {symbol} ({instrument_token})")
+                    successful_count += 1
+                    
+                # Log progress every 50 tokens
+                if i % 50 == 0:
+                    logger.info(f"Progress: {i}/{total_tokens} tokens processed. Success: {successful_count}, Failed: {failed_count}")
+                    
+            except Exception as e:
+                logger.error(f"Unexpected error processing token {symbol} ({instrument_token}): {e}")
+                failed_count += 1
+                failed_symbols.append(symbol)
+                # Continue with next token instead of breaking the loop
+                continue
+        
+        # Final summary
+        logger.info(f"OHLC data collection completed for interval: {interval}")
+        logger.info(f"Total tokens: {total_tokens}, Successful: {successful_count}, Failed: {failed_count}")
+        if failed_symbols:
+            logger.warning(f"Failed symbols (first 10): {failed_symbols[:10]}")
+            
+        return {
+            "data": "Done", 
+            "total": total_tokens,
+            "successful": successful_count, 
+            "failed": failed_count,
+            "failed_symbols": failed_symbols[:10]  # Only return first 10 failed symbols
+        }
+        
     except Exception as err:
         logger.error(f"Error in get_equity_ohlc_data_loop: {err}")
         return {"error": str(err)}

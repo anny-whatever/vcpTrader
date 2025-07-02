@@ -569,7 +569,7 @@ def run_advanced_vcp_screener():
 
     with advanced_vcp_screener_lock:
         advanced_vcp_screener_running = True
-        logger.info("Starting Sequential Advanced VCP Screener...")
+        logger.info("Starting Sequential Advanced VCP Screener (OPTIMIZED)...")
         
         try:
             # Use the new sequential scanning approach
@@ -578,14 +578,14 @@ def run_advanced_vcp_screener():
             success = run_advanced_vcp_scan_sequential()
             
             if success:
-                logger.info("Sequential Advanced VCP Screener completed successfully.")
+                logger.info("✅ Sequential Advanced VCP Screener completed successfully.")
             else:
-                logger.warning("Sequential Advanced VCP Screener completed with issues.")
+                logger.warning("⚠️ Sequential Advanced VCP Screener completed with issues.")
             
             return success
 
         except Exception as e:
-            logger.error(f"FATAL ERROR in run_advanced_vcp_screener: {e}", exc_info=True)
+            logger.error(f"❌ FATAL ERROR in run_advanced_vcp_screener: {e}", exc_info=True)
             return False
         finally:
             advanced_vcp_screener_running = False
@@ -594,37 +594,11 @@ def run_advanced_vcp_screener():
 def run_advanced_vcp_screener_legacy():
     """
     DEPRECATED: Legacy bulk VCP screener - kept for backward compatibility.
+    This function is no longer recommended due to memory issues.
     Use run_advanced_vcp_screener() for the optimized sequential version.
     """
-    global advanced_vcp_screener_running
-    if advanced_vcp_screener_running:
-        logger.info("Legacy advanced VCP screener is already running.")
-        return False
-
-    with advanced_vcp_screener_lock:
-        advanced_vcp_screener_running = True
-        logger.warning("Using LEGACY Advanced VCP Screener - consider updating to sequential version")
-        
-        try:
-            # 1. Load the precomputed OHLC data (this loads ALL data into memory)
-            df = load_precomputed_ohlc()
-            if df is None or df.empty:
-                logger.error("OHLC data is empty. Aborting legacy VCP scan.")
-                return False
-
-            # 2. Run the legacy screener logic
-            success = run_advanced_vcp_scan_logic(df)
-            
-            if success:
-                logger.info("Legacy Advanced VCP Screener run completed successfully.")
-            else:
-                logger.warning("Legacy Advanced VCP Screener run did not complete successfully.")
-            
-            return success
-
-        except Exception as e:
-            logger.error(f"FATAL ERROR in run_advanced_vcp_screener_legacy: {e}", exc_info=True)
-            return False
-        finally:
-            advanced_vcp_screener_running = False
-            logger.info("Legacy Advanced VCP Screener finished.")
+    logger.warning("⚠️ DEPRECATED: Legacy VCP screener called - redirecting to optimized version")
+    logger.warning("🔄 Consider updating code to use run_advanced_vcp_screener() directly")
+    
+    # Redirect to optimized version
+    return run_advanced_vcp_screener()

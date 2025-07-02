@@ -478,8 +478,8 @@ def get_ohlc_on_schedule_optimized():
             vcp_result = False
         
         # Calculate risk scores
-        from controllers.schedulers import calculate_daily_risk_scores
-        calculate_daily_risk_scores()
+        from services.optimized_risk_calculator import calculate_daily_risk_scores_optimized
+        calculate_daily_risk_scores_optimized()
         
         logger.info("Optimized OHLC data collection and processing completed")
         return daily_result

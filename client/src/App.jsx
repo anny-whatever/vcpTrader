@@ -512,6 +512,7 @@ function App() {
     };
 
     socketRef.current.onmessage = (event) => {
+      // Always use optimized queue processing for better performance
       if (WS_MESSAGE_QUEUE_PROCESSING) {
         // Push the message to the queue - don't parse immediately
         wsMessageQueueRef.current.push(event.data);
@@ -521,12 +522,13 @@ function App() {
           requestAnimationFrame(processMessageQueue);
         }
       } else {
-        // Legacy direct message processing - may cause performance issues
+        // Fallback to optimized direct processing if queue is disabled
         try {
           const parsedData = JSON.parse(event.data);
-
-          // Legacy processing here...
-          // [code removed for brevity]
+          
+          // Process the message directly using optimized handling
+          processWebSocketMessage(parsedData);
+          
         } catch (error) {
           console.error("Error parsing WebSocket message:", error);
           if (socketRef.current) {
