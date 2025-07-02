@@ -130,6 +130,49 @@ def get_combined_ohlc(instrument_token, symbol, interval='day'):
                     logger.info(f'quote: {quote}')
                     ohlc = quote.get('ohlc', {})
                     if ohlc:
+                        # Calculate SMA values for the live candle
+                        try:
+                            import pandas_ta as ta
+                            
+                            # Create a DataFrame with historical + current data for SMA calculation
+                            df_data = []
+                            for record in combined_data:
+                                df_data.append({
+                                    'close': safe_float(record.get('close', 0))
+                                })
+                            
+                            # Add today's close price
+                            df_data.append({
+                                'close': safe_float(quote.get('last_price', 0))
+                            })
+                            
+                            df = pd.DataFrame(df_data)
+                            
+                            # Calculate SMAs
+                            length_50 = min(50, len(df))
+                            length_100 = min(100, len(df))
+                            length_200 = min(200, len(df))
+                            
+                            sma_50 = sma_100 = sma_200 = 0
+                            
+                            if length_50 >= 10:
+                                sma_series_50 = ta.sma(df["close"], length=length_50)
+                                sma_50 = safe_float(sma_series_50.iloc[-1])
+                            
+                            if length_100 >= 10:
+                                sma_series_100 = ta.sma(df["close"], length=length_100)
+                                sma_100 = safe_float(sma_series_100.iloc[-1])
+                            
+                            if length_200 >= 10:
+                                sma_series_200 = ta.sma(df["close"], length=length_200)
+                                sma_200 = safe_float(sma_series_200.iloc[-1])
+                            
+                            logger.info(f"Calculated SMAs for live data: SMA50={sma_50}, SMA100={sma_100}, SMA200={sma_200}")
+                            
+                        except Exception as sma_error:
+                            logger.error(f"Error calculating SMAs for live data: {sma_error}")
+                            sma_50 = sma_100 = sma_200 = 0
+                        
                         today_entry = {
                             'instrument_token': instrument_token,
                             'symbol': symbol,
@@ -139,7 +182,10 @@ def get_combined_ohlc(instrument_token, symbol, interval='day'):
                             'high': ohlc.get('high', 0),
                             'low': ohlc.get('low', 0),
                             'close': quote.get('last_price', 0),
-                            'volume': quote.get('volume_today', 0)
+                            'volume': quote.get('volume_today', 0),
+                            'sma_50': sma_50,
+                            'sma_100': sma_100,
+                            'sma_200': sma_200
                         }
                         combined_data.append(today_entry)
                 except Exception as e:

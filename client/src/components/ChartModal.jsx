@@ -177,10 +177,10 @@ function ChartModal({
         low: item.low,
         close: item.close,
         volume: item.volume,
-        // Always include SMA values, even if they're 0 (filter null/undefined instead)
-        sma_50: item.sma_50 != null ? item.sma_50 : 0,
-        sma_100: item.sma_100 != null ? item.sma_100 : 0,
-        sma_200: item.sma_200 != null ? item.sma_200 : 0,
+        // Include SMA values only if they are valid (greater than 0)
+        sma_50: item.sma_50 != null && item.sma_50 > 0 ? item.sma_50 : null,
+        sma_100: item.sma_100 != null && item.sma_100 > 0 ? item.sma_100 : null,
+        sma_200: item.sma_200 != null && item.sma_200 > 0 ? item.sma_200 : null,
         originalDate: item.date, // Keep original for sorting
         // Add a unique key for better duplicate detection
         originalTimestamp: new Date(item.date).getTime(),
@@ -266,19 +266,25 @@ function ChartModal({
         value: item.volume,
       }));
       volumeSeriesRef.current.setData(volumeData);
-      // Update SMA line series
-      const sma50Data = chartData.map((item) => ({
-        time: item.time,
-        value: item.sma_50,
-      }));
-      const sma100Data = chartData.map((item) => ({
-        time: item.time,
-        value: item.sma_100,
-      }));
-      const sma200Data = chartData.map((item) => ({
-        time: item.time,
-        value: item.sma_200,
-      }));
+      // Update SMA line series (filter out null values)
+      const sma50Data = chartData
+        .filter((item) => item.sma_50 !== null && item.sma_50 > 0)
+        .map((item) => ({
+          time: item.time,
+          value: item.sma_50,
+        }));
+      const sma100Data = chartData
+        .filter((item) => item.sma_100 !== null && item.sma_100 > 0)
+        .map((item) => ({
+          time: item.time,
+          value: item.sma_100,
+        }));
+      const sma200Data = chartData
+        .filter((item) => item.sma_200 !== null && item.sma_200 > 0)
+        .map((item) => ({
+          time: item.time,
+          value: item.sma_200,
+        }));
       ma50SeriesRef.current.setData(sma50Data);
       ma100SeriesRef.current.setData(sma100Data);
       ma200SeriesRef.current.setData(sma200Data);
@@ -371,19 +377,25 @@ function ChartModal({
     volumeSeries.setData(volumeData);
     volumeSeriesRef.current = volumeSeries;
 
-    // SMA line series
-    const sma50Data = chartData.map((item) => ({
-      time: item.time,
-      value: item.sma_50,
-    }));
-    const sma100Data = chartData.map((item) => ({
-      time: item.time,
-      value: item.sma_100,
-    }));
-    const sma200Data = chartData.map((item) => ({
-      time: item.time,
-      value: item.sma_200,
-    }));
+    // SMA line series (filter out null values)
+    const sma50Data = chartData
+      .filter((item) => item.sma_50 !== null && item.sma_50 > 0)
+      .map((item) => ({
+        time: item.time,
+        value: item.sma_50,
+      }));
+    const sma100Data = chartData
+      .filter((item) => item.sma_100 !== null && item.sma_100 > 0)
+      .map((item) => ({
+        time: item.time,
+        value: item.sma_100,
+      }));
+    const sma200Data = chartData
+      .filter((item) => item.sma_200 !== null && item.sma_200 > 0)
+      .map((item) => ({
+        time: item.time,
+        value: item.sma_200,
+      }));
 
     const ma50Series = chart.addSeries(LineSeries, {
       color: "#3b82f680", // blue-500 with transparency
@@ -474,13 +486,15 @@ function ChartModal({
       low: Math.min(lastCandleRef.current.low, newPrice),
       volume: newVolume,
     };
-    if (newSma50 !== undefined) {
+    
+    // Only update SMA values if they are valid numbers (not undefined, null, or 0 from missing data)
+    if (newSma50 !== undefined && newSma50 !== null && newSma50 > 0) {
       updatedCandle.sma_50 = newSma50;
     }
-    if (newSma100 !== undefined) {
+    if (newSma100 !== undefined && newSma100 !== null && newSma100 > 0) {
       updatedCandle.sma_100 = newSma100;
     }
-    if (newSma200 !== undefined) {
+    if (newSma200 !== undefined && newSma200 !== null && newSma200 > 0) {
       updatedCandle.sma_200 = newSma200;
     }
 

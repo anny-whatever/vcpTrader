@@ -8,14 +8,21 @@ Designed for end-of-day execution when candles are nearly complete
 import pandas as pd
 import numpy as np
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from typing import Dict, List, Tuple, Optional
 import warnings
 import logging
+import pytz
 from db import get_trade_db_connection, release_trade_db_connection
 from models import AdvancedVcpResult
+from controllers import kite
 warnings.filterwarnings('ignore')
 logger = logging.getLogger(__name__)
+
+# Timezone configuration
+TIMEZONE = pytz.timezone("Asia/Kolkata")
+MARKET_OPEN = time(9, 15)
+MARKET_CLOSE = time(15, 30)
 
 # =============================================================================
 # CONFIGURATION - SAME AS BACKTEST FOR CONSISTENCY
@@ -78,21 +85,34 @@ def load_latest_stock_data(file_path: str, lookback_candles: int = 1000) -> pd.D
         return None
 
 def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
-    """Calculate missing technical indicators."""
-    df['sma_20'] = df['close'].rolling(window=20).mean()
-    df['sma_50'] = df['close'].rolling(window=50).mean()
-    df['sma_100'] = df['close'].rolling(window=100).mean()
-    df['sma_2source .venv/bin/activate &&source .venv/bin/activate &&00'] = df['close'].rolling(window=200).mean()
+    """Calculate technical indicators efficiently"""
+    import pandas_ta as ta
     
-    # Calculate ATR with a period of 50
-    high_low = df['high'] - df['low']
-    high_close = np.abs(df['high'] - df['close'].shift(1))
-    low_close = np.abs(df['low'] - df['close'].shift(1))
-    true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-    df['atr_50'] = true_range.rolling(window=50).mean()
-
-    df['returns'] = df['close'].pct_change()
-    df['range_pct'] = (df['high'] - df['low']) / df['close'] * 100
+    if df.empty or len(df) < 50:
+        return df
+        
+    # Use rolling windows that don't exceed the length of the dataset
+    length_20 = min(20, len(df))
+    length_50 = min(50, len(df))
+    length_100 = min(100, len(df))
+    length_200 = min(200, len(df))
+    length_252 = min(252, len(df))
+    
+    df["sma_20"] = ta.sma(df["close"], length=length_20)
+    df["sma_50"] = ta.sma(df["close"], length=length_50)
+    df["sma_100"] = ta.sma(df["close"], length=length_100)
+    df["sma_200"] = ta.sma(df["close"], length=length_200)
+    df["atr"] = ta.atr(df["high"], df["low"], df["close"], length=length_50)
+    
+    df["52_week_high"] = df["high"].rolling(window=length_252, min_periods=1).max()
+    df["52_week_low"] = df["low"].rolling(window=length_252, min_periods=1).min()
+    
+    df["away_from_high"] = ((df["52_week_high"] - df["close"]) / df["52_week_high"] * 100)
+    df["away_from_low"] = ((df["close"] - df["52_week_low"]) / df["52_week_low"] * 100)
+    
+    # Replace NaN or infinite values with 0
+    df = df.fillna(0)
+    df.replace([float('inf'), float('-inf')], 0, inplace=True)
     
     return df
 
@@ -116,6 +136,163 @@ def apply_realtime_filters(df: pd.DataFrame) -> bool:
         return False
         
     return True
+
+# =============================================================================
+# LIVE DATA INTEGRATION FUNCTIONS
+# =============================================================================
+
+def check_market_hours() -> bool:
+    """
+    Check if the market is currently open.
+    Returns True if market is open, False otherwise.
+    """
+    now = datetime.now(TIMEZONE).time()
+    is_open = MARKET_OPEN <= now <= MARKET_CLOSE
+    logger.info(f"Market hours check: Current time {now}, Market open: {is_open}")
+    return is_open
+
+def fetch_batch_live_data(instrument_tokens: List[int]) -> Dict[int, Dict]:
+    """
+    Fetch live quotes for a batch of instrument tokens efficiently.
+    Uses Kite API's ability to fetch up to 500 instruments at once.
+    
+    Args:
+        instrument_tokens: List of instrument tokens to fetch
+        
+    Returns:
+        Dict mapping instrument_token to OHLCV data dict
+    """
+    if not instrument_tokens:
+        return {}
+    
+    batch_size = min(len(instrument_tokens), 500)  # Kite API limit
+    logger.debug(f"Fetching live data for batch of {len(instrument_tokens)} symbols")
+    
+    try:
+        # Fetch quotes for the entire batch at once
+        quote_data = kite.quote(instrument_tokens)
+        
+        live_data_batch = {}
+        for token in instrument_tokens:
+            token_str = str(token)
+            if token_str in quote_data:
+                quote = quote_data[token_str]
+                ohlc = quote.get('ohlc', {})
+                
+                # Try multiple volume field names
+                volume_today = quote.get('volume_today', 0) or quote.get('volume', 0) or quote.get('day_volume', 0)
+                
+                live_data = {
+                    'open': float(ohlc.get('open', 0)),
+                    'high': float(ohlc.get('high', 0)), 
+                    'low': float(ohlc.get('low', 0)),
+                    'close': float(quote.get('last_price', 0)),
+                    'volume': float(volume_today)
+                }
+                
+                # Log volume data for debugging
+                if volume_today == 0:
+                    logger.debug(f"Zero volume for {token}. Available fields: {list(quote.keys())}")
+                
+                # Validate live data (allow zero volume during market hours)
+                if live_data['close'] > 0 and live_data['open'] > 0:
+                    live_data_batch[token] = live_data
+                else:
+                    logger.debug(f"Invalid live data for {token}: {live_data}")
+            else:
+                logger.debug(f"No quote data for token {token}")
+        
+        logger.info(f"Successfully fetched live data for {len(live_data_batch)}/{len(instrument_tokens)} symbols")
+        return live_data_batch
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch batch live data: {e}")
+        return {}
+
+def fetch_single_symbol_live_data(instrument_token: int) -> Optional[Dict]:
+    """
+    DEPRECATED: Use fetch_batch_live_data instead for efficiency.
+    Kept for backward compatibility only.
+    """
+    batch_data = fetch_batch_live_data([instrument_token])
+    return batch_data.get(instrument_token)
+
+def create_same_day_candle(historical_df: pd.DataFrame, live_ohlcv: Dict, symbol: str) -> pd.DataFrame:
+    """
+    Create a proper same-day candle using actual OHLCV data and append to historical data.
+    Recalculates technical indicators with the new data point.
+    
+    Args:
+        historical_df: Historical OHLC DataFrame
+        live_ohlcv: Live OHLCV data dictionary
+        symbol: Stock symbol
+        
+    Returns:
+        Updated DataFrame with same-day candle and recalculated indicators
+    """
+    if historical_df.empty:
+        logger.warning(f"Empty historical data for {symbol}")
+        return historical_df
+        
+    last_row = historical_df.iloc[-1]
+    today = datetime.now(TIMEZONE).date()
+    
+    # Check if we already have today's data
+    last_date = pd.to_datetime(last_row['date']).date()
+    if last_date >= today:
+        logger.debug(f"Already have today's data for {symbol}, last_date: {last_date}")
+        return historical_df
+    
+    # Validate live OHLCV data
+    if not all(key in live_ohlcv for key in ['open', 'high', 'low', 'close', 'volume']):
+        logger.warning(f"Incomplete live OHLCV data for {symbol}: {live_ohlcv}")
+        return historical_df
+        
+    if live_ohlcv['close'] <= 0 or live_ohlcv['open'] <= 0:
+        logger.warning(f"Invalid price data for {symbol}: {live_ohlcv}")
+        return historical_df
+    
+    # Handle zero volume by using historical average
+    actual_volume = live_ohlcv['volume']
+    if actual_volume == 0:
+        # Use average of last 20 days volume as estimate
+        recent_volume = historical_df['volume'].tail(20).mean()
+        estimated_volume = recent_volume * 0.6  # Assume partial day trading
+        logger.debug(f"Zero volume for {symbol}, using estimated volume: {estimated_volume:.0f}")
+        volume_to_use = estimated_volume
+    else:
+        volume_to_use = actual_volume
+    
+    # Create same-day candle with actual OHLCV data
+    same_day_candle = {
+        "instrument_token": last_row["instrument_token"],
+        "symbol": symbol,
+        "interval": "day",
+        "date": TIMEZONE.localize(datetime.combine(today, MARKET_CLOSE)),  # Market close time
+        "open": live_ohlcv['open'],      # Actual opening price
+        "high": live_ohlcv['high'],      # Actual high
+        "low": live_ohlcv['low'],        # Actual low  
+        "close": live_ohlcv['close'],    # Current price
+        "volume": volume_to_use,         # Actual or estimated volume
+        "segment": last_row["segment"],
+        # Initialize indicators (will be recalculated)
+        "sma_20": 0, "sma_50": 0, "sma_100": 0, "sma_200": 0,
+        "atr": 0, "52_week_high": 0, "52_week_low": 0,
+        "away_from_high": 0, "away_from_low": 0
+    }
+    
+    volume_type = "estimated" if actual_volume == 0 else "actual"
+    logger.info(f"Creating same-day candle for {symbol}: O:{live_ohlcv['open']:.2f} H:{live_ohlcv['high']:.2f} L:{live_ohlcv['low']:.2f} C:{live_ohlcv['close']:.2f} V:{volume_to_use:.0f}({volume_type})")
+    
+    # Append same-day candle to historical data
+    updated_df = pd.concat([historical_df, pd.DataFrame([same_day_candle])], ignore_index=True)
+    
+    # Recalculate technical indicators with new data point
+    updated_df = calculate_technical_indicators(updated_df)
+    
+    logger.debug(f"Updated {symbol} with same-day candle. New DataFrame shape: {updated_df.shape}")
+    
+    return updated_df
 
 # =============================================================================
 # VCP DETECTION FUNCTIONS (ADAPTED FOR REAL-TIME)
@@ -255,8 +432,21 @@ def validate_realtime_breakout(df: pd.DataFrame, pattern_start: int, breakout_id
     # Volume surge check for TODAY's candle
     if STAGE_FLAGS['require_volume_surge']:
         recent_volume = df.iloc[max(0, breakout_idx-10):breakout_idx]['volume'].mean()
-        volume_surge = breakout_volume > recent_volume * VCP_CONFIG['volume_multiplier']
         volume_ratio = breakout_volume / recent_volume if recent_volume > 0 else 0
+        
+        # Check if this is today's candle (same-day trading)
+        breakout_date = pd.to_datetime(breakout_candle['date']).date()
+        today = datetime.now(TIMEZONE).date()
+        is_today_candle = breakout_date >= today
+        
+        if is_today_candle:
+            # Relaxed volume requirement for live/same-day candles
+            # Since volume accumulates during the day, use a lower threshold
+            volume_surge = breakout_volume > recent_volume * 0.3  # 30% of historical average
+            logger.debug(f"Live candle volume check for {df.iloc[0]['symbol'] if 'symbol' in df.columns else 'symbol'}: {breakout_volume:.0f} vs {recent_volume * 0.3:.0f} (30% threshold)")
+        else:
+            # Standard volume requirement for historical candles
+            volume_surge = breakout_volume > recent_volume * VCP_CONFIG['volume_multiplier']
     else:
         volume_surge = True
         volume_ratio = 1.0
@@ -402,9 +592,15 @@ def detect_realtime_vcp_breakout(df: pd.DataFrame, symbol: str) -> Optional[Dict
     if not early_sma_filter:
         return None  # Skip this stock entirely if SMA criteria not met
     
-    # Check last 3 candles for breakouts (more flexible)
+    # Check last 3 candles for breakouts, prioritizing today's candle
+    today = datetime.now(TIMEZONE).date()
+    
     for lookback in range(0, min(3, len(df))):
         breakout_idx = len(df) - 1 - lookback
+        
+        # Check if this is today's candle
+        candle_date = pd.to_datetime(df.iloc[breakout_idx]['date']).date()
+        is_today_candle = candle_date >= today
         
         # Try different pattern durations ending at the breakout candle
         for pattern_duration in range(VCP_CONFIG['min_pattern_duration'], 
@@ -458,11 +654,24 @@ def detect_realtime_vcp_breakout(df: pd.DataFrame, symbol: str) -> Optional[Dict
                 continue
             
             # Valid VCP breakout found - collect metrics
-            return collect_realtime_metrics(
+            result = collect_realtime_metrics(
                 df, symbol, pattern_start, pattern_end, breakout_idx,
                 uptrend_result, contractions, volume_result, sma_result,
                 breakout_result, compression_result, quality_result
             )
+            
+            # If this is today's breakout, prioritize it and return immediately
+            if is_today_candle:
+                logger.info(f"🔥 TODAY'S VCP BREAKOUT found for {symbol} - prioritizing over historical patterns")
+                return result
+            
+            # Store historical breakout but continue checking for today's breakout
+            historical_result = result
+    
+    # If no today's breakout found, return the best historical breakout if any
+    if 'historical_result' in locals():
+        logger.info(f"📅 No today's breakout for {symbol}, using historical VCP breakout")
+        return historical_result
     
     return None
 
@@ -477,7 +686,7 @@ def collect_realtime_metrics(df: pd.DataFrame, symbol: str, pattern_start: int,
     pattern_data = df.iloc[pattern_start:pattern_end]
     
     # Calculate potential exit levels
-    atr_50 = breakout_candle['atr_50']
+    atr_50 = breakout_candle['atr']
     entry_price = breakout_candle['close']
     
     # Stop loss calculation (3x ATR with bounds)
@@ -695,6 +904,10 @@ def collect_realtime_metrics(df: pd.DataFrame, symbol: str, pattern_start: int,
         'uptrend_strength': 'strong' if uptrend_result['gain'] > 20 else 'moderate' if uptrend_result['gain'] > 10 else 'weak',
         'volatility_compression_quality': 'excellent' if compression_result['ratio'] < 0.5 else 'good' if compression_result['ratio'] < 0.7 else 'acceptable',
         'overall_pattern_grade': 'A' if quality_result['total_score'] >= 7 else 'B' if quality_result['total_score'] >= 5 else 'C' if quality_result['total_score'] >= 3 else 'D',
+        
+        # ===== LIVE DATA INTEGRATION FLAGS =====
+        'used_live_data': pd.to_datetime(breakout_candle['date']).date() >= datetime.now(TIMEZONE).date(),
+        'is_same_day_breakout': pd.to_datetime(breakout_candle['date']).date() >= datetime.now(TIMEZONE).date(),
     }
 
 # =============================================================================
@@ -704,16 +917,27 @@ def collect_realtime_metrics(df: pd.DataFrame, symbol: str, pattern_start: int,
 def run_advanced_vcp_scan_sequential() -> bool:
     """
     Sequential VCP scan that processes one stock at a time for memory efficiency.
+    Now includes live data integration during market hours.
     This eliminates deadlocks and memory issues by:
     1. Getting just the symbols list first
-    2. Processing each symbol individually with its own DB connection
-    3. Saving results incrementally
+    2. Checking market hours once
+    3. Processing each symbol individually with its own DB connection
+    4. Fetching live data for each symbol during market hours
+    5. Creating same-day candles with actual OHLCV data
+    6. Saving results incrementally
     """
     from models import SaveOHLC
     
-    logger.info("Starting sequential advanced VCP scan...")
+    logger.info("Starting sequential advanced VCP scan with live data integration...")
     
-    # Step 1: Get list of symbols to process
+    # Step 1: Check market hours once at the beginning
+    is_market_open = check_market_hours()
+    if is_market_open:
+        logger.info("🟢 Market is OPEN - Will fetch live data for each symbol during processing")
+    else:
+        logger.info("🔴 Market is CLOSED - Using historical data only")
+    
+    # Step 2: Get list of symbols to process
     conn, cur = None, None
     try:
         conn, cur = get_trade_db_connection()
@@ -723,6 +947,8 @@ def run_advanced_vcp_scan_sequential() -> bool:
             logger.warning("No symbols found for VCP screening")
             return False
             
+        logger.info(f"Found {len(symbols_list)} symbols for processing")
+            
     except Exception as e:
         logger.error(f"Error fetching symbols for screening: {e}", exc_info=True)
         return False
@@ -730,7 +956,7 @@ def run_advanced_vcp_scan_sequential() -> bool:
         if conn:
             release_trade_db_connection(conn, cur)
     
-    # Step 2: Clear old results before starting
+    # Step 3: Clear old results before starting
     try:
         conn, cur = get_trade_db_connection()
         AdvancedVcpResult.delete_all(cur)
@@ -744,112 +970,162 @@ def run_advanced_vcp_scan_sequential() -> bool:
         if conn:
             release_trade_db_connection(conn, cur)
     
-    # Step 3: Process each symbol sequentially
+    # Step 4: Process symbols in batches with efficient live data integration
     breakouts = []
     total_symbols = len(symbols_list)
     processed_count = 0
     error_count = 0
+    live_data_fetched_count = 0
+    same_day_candles_created = 0
+    batch_size = 50
     
-    logger.info(f"Processing {total_symbols} symbols sequentially...")
+    logger.info(f"Processing {total_symbols} symbols in batches of {batch_size}...")
     
-    for symbol, instrument_token in symbols_list:
-        processed_count += 1
+    # Process symbols in batches
+    for batch_start in range(0, total_symbols, batch_size):
+        batch_end = min(batch_start + batch_size, total_symbols)
+        batch_symbols = symbols_list[batch_start:batch_end]
         
-        try:
-            # Log progress every 50 stocks
-            if processed_count % 50 == 0:
-                logger.info(f"Sequential VCP scan progress: {processed_count}/{total_symbols} ({len(breakouts)} breakouts found)")
-            
-            # Get fresh DB connection for this symbol
-            conn, cur = None, None
+        logger.info(f"Processing batch {batch_start//batch_size + 1}: symbols {batch_start+1}-{batch_end}")
+        
+        # Fetch live data for entire batch if market is open
+        batch_live_data = {}
+        if is_market_open:
             try:
-                conn, cur = get_trade_db_connection()
-                
-                # Fetch OHLC data for just this symbol
-                stock_df = SaveOHLC.fetch_ohlc_for_single_symbol(cur, symbol)
-                
-                if stock_df.empty:
-                    continue
-                
-                # Ensure required columns are present
-                required_cols = ['open', 'high', 'low', 'close', 'volume', 'date', 'sma_50', 'sma_100', 'sma_200']
-                if not all(col in stock_df.columns for col in required_cols):
-                    logger.debug(f"Skipping {symbol}: missing required columns")
-                    continue
-
-                # Calculate necessary indicators that might be missing
-                stock_df = calculate_technical_indicators(stock_df)
-                
-                # Apply basic filters
-                if not apply_realtime_filters(stock_df):
-                    continue
-                
-                # Run detection logic
-                pattern = detect_realtime_vcp_breakout(stock_df, symbol)
-                if pattern:
-                    logger.info(f"✅ SEQUENTIAL VCP BREAKOUT FOUND: {pattern['symbol']} (Score: {pattern['quality_score']})")
-                    breakouts.append(pattern)
+                batch_tokens = [instrument_token for _, instrument_token in batch_symbols]
+                batch_live_data = fetch_batch_live_data(batch_tokens)
+                live_data_fetched_count += len(batch_live_data)
+                logger.debug(f"Fetched live data for {len(batch_live_data)}/{len(batch_tokens)} symbols in batch")
+            except Exception as e:
+                logger.warning(f"Failed to fetch batch live data: {e}")
+        
+        # Process each symbol in the batch
+        for symbol, instrument_token in batch_symbols:
+            processed_count += 1
+            
+            try:
+                # Get fresh DB connection for this symbol
+                conn, cur = None, None
+                try:
+                    conn, cur = get_trade_db_connection()
                     
-                    # Save this breakout immediately to avoid memory buildup
-                    if len(breakouts) >= 10:  # Batch save every 10 breakouts
+                    # Fetch OHLC data for just this symbol
+                    stock_df = SaveOHLC.fetch_ohlc_for_single_symbol(cur, symbol)
+                    
+                    if stock_df.empty:
+                        continue
+                    
+                    # Ensure required columns are present
+                    required_cols = ['open', 'high', 'low', 'close', 'volume', 'date', 'sma_50', 'sma_100', 'sma_200']
+                    if not all(col in stock_df.columns for col in required_cols):
+                        logger.debug(f"Skipping {symbol}: missing required columns")
+                        continue
+
+                    # Calculate necessary indicators that might be missing
+                    stock_df = calculate_technical_indicators(stock_df)
+                    
+                    # LIVE DATA INTEGRATION: Use pre-fetched batch live data during market hours
+                    if is_market_open and instrument_token in batch_live_data:
                         try:
-                            AdvancedVcpResult.batch_save(cur, breakouts)
-                            conn.commit()
-                            logger.info(f"Saved batch of {len(breakouts)} VCP breakouts")
-                            breakouts = []  # Clear the list
-                        except Exception as save_error:
-                            logger.error(f"Error saving breakout batch: {save_error}")
-                            conn.rollback()
+                            live_ohlcv = batch_live_data[instrument_token]
                             
+                            # Create same-day candle with actual OHLCV data and recalculate indicators
+                            original_shape = stock_df.shape
+                            stock_df = create_same_day_candle(stock_df, live_ohlcv, symbol)
+                            
+                            # Check if same-day candle was actually added
+                            if stock_df.shape[0] > original_shape[0]:
+                                same_day_candles_created += 1
+                                logger.debug(f"✅ Added same-day candle for {symbol}")
+                            else:
+                                logger.debug(f"ℹ️ No same-day candle needed for {symbol} (already current)")
+                                
+                        except Exception as live_error:
+                            logger.warning(f"Failed to process live data for {symbol}: {live_error}")
+                            # Continue with historical data only
+                    elif is_market_open:
+                        logger.debug(f"⚠️ No live data available for {symbol}")
+                    else:
+                        logger.debug(f"Market closed - using historical data only for {symbol}")
+                    
+                    # Apply basic filters
+                    if not apply_realtime_filters(stock_df):
+                        continue
+                    
+                    # Run VCP detection logic on the updated data (with same-day candle if market is open)
+                    pattern = detect_realtime_vcp_breakout(stock_df, symbol)
+                    if pattern:
+                        # Add additional metadata about live data usage
+                        pattern['used_live_data'] = is_market_open and instrument_token in batch_live_data
+                        pattern['same_day_candle_used'] = pattern['used_live_data']
+                        pattern['instrument_token'] = instrument_token
+                        
+                        logger.info(f"✅ VCP BREAKOUT FOUND: {symbol} (Score: {pattern['quality_score']}, Live Data: {pattern['used_live_data']})")
+                        breakouts.append(pattern)
+                        
+                except Exception as symbol_error:
+                    error_count += 1
+                    logger.error(f"Error processing symbol {symbol}: {symbol_error}", exc_info=True)
+                    continue
+                finally:
+                    if conn:
+                        release_trade_db_connection(conn, cur)
+                        
             except Exception as e:
                 error_count += 1
-                logger.error(f"Error processing symbol {symbol}: {e}")
-                if conn:
-                    conn.rollback()
+                logger.error(f"Unexpected error processing {symbol}: {e}", exc_info=True)
                 continue
-            finally:
-                if conn:
-                    release_trade_db_connection(conn, cur)
-                    
-        except Exception as e:
-            error_count += 1
-            logger.error(f"Fatal error processing symbol {symbol}: {e}", exc_info=True)
-            continue
+        
+        # Log progress after each batch
+        logger.info(f"Batch VCP scan progress: {processed_count}/{total_symbols} ({len(breakouts)} breakouts found, {live_data_fetched_count} live data fetched, {same_day_candles_created} same-day candles)")
     
-    # Step 4: Save any remaining breakouts
+    # Step 5: Log final statistics
+    logger.info(f"Sequential VCP scan completed:")
+    logger.info(f"  📊 Total symbols processed: {processed_count}")
+    logger.info(f"  ✅ VCP breakouts found: {len(breakouts)}")
+    logger.info(f"  🔴 Errors encountered: {error_count}")
+    if is_market_open:
+        logger.info(f"  📡 Live data fetched: {live_data_fetched_count}")
+        logger.info(f"  📈 Same-day candles created: {same_day_candles_created}")
+    
+    # Step 6: Save results to database
     if breakouts:
+        conn, cur = None, None
         try:
             conn, cur = get_trade_db_connection()
             AdvancedVcpResult.batch_save(cur, breakouts)
+            
+            # Send NOTIFY to trigger WebSocket subscription updates
+            cur.execute("NOTIFY data_changed, 'advanced_vcp_results'")
+            logger.info("Sent NOTIFY to update ticker subscriptions with advanced VCP screener tokens")
+            
             conn.commit()
-            logger.info(f"Saved final batch of {len(breakouts)} VCP breakouts")
+            logger.info(f"✅ Successfully saved {len(breakouts)} advanced VCP results to database")
+            return True
         except Exception as e:
-            logger.error(f"Error saving final breakout batch: {e}")
             if conn:
                 conn.rollback()
+            logger.error(f"Failed to save advanced VCP results to database: {e}", exc_info=True)
+            return False
         finally:
             if conn:
                 release_trade_db_connection(conn, cur)
-    
-    # Step 5: Send notification to update subscriptions
-    try:
-        conn, cur = get_trade_db_connection()
-        cur.execute("NOTIFY data_changed, 'advanced_vcp_results'")
-        conn.commit()
-        logger.info("Sent NOTIFY to update ticker subscriptions with VCP results")
-    except Exception as e:
-        logger.error(f"Error sending notification: {e}")
-    finally:
-        if conn:
-            release_trade_db_connection(conn, cur)
-    
-    # Step 6: Log final results
-    total_breakouts = len([b for b in breakouts])  # Any remaining + what was saved in batches
-    logger.info(f"Sequential VCP scan completed:")
-    logger.info(f"  - Processed: {processed_count}/{total_symbols} symbols")
-    logger.info(f"  - Errors: {error_count}")
-    logger.info(f"  - Memory-efficient sequential processing completed successfully")
-    
+    else:
+        # If no breakouts, still clear the old data (already done in step 3)
+        logger.info("No breakouts found to save.")
+        conn, cur = None, None
+        try:
+            conn, cur = get_trade_db_connection()
+            # Send NOTIFY even when no results to update subscriptions
+            cur.execute("NOTIFY data_changed, 'advanced_vcp_results'")
+            logger.info("Sent NOTIFY to update ticker subscriptions after clearing advanced VCP results")
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to send notification: {e}", exc_info=True)
+        finally:
+            if conn:
+                release_trade_db_connection(conn, cur)
+
     return True
 
 def run_advanced_vcp_scan(ohlc_df: pd.DataFrame, max_results: int = 50) -> bool:
