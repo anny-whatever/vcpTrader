@@ -209,13 +209,7 @@ def fetch_batch_live_data(instrument_tokens: List[int]) -> Dict[int, Dict]:
         logger.error(f"Failed to fetch batch live data: {e}")
         return {}
 
-def fetch_single_symbol_live_data(instrument_token: int) -> Optional[Dict]:
-    """
-    DEPRECATED: Use fetch_batch_live_data instead for efficiency.
-    Kept for backward compatibility only.
-    """
-    batch_data = fetch_batch_live_data([instrument_token])
-    return batch_data.get(instrument_token)
+
 
 def create_same_day_candle(historical_df: pd.DataFrame, live_ohlcv: Dict, symbol: str) -> pd.DataFrame:
     """
@@ -1128,111 +1122,7 @@ def run_advanced_vcp_scan_sequential() -> bool:
 
     return True
 
-def run_advanced_vcp_scan(ohlc_df: pd.DataFrame, max_results: int = 50) -> bool:
-    """
-    DEPRECATED: Legacy bulk VCP scan - use run_advanced_vcp_scan_sequential() instead.
-    This function is kept for backward compatibility but may cause memory/deadlock issues.
-    """
-    logger.warning("Using legacy bulk VCP scan - consider switching to sequential version")
-    
-    if ohlc_df.empty:
-        logger.warning("Advanced VCP screener called with empty OHLC data.")
-        return False
 
-    logger.info(f"Starting legacy VCP scan on {len(ohlc_df['symbol'].unique())} stocks.")
-    
-    breakouts = []
-    total_symbols = len(ohlc_df['symbol'].unique())
-    processed_count = 0
-
-    # Group by symbol and process each stock
-    for symbol, group_df in ohlc_df.groupby('symbol'):
-        processed_count += 1
-        # Removed max_results limit - let it scan all stocks
-        # if len(breakouts) >= max_results:
-        #     logger.info(f"Reached max results ({max_results}). Stopping scan.")
-        #     break
-            
-        try:
-            # Log progress
-            if processed_count % 100 == 0:
-                logger.info(f"Legacy VCP scan progress: {processed_count}/{total_symbols}")
-
-            # Sort by date and reset index for consistent processing
-            stock_df = group_df.sort_values('date').reset_index(drop=True)
-            
-            # Ensure required columns are present
-            required_cols = ['open', 'high', 'low', 'close', 'volume', 'date', 'sma_50', 'sma_100', 'sma_200']
-            if not all(col in stock_df.columns for col in required_cols):
-                logger.warning(f"Skipping {symbol}: missing one or more required columns.")
-                continue
-
-            # Calculate necessary indicators that might be missing
-            stock_df = calculate_technical_indicators(stock_df)
-            
-            # Apply basic filters
-            if not apply_realtime_filters(stock_df):
-                continue
-            
-            # Run detection logic
-            pattern = detect_realtime_vcp_breakout(stock_df, symbol)
-            if pattern:
-                logger.info(f"✅ LEGACY VCP BREAKOUT FOUND: {pattern['symbol']} (Score: {pattern['quality_score']})")
-                breakouts.append(pattern)
-                
-        except Exception as e:
-            logger.error(f"Error processing symbol {symbol} in legacy VCP scan: {e}", exc_info=True)
-            continue
-            
-    logger.info(f"Legacy VCP scan loop finished. Found {len(breakouts)} breakouts. Now attempting to save to DB.")
-    
-    # Save results to the database
-    if breakouts:
-        conn, cur = None, None
-        try:
-            conn, cur = get_trade_db_connection()
-            # Clear previous results before inserting new ones
-            AdvancedVcpResult.delete_all(cur)
-            AdvancedVcpResult.batch_save(cur, breakouts)
-            
-            # Send NOTIFY to trigger WebSocket subscription updates
-            cur.execute("NOTIFY data_changed, 'advanced_vcp_results'")
-            logger.info("Sent NOTIFY to update ticker subscriptions with advanced VCP screener tokens")
-            
-            conn.commit()
-            logger.info("Successfully saved advanced VCP results to database.")
-            return True
-        except Exception as e:
-            if conn:
-                conn.rollback()
-            logger.error(f"Failed to save advanced VCP results to database: {e}", exc_info=True)
-            return False
-        finally:
-            if conn:
-                release_trade_db_connection(conn, cur)
-    else:
-        # If no breakouts, still clear the old data
-        logger.info("No breakouts found to save. Clearing old results from the database.")
-        conn, cur = None, None
-        try:
-            conn, cur = get_trade_db_connection()
-            AdvancedVcpResult.delete_all(cur)
-            
-            # Send NOTIFY even when clearing old results to update subscriptions
-            cur.execute("NOTIFY data_changed, 'advanced_vcp_results'")
-            logger.info("Sent NOTIFY to update ticker subscriptions after clearing advanced VCP results")
-            
-            conn.commit()
-            logger.info("No new breakouts found. Cleared old advanced VCP results from database.")
-        except Exception as e:
-            if conn:
-                conn.rollback()
-            logger.error(f"Failed to clear old advanced VCP results: {e}", exc_info=True)
-        finally:
-            if conn:
-                release_trade_db_connection(conn, cur)
-
-    return True
 
 # =============================================================================
 # MAIN EXECUTION
@@ -1243,42 +1133,11 @@ if __name__ == "__main__":
     
     print("Starting VCP Real-Time Scanner...")
     
-    # Configuration options
-    max_results = 5000
-    if '--max' in sys.argv:
-        try:
-            max_idx = sys.argv.index('--max')
-            max_results = int(sys.argv[max_idx + 1])
-        except (IndexError, ValueError):
-            print("Invalid --max parameter, using default 50")
+    # Run the optimized sequential scan
+    success = run_advanced_vcp_scan_sequential()
     
-    # Run the scan
-    breakouts = run_advanced_vcp_scan(max_results=max_results)
-    
-    if breakouts:
-        # Generate and save report
-        report = generate_trading_report(breakouts)
-        
-        # Save to file
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_dir = 'Backtester/full_test'
-        os.makedirs(output_dir, exist_ok=True)
-        
-        # Save detailed data
-        df = pd.DataFrame(breakouts)
-        csv_file = f'{output_dir}/vcp_breakouts_{timestamp}.csv'
-        df.to_csv(csv_file, index=False)
-        
-        # Save report
-        report_file = f'{output_dir}/vcp_trading_report_{timestamp}.txt'
-        with open(report_file, 'w', encoding='utf-8') as f:
-            f.write(report)
-        
-        # Print summary
-        print(report)
-        print(f"\n📊 Detailed data saved: {csv_file}")
-        print(f"📋 Trading report saved: {report_file}")
-        
+    if success:
+        print("✅ VCP scan completed successfully. Check the database for results.")
     else:
-        print("❌ No VCP breakouts found in current scan.")
+        print("❌ VCP scan failed or no breakouts found.")
         print("Try running during market hours or check data availability.") 

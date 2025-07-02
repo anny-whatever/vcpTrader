@@ -151,7 +151,19 @@ def close_db_connection():
     global conn, cur
     if conn or cur:
         logger.warning("Using deprecated global connection cleanup - consider updating code to use release_main_db_connection()")
-        close_db_connection_legacy()
+        # Legacy cleanup inline since the function was removed
+        try:
+            if cur:
+                cur.close()
+                cur = None
+        except Exception as e:
+            logger.error(f"Error closing DB cursor: {e}")
+        try:
+            if conn:
+                conn.close()
+                conn = None
+        except Exception as e:
+            logger.error(f"Error closing DB connection: {e}")
 
 def close_main_pool():
     global main_conn_pool
@@ -163,24 +175,4 @@ def close_main_pool():
     except Exception as e:
         logger.error(f"Error closing main DB connection pool: {e}")
 
-# Deprecated legacy function - keeping for backward compatibility
-def close_db_connection_legacy():
-    """
-    Legacy function for backward compatibility.
-    This closes the global connection variables (deprecated pattern).
-    """
-    global conn, cur
-    try:
-        if cur:
-            cur.close()
-            cur = None
 
-    except Exception as e:
-        logger.error(f"Error closing DB cursor: {e}")
-    try:
-        if conn:
-            conn.close()
-            conn = None
-
-    except Exception as e:
-        logger.error(f"Error closing DB connection: {e}")

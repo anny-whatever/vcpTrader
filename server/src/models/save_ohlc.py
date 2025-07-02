@@ -246,39 +246,7 @@ class SaveOHLC:
         logger.warning("fetch_precomputed_ohlc is deprecated. Use fetch_ohlc_exclude_ipo_and_all() instead.")
         return cls.fetch_ohlc_exclude_ipo_and_all(cur)
 
-    @classmethod
-    def fetch_precomputed_weekly_ohlc(cls, cur, limit=200, exclude_segments=None, include_segments=None):
-        """
-        DEPRECATED - Use fetch_ohlc_exclude_ipo() instead.
-        
-        This method is kept for backward compatibility.
-        By default, it excludes only IPO segment.
-        """
-        logger.warning("fetch_precomputed_weekly_ohlc is deprecated. Use fetch_ohlc_exclude_ipo() instead.")
-        return cls.fetch_ohlc_exclude_ipo(cur)
 
-    @classmethod
-    def fetch_precomputed_ohlc_without_segments(cls, cur, exclude_segments=None, limit=200):
-        """
-        DEPRECATED - Use fetch_ohlc_exclude_ipo(), fetch_ohlc_exclude_all_segment(), 
-        or fetch_ohlc_exclude_ipo_and_all() instead.
-        
-        This method is kept for backward compatibility.
-        By default, it excludes both IPO and ALL segments.
-        """
-        logger.warning("fetch_precomputed_ohlc_without_segments is deprecated. Use fetch_ohlc_exclude_ipo_and_all() instead.")
-        return cls.fetch_ohlc_exclude_ipo_and_all(cur)
-
-    @classmethod
-    def fetch_precomputed_weekly_ohlc_with_filtering(cls, cur, include_segments=None, exclude_segments=None, limit=200):
-        """
-        DEPRECATED - Use fetch_ohlc_exclude_ipo() instead.
-        
-        This method is kept for backward compatibility.
-        By default, it excludes only IPO segment.
-        """
-        logger.warning("fetch_precomputed_weekly_ohlc_with_filtering is deprecated. Use fetch_ohlc_exclude_ipo() instead.")
-        return cls.fetch_ohlc_exclude_ipo(cur)
 
     @classmethod
     def fetch_ohlc_exclude_ipo(cls, cur):

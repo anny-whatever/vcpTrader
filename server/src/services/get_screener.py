@@ -15,7 +15,7 @@ from models import ScreenerResult, AdvancedVcpResult
 from models import SaveOHLC
 
 # Import the advanced screener function
-from .advanced_vcp_screener import run_advanced_vcp_scan as run_advanced_vcp_scan_logic
+from .advanced_vcp_screener import run_advanced_vcp_scan_sequential as run_advanced_vcp_scan_logic
 
 # Import the new display data functions - removed to avoid circular dependencies
 # from .get_display_data import (
@@ -591,14 +591,4 @@ def run_advanced_vcp_screener():
             advanced_vcp_screener_running = False
             logger.info("Sequential Advanced VCP Screener finished.")
 
-def run_advanced_vcp_screener_legacy():
-    """
-    DEPRECATED: Legacy bulk VCP screener - kept for backward compatibility.
-    This function is no longer recommended due to memory issues.
-    Use run_advanced_vcp_screener() for the optimized sequential version.
-    """
-    logger.warning("⚠️ DEPRECATED: Legacy VCP screener called - redirecting to optimized version")
-    logger.warning("🔄 Consider updating code to use run_advanced_vcp_screener() directly")
-    
-    # Redirect to optimized version
-    return run_advanced_vcp_screener()
+

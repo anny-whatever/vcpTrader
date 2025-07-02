@@ -274,14 +274,6 @@ def get_optimized_scheduler():
 
         # -- Core daily jobs with optimized timing --
         
-        # Exit checking (lightweight, keep original timing)
-        scheduler.add_job(
-            check_exits_on_schedule,
-            CronTrigger(minute='25', hour='15', day_of_week='mon-fri'),
-            max_instances=1,
-            replace_existing=True,
-            id="optimized_check_exits"
-        )
         
         # OHLC data collection (heavy task, run once daily with optimization)
         scheduler.add_job(
@@ -304,40 +296,20 @@ def get_optimized_scheduler():
         # VCP screener (very heavy, run less frequently)
         scheduler.add_job(
             run_vcp_screener_on_schedule_optimized,
-            CronTrigger(day_of_week='mon-fri', hour='10,12,14', minute='0'),  # Only 3 times per day
+            CronTrigger(day_of_week='mon-fri', hour='10,11,12,13,14,15', minute='0'),  # Only 3 times per day
+            max_instances=1,
+            replace_existing=True,
+            id="optimized_vcp_screener"
+        )
+        scheduler.add_job(
+            run_vcp_screener_on_schedule_optimized,
+            CronTrigger(day_of_week='mon-fri', hour='9', minute='30'),  # 9am 
             max_instances=1,
             replace_existing=True,
             id="optimized_vcp_screener"
         )
 
-        # -- Optimized resampling jobs with resource awareness --
-        
-        # 1-minute resampling (every minute during trading hours)
-        scheduler.add_job(
-            resample_job_one_minute_optimized,
-            CronTrigger(day_of_week='mon-fri', hour='9-15', minute='*'),
-            max_instances=1,
-            replace_existing=True,
-            id="optimized_resample_1min"
-        )
-
-        # 5-minute resampling (every 5 minutes during trading hours)
-        scheduler.add_job(
-            resample_job_five_minute_optimized,
-            CronTrigger(day_of_week='mon-fri', hour='9-15', minute='*/5'),
-            max_instances=1,
-            replace_existing=True,
-            id="optimized_resample_5min"
-        )
-
-        # 15-minute resampling (every 15 minutes during trading hours)
-        scheduler.add_job(
-            resample_job_fifteen_minute_optimized,
-            CronTrigger(day_of_week='mon-fri', hour='9-15', minute='*/15'),
-            max_instances=1,
-            replace_existing=True,
-            id="optimized_resample_15min"
-        )
+        # -- Optimized resampling jobs with resource awareness --    
 
         # Log cleaning (lightweight, daily)
         scheduler.add_job(
