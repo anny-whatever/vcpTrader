@@ -82,7 +82,7 @@ def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df['sma_20'] = df['close'].rolling(window=20).mean()
     df['sma_50'] = df['close'].rolling(window=50).mean()
     df['sma_100'] = df['close'].rolling(window=100).mean()
-    df['sma_200'] = df['close'].rolling(window=200).mean()
+    df['sma_2source .venv/bin/activate &&source .venv/bin/activate &&00'] = df['close'].rolling(window=200).mean()
     
     # Calculate ATR with a period of 50
     high_low = df['high'] - df['low']

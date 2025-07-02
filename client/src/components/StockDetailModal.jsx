@@ -15,6 +15,15 @@ import {
 const StockDetailModal = ({ isOpen, onClose, stockData }) => {
   if (!stockData) return null;
 
+  // Debug logging for SMA values
+  console.log('StockDetailModal - SMA Debug:', {
+    symbol: stockData.symbol,
+    sma_50: stockData.sma_50,
+    sma_100: stockData.sma_100,
+    sma_200: stockData.sma_200,
+    raw_stockData: stockData
+  });
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
@@ -251,6 +260,10 @@ const StockDetailModal = ({ isOpen, onClose, stockData }) => {
                     <span className="font-medium text-white">{formatCurrency(stockData.sma_50)}</span>
                   </div>
                   <div className="flex justify-between">
+                    <span className="text-zinc-300 text-sm">SMA 100:</span>
+                    <span className="font-medium text-white">{formatCurrency(stockData.sma_100)}</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-zinc-300 text-sm">SMA 200:</span>
                     <span className="font-medium text-white">{formatCurrency(stockData.sma_200)}</span>
                   </div>
@@ -261,6 +274,13 @@ const StockDetailModal = ({ isOpen, onClose, stockData }) => {
                   <div className="flex justify-between">
                     <span className="text-zinc-300 text-sm">Prior Uptrend:</span>
                     <span className="font-medium text-white">{formatPercent(stockData.prior_uptrend_gain)}</span>
+                  </div>
+                  {/* Debug info - temporary */}
+                  <div className="flex justify-between border-t border-zinc-700 pt-2 mt-2">
+                    <span className="text-zinc-400 text-xs">Debug - Raw SMA Values:</span>
+                    <span className="font-mono text-xs text-zinc-400">
+                      50: {stockData.sma_50}, 100: {stockData.sma_100}, 200: {stockData.sma_200}
+                    </span>
                   </div>
                 </div>
               </CardBody>

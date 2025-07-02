@@ -61,7 +61,22 @@ class SaveOHLC:
                 %s, %s, %s, %s, %s,
                 %s, %s, %s, %s,
                 %s, %s,
-                %s, %s);
+                %s, %s)
+        ON CONFLICT (instrument_token, symbol, interval, date) 
+        DO UPDATE SET
+            open = EXCLUDED.open,
+            high = EXCLUDED.high,
+            low = EXCLUDED.low,
+            close = EXCLUDED.close,
+            volume = EXCLUDED.volume,
+            sma_50 = EXCLUDED.sma_50,
+            sma_100 = EXCLUDED.sma_100,
+            sma_200 = EXCLUDED.sma_200,
+            atr = EXCLUDED.atr,
+            "52_week_high" = EXCLUDED."52_week_high",
+            "52_week_low" = EXCLUDED."52_week_low",
+            away_from_high = EXCLUDED.away_from_high,
+            away_from_low = EXCLUDED.away_from_low;
         """
         try:
             cur.execute(query, (
@@ -157,7 +172,15 @@ class SaveOHLC:
                 low,
                 close,
                 volume,
-                segment
+                segment,
+                sma_50,
+                sma_100,
+                sma_200,
+                atr,
+                "52_week_high",
+                "52_week_low",
+                away_from_high,
+                away_from_low
             FROM ohlc
             WHERE instrument_token = %s
             AND interval = 'day'

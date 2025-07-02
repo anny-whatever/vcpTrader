@@ -168,6 +168,7 @@ function ChartModal({
       const response = await api.get(
         `/api/data/chartdata?token=${instrumentToken}&symbol=${encodedSymbol}&interval=${interval}`
       );
+      
       // Process and sort data to ensure proper time ordering
       const processedData = response.data.map((item) => ({
         time: item.date.split("T")[0], // Extract date part for daily charts
@@ -176,28 +177,33 @@ function ChartModal({
         low: item.low,
         close: item.close,
         volume: item.volume,
-        ...(item.sma_50 !== 0 ? { sma_50: item.sma_50 } : {}),
-        ...(item.sma_100 !== 0 ? { sma_100: item.sma_100 } : {}),
-        ...(item.sma_200 !== 0 ? { sma_200: item.sma_200 } : {}),
+        // Always include SMA values, even if they're 0 (filter null/undefined instead)
+        sma_50: item.sma_50 != null ? item.sma_50 : 0,
+        sma_100: item.sma_100 != null ? item.sma_100 : 0,
+        sma_200: item.sma_200 != null ? item.sma_200 : 0,
         originalDate: item.date, // Keep original for sorting
+        // Add a unique key for better duplicate detection
+        originalTimestamp: new Date(item.date).getTime(),
       }));
 
       // Sort by original datetime to maintain proper order
       processedData.sort((a, b) => new Date(a.originalDate) - new Date(b.originalDate));
 
-      // Remove duplicates by keeping the latest entry for each date
-      const uniqueData = [];
-      const seenDates = new Set();
-      
-      // Process in reverse order to keep the latest entry for each date
-      for (let i = processedData.length - 1; i >= 0; i--) {
-        const item = processedData[i];
-        if (!seenDates.has(item.time)) {
-          seenDates.add(item.time);
-          const { originalDate, ...cleanItem } = item; // Remove originalDate field
-          uniqueData.unshift(cleanItem); // Add to beginning to maintain order
+      // Improved duplicate removal - keep the most recent entry for each date
+      // Group by date and keep only the latest entry (highest timestamp)
+      const dateGroups = {};
+      processedData.forEach(item => {
+        const dateKey = item.time;
+        if (!dateGroups[dateKey] || item.originalTimestamp > dateGroups[dateKey].originalTimestamp) {
+          dateGroups[dateKey] = item;
         }
-      }
+      });
+
+      // Convert back to array and sort by date
+      const uniqueData = Object.values(dateGroups).map(item => {
+        const { originalDate, originalTimestamp, ...cleanItem } = item;
+        return cleanItem;
+      }).sort((a, b) => new Date(a.time) - new Date(b.time));
 
       const transformedData = uniqueData;
       setChartData(transformedData);

@@ -152,33 +152,14 @@ def get_combined_ohlc(instrument_token, symbol, interval='day'):
             for key in ['open', 'high', 'low', 'close', 'volume']:
                 formatted[key] = safe_float(formatted.get(key))
             
-            # Add indicators if they're not already in the data (weekly already has them)
-            if interval == 'week':
-                # These fields are already in the weekly data
-                for key in ['sma_50', 'sma_100', 'sma_200', 'atr']:
-                    if key in record:
-                        formatted[key] = safe_float(record.get(key))
+            # Add indicators from database (both daily and weekly now have them)
+            for key in ['sma_50', 'sma_100', 'sma_200', 'atr', '52_week_high', '52_week_low', 'away_from_high', 'away_from_low']:
+                if key in record:
+                    formatted[key] = safe_float(record.get(key))
             
             formatted_data.append(formatted)
         
-        # For daily data, we need to calculate SMAs (weekly already has them)
-        if interval == 'day':
-            df = pd.DataFrame(formatted_data)
-            if not df.empty:
-                df['sma_50'] = ta.sma(df['close'], length=min(50, len(df)))
-                df['sma_100'] = ta.sma(df['close'], length=min(100, len(df)))
-                df['sma_200'] = ta.sma(df['close'], length=min(200, len(df)))
-                for col in ['sma_50', 'sma_100', 'sma_200']:
-                    df[col] = df[col].replace([np.inf, -np.inf], np.nan)
-                    df[col] = df[col].fillna(0)
-                    df[col] = np.around(df[col], decimals=2)
-                df = df.map(lambda x: 0 if isinstance(x, float) and not math.isfinite(x) else x)
-                logger.info(f"get_combined_ohlc: returning {len(df)} rows of {interval} data")
-                return df.to_dict(orient="records")
-            else:
-                return []
-                
-        # Weekly data already has all indicators computed
+        # Both daily and weekly data now have all indicators computed in the database
         logger.info(f"get_combined_ohlc: returning {len(formatted_data)} rows of {interval} data")
         return formatted_data
     except Exception as e:
