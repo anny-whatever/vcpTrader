@@ -26,9 +26,12 @@ function ModifySlModal({ isOpen, onClose, symbol, currentEntryPrice, currentSl }
   useEffect(() => {
     if (!isEditing && usePercentage && percentageValue && currentEntryPrice) {
       // Calculate SL based on percentage below entry price
-      const percentage = parseFloat(percentageValue) / 100;
-      const calculatedSL = currentEntryPrice * (1 - percentage);
-      setNewSl(calculatedSL.toFixed(2));
+      const percentageNum = parseFloat(percentageValue);
+      if (!isNaN(percentageNum) && percentageNum >= 0) {
+        const percentage = percentageNum / 100;
+        const calculatedSL = currentEntryPrice * (1 - percentage);
+        setNewSl(calculatedSL.toFixed(2));
+      }
     }
   }, [usePercentage, percentageValue, currentEntryPrice, isEditing]);
 
@@ -38,10 +41,13 @@ function ModifySlModal({ isOpen, onClose, symbol, currentEntryPrice, currentSl }
     
     const slValue = parseFloat(newSl);
     const entryPrice = parseFloat(currentEntryPrice);
-    const percentageDiff = ((entryPrice - slValue) / entryPrice) * 100;
     
-    if (!isNaN(percentageDiff)) {
-      setPercentageValue(Math.round(percentageDiff));
+    if (!isNaN(slValue) && !isNaN(entryPrice) && entryPrice > 0) {
+      const percentageDiff = ((entryPrice - slValue) / entryPrice) * 100;
+      
+      if (!isNaN(percentageDiff)) {
+        setPercentageValue(Math.round(percentageDiff));
+      }
     }
   }, [newSl, currentEntryPrice, usePercentage, isEditing]);
 
@@ -49,6 +55,12 @@ function ModifySlModal({ isOpen, onClose, symbol, currentEntryPrice, currentSl }
     try {
       if (!newSl) {
         toast.error("Please enter a stop loss value");
+        return;
+      }
+
+      const slValue = parseFloat(newSl);
+      if (isNaN(slValue) || slValue <= 0) {
+        toast.error("Please enter a valid stop loss value");
         return;
       }
 
@@ -83,9 +95,14 @@ function ModifySlModal({ isOpen, onClose, symbol, currentEntryPrice, currentSl }
     setPercentageValue(value);
     
     if (currentEntryPrice && value) {
-      const percentage = parseInt(value, 10) / 100;
-      const calculatedSL = currentEntryPrice * (1 - percentage);
-      setNewSl(calculatedSL.toFixed(2));
+      const percentageNum = parseInt(value, 10);
+      if (!isNaN(percentageNum) && percentageNum >= 0) {
+        const percentage = percentageNum / 100;
+        const calculatedSL = currentEntryPrice * (1 - percentage);
+        setNewSl(calculatedSL.toFixed(2));
+      } else {
+        setNewSl("");
+      }
     }
     setIsEditing(false);
   };
@@ -98,10 +115,13 @@ function ModifySlModal({ isOpen, onClose, symbol, currentEntryPrice, currentSl }
     if (usePercentage && currentEntryPrice && value) {
       const slValue = parseFloat(value);
       const entryPrice = parseFloat(currentEntryPrice);
-      const percentageDiff = ((entryPrice - slValue) / entryPrice) * 100;
       
-      if (!isNaN(percentageDiff)) {
-        setPercentageValue(Math.round(percentageDiff));
+      if (!isNaN(slValue) && !isNaN(entryPrice) && entryPrice > 0) {
+        const percentageDiff = ((entryPrice - slValue) / entryPrice) * 100;
+        
+        if (!isNaN(percentageDiff)) {
+          setPercentageValue(Math.round(percentageDiff));
+        }
       }
     }
     setIsEditing(false);
@@ -190,14 +210,24 @@ function ModifySlModal({ isOpen, onClose, symbol, currentEntryPrice, currentSl }
               size="small"
               fullWidth
               sx={modalStyles.input}
+              InputProps={{
+                inputProps: { 
+                  min: 0,
+                  step: 0.01
+                }
+              }}
             />
           )}
           
-          {usePercentage && newSl && (
-            <Typography variant="body2" sx={{ mt: 1, color: "#f4f4f5", fontSize: "0.85rem" }}>
-              Calculated SL: {newSl} ({percentageValue}%)
-            </Typography>
-          )}
+          {usePercentage && newSl && (() => {
+            const slValue = parseFloat(newSl);
+            const percentageNum = parseInt(percentageValue, 10);
+            return !isNaN(slValue) && !isNaN(percentageNum) ? (
+              <Typography variant="body2" sx={{ mt: 1, color: "#f4f4f5", fontSize: "0.85rem" }}>
+                Calculated SL: {newSl} ({percentageValue}%)
+              </Typography>
+            ) : null;
+          })()}
         </DialogContent>
         <DialogActions sx={modalStyles.actions}>
           <Button onClick={handleClose} sx={modalStyles.secondaryButton}>
@@ -209,6 +239,7 @@ function ModifySlModal({ isOpen, onClose, symbol, currentEntryPrice, currentSl }
               handleClose();
             }}
             sx={modalStyles.dangerButton}
+            disabled={!newSl || isNaN(parseFloat(newSl)) || parseFloat(newSl) <= 0}
           >
             Modify SL
           </Button>

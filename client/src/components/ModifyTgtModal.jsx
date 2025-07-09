@@ -26,9 +26,12 @@ function ModifyTgtModal({ isOpen, onClose, symbol, currentEntryPrice, currentTar
   useEffect(() => {
     if (!isEditing && usePercentage && percentageValue && currentEntryPrice) {
       // Calculate target based on percentage above entry price
-      const percentage = parseFloat(percentageValue) / 100;
-      const calculatedTarget = currentEntryPrice * (1 + percentage);
-      setNewTarget(calculatedTarget.toFixed(2));
+      const percentageNum = parseFloat(percentageValue);
+      if (!isNaN(percentageNum) && percentageNum >= 0) {
+        const percentage = percentageNum / 100;
+        const calculatedTarget = currentEntryPrice * (1 + percentage);
+        setNewTarget(calculatedTarget.toFixed(2));
+      }
     }
   }, [usePercentage, percentageValue, currentEntryPrice, isEditing]);
 
@@ -38,10 +41,13 @@ function ModifyTgtModal({ isOpen, onClose, symbol, currentEntryPrice, currentTar
     
     const targetValue = parseFloat(newTarget);
     const entryPrice = parseFloat(currentEntryPrice);
-    const percentageDiff = ((targetValue - entryPrice) / entryPrice) * 100;
     
-    if (!isNaN(percentageDiff)) {
-      setPercentageValue(Math.round(percentageDiff));
+    if (!isNaN(targetValue) && !isNaN(entryPrice) && entryPrice > 0) {
+      const percentageDiff = ((targetValue - entryPrice) / entryPrice) * 100;
+      
+      if (!isNaN(percentageDiff)) {
+        setPercentageValue(Math.round(percentageDiff));
+      }
     }
   }, [newTarget, currentEntryPrice, usePercentage, isEditing]);
 
@@ -49,6 +55,12 @@ function ModifyTgtModal({ isOpen, onClose, symbol, currentEntryPrice, currentTar
     try {
       if (!newTarget) {
         toast.error("Please enter a target value");
+        return;
+      }
+
+      const targetValue = parseFloat(newTarget);
+      if (isNaN(targetValue) || targetValue <= 0) {
+        toast.error("Please enter a valid target value");
         return;
       }
 
@@ -83,9 +95,14 @@ function ModifyTgtModal({ isOpen, onClose, symbol, currentEntryPrice, currentTar
     setPercentageValue(value);
     
     if (currentEntryPrice && value) {
-      const percentage = parseInt(value, 10) / 100;
-      const calculatedTarget = currentEntryPrice * (1 + percentage);
-      setNewTarget(calculatedTarget.toFixed(2));
+      const percentageNum = parseInt(value, 10);
+      if (!isNaN(percentageNum) && percentageNum >= 0) {
+        const percentage = percentageNum / 100;
+        const calculatedTarget = currentEntryPrice * (1 + percentage);
+        setNewTarget(calculatedTarget.toFixed(2));
+      } else {
+        setNewTarget("");
+      }
     }
     setIsEditing(false);
   };
@@ -98,10 +115,13 @@ function ModifyTgtModal({ isOpen, onClose, symbol, currentEntryPrice, currentTar
     if (usePercentage && currentEntryPrice && value) {
       const targetValue = parseFloat(value);
       const entryPrice = parseFloat(currentEntryPrice);
-      const percentageDiff = ((targetValue - entryPrice) / entryPrice) * 100;
       
-      if (!isNaN(percentageDiff)) {
-        setPercentageValue(Math.round(percentageDiff));
+      if (!isNaN(targetValue) && !isNaN(entryPrice) && entryPrice > 0) {
+        const percentageDiff = ((targetValue - entryPrice) / entryPrice) * 100;
+        
+        if (!isNaN(percentageDiff)) {
+          setPercentageValue(Math.round(percentageDiff));
+        }
       }
     }
     setIsEditing(false);
@@ -189,14 +209,24 @@ function ModifyTgtModal({ isOpen, onClose, symbol, currentEntryPrice, currentTar
               size="small"
               fullWidth
               sx={modalStyles.input}
+              InputProps={{
+                inputProps: { 
+                  min: 0,
+                  step: 0.01
+                }
+              }}
             />
           )}
           
-          {usePercentage && newTarget && (
-            <Typography variant="body2" sx={{ mt: 1, color: "#f4f4f5", fontSize: "0.85rem" }}>
-              Calculated Target: {newTarget} ({percentageValue}%)
-            </Typography>
-          )}
+          {usePercentage && newTarget && (() => {
+            const targetValue = parseFloat(newTarget);
+            const percentageNum = parseInt(percentageValue, 10);
+            return !isNaN(targetValue) && !isNaN(percentageNum) ? (
+              <Typography variant="body2" sx={{ mt: 1, color: "#f4f4f5", fontSize: "0.85rem" }}>
+                Calculated Target: {newTarget} ({percentageValue}%)
+              </Typography>
+            ) : null;
+          })()}
         </DialogContent>
         <DialogActions sx={modalStyles.actions}>
           <Button onClick={handleClose} sx={modalStyles.secondaryButton}>
@@ -208,6 +238,7 @@ function ModifyTgtModal({ isOpen, onClose, symbol, currentEntryPrice, currentTar
               handleClose();
             }}
             sx={modalStyles.primaryButton}
+            disabled={!newTarget || isNaN(parseFloat(newTarget)) || parseFloat(newTarget) <= 0}
           >
             Modify Target
           </Button>

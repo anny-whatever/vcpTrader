@@ -29,10 +29,19 @@ function IncreaseModal({
   const [methodRiskPoolMethod, setMethodRiskPoolMethod] = useState(false);
 
   const calculateQtyForRiskPool = (intendedRisk, ltp) => {
-    const absoluteRisk =
-      (AvailableRisk + UsedRisk) * (parseInt(intendedRisk, 10) / 100);
+    const riskNum = parseInt(intendedRisk, 10);
+    if (isNaN(riskNum) || riskNum <= 0) {
+      return 0;
+    }
+    
+    const absoluteRisk = (AvailableRisk + UsedRisk) * (riskNum / 100);
     const sl = ltp - ltp * 0.1;
     const slPoints = ltp - sl;
+    
+    if (slPoints <= 0) {
+      return 0;
+    }
+    
     let qty = absoluteRisk / slPoints;
     return Math.round(qty);
   };
@@ -45,7 +54,19 @@ function IncreaseModal({
   ) => {
     if (methodRiskPoolMethod) {
       qty = calculateQtyForRiskPool(intendedRisk, ltp);
+      if (qty <= 0) {
+        toast.error("Invalid risk percentage or calculation resulted in zero quantity");
+        return;
+      }
+    } else {
+      const qtyNum = parseInt(qty, 10);
+      if (isNaN(qtyNum) || qtyNum <= 0) {
+        toast.error("Please enter a valid quantity");
+        return;
+      }
+      qty = qtyNum;
     }
+    
     try {
       const encodedSymbol = encodeURIComponent(symbol).replace(/&/g, '%26');
       const response = await api.get(
@@ -130,6 +151,13 @@ function IncreaseModal({
               size="small"
               fullWidth
               sx={modalStyles.input}
+              InputProps={{
+                inputProps: { 
+                  min: 1, 
+                  max: 100,
+                  step: 1
+                }
+              }}
             />
           ) : (
             <Box
@@ -147,14 +175,17 @@ function IncreaseModal({
                 onChange={(e) => setQuantity(e.target.value)}
                 variant="outlined"
                 size="small"
-                inputProps={{ min: 0 }}
+                inputProps={{ min: 1 }}
                 sx={{ ...modalStyles.input, width: "60%" }}
               />
               <Typography
                 variant="body2"
                 sx={{ fontSize: "0.9rem", color: "#f4f4f5" }}
               >
-                Cost: {quantity ? (quantity * ltp).toFixed(2) : 0}
+                Cost: {(() => {
+                  const qtyNum = parseInt(quantity, 10);
+                  return !isNaN(qtyNum) && qtyNum > 0 ? (qtyNum * ltp).toFixed(2) : 0;
+                })()}
               </Typography>
             </Box>
           )}
@@ -178,6 +209,10 @@ function IncreaseModal({
               handleClose();
             }}
             sx={modalStyles.successButton}
+            disabled={methodRiskPoolMethod ? 
+              !intendedRisk || isNaN(parseInt(intendedRisk, 10)) || parseInt(intendedRisk, 10) <= 0 :
+              !quantity || isNaN(parseInt(quantity, 10)) || parseInt(quantity, 10) <= 0
+            }
           >
             Increase
           </Button>

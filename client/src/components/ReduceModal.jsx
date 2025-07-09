@@ -25,9 +25,12 @@ function ReduceModal({ isOpen, onClose, symbol, currentQty }) {
   // Update quantity when percentage changes
   useEffect(() => {
     if (!isEditing && usePercentage && percentageValue && currentQty) {
-      const percentage = parseInt(percentageValue, 10) / 100;
-      const calculatedQty = Math.floor(currentQty * percentage);
-      setReduceQuantity(calculatedQty.toString());
+      const percentageNum = parseInt(percentageValue, 10);
+      if (!isNaN(percentageNum) && percentageNum > 0) {
+        const percentage = percentageNum / 100;
+        const calculatedQty = Math.floor(currentQty * percentage);
+        setReduceQuantity(calculatedQty.toString());
+      }
     }
   }, [usePercentage, percentageValue, currentQty, isEditing]);
 
@@ -71,9 +74,14 @@ function ReduceModal({ isOpen, onClose, symbol, currentQty }) {
     setPercentageValue(value);
     
     if (currentQty && value) {
-      const percentage = parseInt(value, 10) / 100;
-      const calculatedQty = Math.floor(currentQty * percentage);
-      setReduceQuantity(calculatedQty.toString());
+      const percentageNum = parseInt(value, 10);
+      if (!isNaN(percentageNum) && percentageNum > 0) {
+        const percentage = percentageNum / 100;
+        const calculatedQty = Math.floor(currentQty * percentage);
+        setReduceQuantity(calculatedQty.toString());
+      } else {
+        setReduceQuantity("");
+      }
     }
     setIsEditing(false);
   };
@@ -85,9 +93,11 @@ function ReduceModal({ isOpen, onClose, symbol, currentQty }) {
     
     if (usePercentage && currentQty && value) {
       const qty = parseInt(value, 10);
-      const percentage = (qty / currentQty) * 100;
-      if (!isNaN(percentage)) {
-        setPercentageValue(Math.round(percentage).toString());
+      if (!isNaN(qty) && qty > 0) {
+        const percentage = (qty / currentQty) * 100;
+        if (!isNaN(percentage)) {
+          setPercentageValue(Math.round(percentage).toString());
+        }
       }
     }
     setIsEditing(false);
@@ -195,14 +205,17 @@ function ReduceModal({ isOpen, onClose, symbol, currentQty }) {
                 ))}
               </Box>
               
-              {percentageValue && currentQty && (
-                <Typography 
-                  variant="body2" 
-                  sx={{ mt: 1, color: "#f4f4f5", fontSize: "0.85rem" }}
-                >
-                  Calculated quantity: {Math.floor(currentQty * (parseInt(percentageValue, 10) / 100))}
-                </Typography>
-              )}
+              {percentageValue && currentQty && (() => {
+                const percentageNum = parseInt(percentageValue, 10);
+                return !isNaN(percentageNum) && percentageNum > 0 ? (
+                  <Typography 
+                    variant="body2" 
+                    sx={{ mt: 1, color: "#f4f4f5", fontSize: "0.85rem" }}
+                  >
+                    Calculated quantity: {Math.floor(currentQty * (percentageNum / 100))}
+                  </Typography>
+                ) : null;
+              })()}
             </>
           ) : (
             <TextField
@@ -228,7 +241,7 @@ function ReduceModal({ isOpen, onClose, symbol, currentQty }) {
               handleClose();
             }}
             sx={modalStyles.primaryButton}
-            disabled={!reduceQuantity || parseInt(reduceQuantity, 10) <= 0}
+            disabled={!reduceQuantity || isNaN(parseInt(reduceQuantity, 10)) || parseInt(reduceQuantity, 10) <= 0}
           >
             Reduce
           </Button>
